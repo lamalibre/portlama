@@ -1,0 +1,125 @@
+name: Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 0.1.0)'
+        required: true
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: desktop-v${{ github.event.inputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create release tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "desktop-v${{ github.event.inputs.version }}"
+          git push origin "desktop-v${{ github.event.inputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v${{ github.event.inputs.version }}
+          name: Portlama Desktop v${{ github.event.inputs.version }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          body: |
+            ## Portlama Desktop v${{ github.event.inputs.version }}
+
+            ### Installation
+
+            Download the appropriate file for your platform:
+
+            | Platform | File |
+            |----------|------|
+            | macOS Apple Silicon (M1/M2/M3/M4) | `Portlama_${{ github.event.inputs.version }}_aarch64.dmg` |
+            | macOS Intel | `Portlama_${{ github.event.inputs.version }}_x64.dmg` |
+            | Linux (Debian/Ubuntu) | `portlama_${{ github.event.inputs.version }}_amd64.deb` |
+            | Linux (AppImage) | `portlama_${{ github.event.inputs.version }}_amd64.AppImage` |
+
+            > **macOS note:** The app is not code-signed. On first launch, right-click → Open, or go to System Settings → Privacy & Security → Open Anyway.
+
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-apple-darwin
+            runner: macos-13
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: packages/portlama-desktop/src-tauri
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        working-directory: packages/portlama-desktop
+        run: npx tauri build --target ${{ matrix.target }}
+
+      - name: Upload macOS .dmg to release
+        if: runner.os == 'macOS'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v${{ github.event.inputs.version }}
+          files: |
+            packages/portlama-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+
+      - name: Upload Linux .deb and .AppImage to release
+        if: runner.os == 'Linux'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v${{ github.event.inputs.version }}
+          files: |
+            packages/portlama-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            packages/portlama-desktop/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
