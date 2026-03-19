@@ -52,13 +52,14 @@ Portlama solves the problem of exposing local services to the internet securely.
 
 Portlama is a monorepo with five packages:
 
-| Package            | Technology                 | Purpose                      |
-| ------------------ | -------------------------- | ---------------------------- |
-| `create-portlama`  | Node.js ESM, Listr2, execa | Zero-prompt installer CLI    |
-| `panel-server`     | Fastify 5, Node.js ESM     | REST API + WebSocket backend |
-| `panel-client`     | React 18, Vite, Tailwind   | Management UI (SPA)          |
-| `portlama-agent`   | Node.js ESM                | Mac tunnel agent CLI         |
-| `portlama-desktop` | Tauri v2                   | Desktop agent (WIP)          |
+| Package                    | Technology                 | Purpose                              |
+| -------------------------- | -------------------------- | ------------------------------------ |
+| `create-portlama`          | Node.js ESM, Listr2, execa | Zero-prompt installer CLI            |
+| `panel-server`             | Fastify 5, Node.js ESM     | REST API + WebSocket backend         |
+| `panel-client`             | React 18, Vite, Tailwind   | Management UI (SPA)                  |
+| `portlama-agent`           | Node.js ESM                | Mac tunnel agent CLI                 |
+| `portlama-desktop`         | Tauri v2 (Rust + React)    | Desktop agent with service discovery |
+| `install-portlama-desktop` | Node.js ESM                | npx installer for the desktop app    |
 
 **Architecture summary:**
 

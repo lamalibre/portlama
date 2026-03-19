@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add custom service definitions — users can register their own services with name, port, binary, process name, and category, persisted in `~/.portlama/services.json`
 - Add Services tab in the desktop sidebar with category filtering (AI, Database, Docker, Dev, Media, Monitoring, Custom)
 - Add shared `api.rs` module in the desktop app — extracted curl helpers from `commands.rs` for reuse across the Rust backend
+- Add `@lamalibre/install-portlama-desktop` npx installer — downloads, caches, and installs the desktop app from GitHub Releases for macOS (arm64/x64) and Linux (x64)
+- Add GitHub Actions workflow for desktop releases — manual trigger via `workflow_dispatch`, builds for macOS arm64, macOS x64, and Linux x64
 - Add file type allowlist for static site uploads — only safe web assets (HTML, CSS, JS, images, fonts, media, documents, data, WASM) are accepted; server rejects disallowed extensions with 400
 - Add ClamAV malware scanning via Docker in `portlama-agent deploy` — scans files before upload, aborts on infections, warns if Docker is unavailable
 - Add extension allowlist check in `portlama-agent deploy` — aborts with listing if blocked files are found

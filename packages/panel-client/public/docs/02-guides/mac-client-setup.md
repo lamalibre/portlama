@@ -2,6 +2,8 @@
 
 > Install and configure the Chisel tunnel client on your Mac so local apps are accessible through Portlama.
 
+> **Prefer the Desktop App?** The [Portlama Desktop App](desktop-app-setup.md) provides a native GUI with automatic service discovery, one-click tunnel creation, and no manual configuration. Install it with `npx @lamalibre/install-portlama-desktop`. This guide covers the manual CLI-based setup as an alternative.
+
 ## In Plain English
 
 Your Portlama server is a relay — but it needs something on your Mac to connect to it and forward traffic. That something is the Chisel client, a small program that establishes a secure WebSocket connection from your Mac to your server. Once connected, any web app running on your Mac becomes accessible through your Portlama domain.

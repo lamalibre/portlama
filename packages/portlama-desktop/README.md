@@ -1,9 +1,14 @@
 # @lamalibre/portlama-desktop
 
 Tauri v2 desktop application for managing Portlama tunnels on macOS and Ubuntu.
-This is a private package internal to the
-[Portlama monorepo](https://github.com/lamalibre/portlama) and is not published
-to npm. It is currently in development.
+
+## Install
+
+```bash
+npx @lamalibre/install-portlama-desktop
+```
+
+Downloads the latest release from GitHub, installs to `/Applications` (macOS) or `~/.local/bin` (Linux), and launches the app. See the [Desktop App Setup guide](../panel-client/public/docs/02-guides/desktop-app-setup.md) for details.
 
 ## What It Does
 

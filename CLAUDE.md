@@ -11,7 +11,8 @@ portlama/
 │   ├── panel-server/          @lamalibre/portlama-panel-server — Fastify REST API
 │   ├── panel-client/          @lamalibre/portlama-panel-client — React + Vite + Tailwind UI
 │   ├── portlama-agent/        @lamalibre/portlama-agent — Mac tunnel agent CLI
-│   └── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop agent (service discovery, tunnel management)
+│   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop agent (service discovery, tunnel management)
+│   └── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
 ├── tests/
 │   ├── e2e/                   Single-VM end-to-end tests
 │   └── e2e-three-vm/          Three-VM integration tests (Multipass)

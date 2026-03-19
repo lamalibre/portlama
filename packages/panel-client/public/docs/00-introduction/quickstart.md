@@ -264,9 +264,23 @@ Click **Create**. The panel:
 
 ### Step 8: Connect the Mac Client
 
-After creating the tunnel, the panel shows a **Download plist** button. This downloads a macOS launchd configuration file that keeps the Chisel client running and auto-reconnecting.
+**Option A — Desktop App (recommended):**
 
-Alternatively, you can run the Chisel client manually on your Mac:
+Install the Portlama Desktop app, which provides a GUI with automatic service discovery and one-click tunnel creation:
+
+```bash
+npx @lamalibre/install-portlama-desktop
+```
+
+The app auto-detects local services (Ollama, ComfyUI, PostgreSQL, Docker containers, etc.) and lets you expose them with one click. See the [Desktop App Setup](../02-guides/desktop-app-setup.md) guide for details.
+
+**Option B — Launchd plist:**
+
+After creating the tunnel, the panel shows a **Download plist** button. This downloads a macOS launchd configuration file that keeps the Chisel client running and auto-reconnecting. See the [Mac Client Setup](../02-guides/mac-client-setup.md) guide for details.
+
+**Option C — Manual Chisel:**
+
+Run the Chisel client directly:
 
 ```bash
 chisel client \
