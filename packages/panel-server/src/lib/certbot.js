@@ -9,9 +9,13 @@ import { execa } from 'execa';
 export async function issueCert(fqdn, email) {
   try {
     await execa('sudo', [
-      'certbot', 'certonly', '--nginx',
-      '-d', fqdn,
-      '--email', email,
+      'certbot',
+      'certonly',
+      '--nginx',
+      '-d',
+      fqdn,
+      '--email',
+      email,
       '--agree-tos',
       '--non-interactive',
     ]);
@@ -21,21 +25,28 @@ export async function issueCert(fqdn, email) {
     if (stderr.includes('too many certificates') || stderr.includes('rate limit')) {
       throw new Error(
         `Let's Encrypt rate limit reached for ${fqdn}. Rate limits allow 50 certificates per registered domain per week. ` +
-          'Please wait before trying again. Details: ' + stderr,
+          'Please wait before trying again. Details: ' +
+          stderr,
       );
     }
 
-    if (stderr.includes('DNS problem') || stderr.includes('NXDOMAIN') || stderr.includes('no valid A records')) {
+    if (
+      stderr.includes('DNS problem') ||
+      stderr.includes('NXDOMAIN') ||
+      stderr.includes('no valid A records')
+    ) {
       throw new Error(
         `DNS is not pointing ${fqdn} to this server. The ACME HTTP-01 challenge requires the domain to resolve ` +
-          'to this server. Please verify your DNS configuration. Details: ' + stderr,
+          'to this server. Please verify your DNS configuration. Details: ' +
+          stderr,
       );
     }
 
     if (stderr.includes('Could not automatically find a matching server block')) {
       throw new Error(
         `The nginx plugin could not find a matching server block for ${fqdn}. ` +
-          'Check your nginx configuration. Details: ' + stderr,
+          'Check your nginx configuration. Details: ' +
+          stderr,
       );
     }
 
@@ -111,9 +122,7 @@ export async function listCerts() {
     const name = lines[0]?.trim() || '';
 
     const domainsLine = lines.find((l) => l.startsWith('Domains:'));
-    const domains = domainsLine
-      ? domainsLine.replace('Domains:', '').trim().split(/\s+/)
-      : [];
+    const domains = domainsLine ? domainsLine.replace('Domains:', '').trim().split(/\s+/) : [];
 
     const expiryLine = lines.find((l) => l.startsWith('Expiry Date:'));
     let expiryDate = null;
@@ -133,14 +142,10 @@ export async function listCerts() {
     }
 
     const certPathLine = lines.find((l) => l.startsWith('Certificate Path:'));
-    const certPath = certPathLine
-      ? certPathLine.replace('Certificate Path:', '').trim()
-      : null;
+    const certPath = certPathLine ? certPathLine.replace('Certificate Path:', '').trim() : null;
 
     const keyPathLine = lines.find((l) => l.startsWith('Private Key Path:'));
-    const keyPath = keyPathLine
-      ? keyPathLine.replace('Private Key Path:', '').trim()
-      : null;
+    const keyPath = keyPathLine ? keyPathLine.replace('Private Key Path:', '').trim() : null;
 
     certs.push({
       name,
@@ -300,13 +305,16 @@ export async function isCertValid(fqdn) {
 
   try {
     // Check if cert exists and is valid for at least 24 more hours
-    await execa('sudo', [
-      'openssl', 'x509', '-checkend', '86400', '-noout', '-in', certPath,
-    ]);
+    await execa('sudo', ['openssl', 'x509', '-checkend', '86400', '-noout', '-in', certPath]);
 
     // Get expiry date
     const { stdout } = await execa('sudo', [
-      'openssl', 'x509', '-enddate', '-noout', '-in', certPath,
+      'openssl',
+      'x509',
+      '-enddate',
+      '-noout',
+      '-in',
+      certPath,
     ]);
     const match = stdout.match(/notAfter=(.+)/);
     const expiryDate = match ? new Date(match[1]).toISOString() : null;
@@ -314,7 +322,10 @@ export async function isCertValid(fqdn) {
     return { valid: true, certPath, expiryDate };
   } catch (err) {
     // If the file doesn't exist, openssl will fail
-    if (err.stderr?.includes('No such file') || err.stderr?.includes('unable to load certificate')) {
+    if (
+      err.stderr?.includes('No such file') ||
+      err.stderr?.includes('unable to load certificate')
+    ) {
       return { valid: false, certPath: null, expiryDate: null };
     }
 

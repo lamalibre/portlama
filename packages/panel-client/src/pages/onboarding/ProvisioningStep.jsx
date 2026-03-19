@@ -16,8 +16,7 @@ function TaskIcon({ status }) {
 }
 
 function TaskRow({ task, isLast }) {
-  const titleClass =
-    task.status === 'pending' ? 'text-zinc-500' : 'text-white';
+  const titleClass = task.status === 'pending' ? 'text-zinc-500' : 'text-white';
 
   return (
     <div className="flex gap-3">
@@ -36,16 +35,8 @@ function TaskRow({ task, isLast }) {
 }
 
 export default function ProvisioningStep({ onComplete }) {
-  const {
-    tasks,
-    isComplete,
-    isError,
-    error,
-    result,
-    progress,
-    logs,
-    retry,
-  } = useProvisioningStream();
+  const { tasks, isComplete, isError, error, result, progress, logs, retry } =
+    useProvisioningStream();
 
   const [started, setStarted] = useState(false);
   const [retrying, setRetrying] = useState(false);

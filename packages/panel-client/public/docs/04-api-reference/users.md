@@ -57,18 +57,18 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `username` | `string` | Unique login identifier |
-| `displayname` | `string` | Human-readable display name |
-| `email` | `string` | User's email address |
-| `groups` | `string[]` | Authelia group memberships |
+| Field         | Type       | Description                 |
+| ------------- | ---------- | --------------------------- |
+| `username`    | `string`   | Unique login identifier     |
+| `displayname` | `string`   | Human-readable display name |
+| `email`       | `string`   | User's email address        |
+| `groups`      | `string[]` | Authelia group memberships  |
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 500 | `{"error":"Failed to read user database"}` | Cannot read or parse `users.yml` |
+| Status | Body                                       | When                             |
+| ------ | ------------------------------------------ | -------------------------------- |
+| 500    | `{"error":"Failed to read user database"}` | Cannot read or parse `users.yml` |
 
 ---
 
@@ -88,13 +88,13 @@ Creates a new Authelia user. The password is hashed with bcrypt before being sto
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `username` | `string` | 2-32 chars, lowercase alphanumeric + underscores + hyphens | Login identifier |
-| `displayname` | `string` | 1-100 chars | Display name |
-| `email` | `string` | Valid email format | Email address |
-| `password` | `string` | 8-128 chars | Plain-text password (hashed before storage) |
-| `groups` | `string[]` | Optional, defaults to `[]` | Authelia group memberships |
+| Field         | Type       | Validation                                                 | Description                                 |
+| ------------- | ---------- | ---------------------------------------------------------- | ------------------------------------------- |
+| `username`    | `string`   | 2-32 chars, lowercase alphanumeric + underscores + hyphens | Login identifier                            |
+| `displayname` | `string`   | 1-100 chars                                                | Display name                                |
+| `email`       | `string`   | Valid email format                                         | Email address                               |
+| `password`    | `string`   | 8-128 chars                                                | Plain-text password (hashed before storage) |
+| `groups`      | `string[]` | Optional, defaults to `[]`                                 | Authelia group memberships                  |
 
 **Username regex:**
 
@@ -126,13 +126,13 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid username, email, or password length |
-| 409 | `{"error":"Username already exists"}` | A user with this username already exists |
-| 500 | `{"error":"Failed to read user database"}` | Cannot read `users.yml` |
-| 500 | `{"error":"Failed to hash password"}` | bcrypt hashing failed |
-| 500 | `{"error":"Failed to update user database"}` | Cannot write `users.yml` |
+| Status | Body                                                       | When                                        |
+| ------ | ---------------------------------------------------------- | ------------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid username, email, or password length |
+| 409    | `{"error":"Username already exists"}`                      | A user with this username already exists    |
+| 500    | `{"error":"Failed to read user database"}`                 | Cannot read `users.yml`                     |
+| 500    | `{"error":"Failed to hash password"}`                      | bcrypt hashing failed                       |
+| 500    | `{"error":"Failed to update user database"}`               | Cannot write `users.yml`                    |
 
 ---
 
@@ -153,12 +153,12 @@ If a new password is provided, it is hashed with bcrypt before storage.
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `displayname` | `string` | 1-100 chars, optional | New display name |
-| `email` | `string` | Valid email, optional | New email address |
-| `password` | `string` | 8-128 chars, optional | New password (hashed before storage) |
-| `groups` | `string[]` | Optional | New group memberships (replaces entire list) |
+| Field         | Type       | Validation            | Description                                  |
+| ------------- | ---------- | --------------------- | -------------------------------------------- |
+| `displayname` | `string`   | 1-100 chars, optional | New display name                             |
+| `email`       | `string`   | Valid email, optional | New email address                            |
+| `password`    | `string`   | 8-128 chars, optional | New password (hashed before storage)         |
+| `groups`      | `string[]` | Optional              | New group memberships (replaces entire list) |
 
 All fields are optional, but at least one must be provided (validated by a Zod `.refine()`).
 
@@ -186,13 +186,13 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | No fields provided, or invalid field values |
-| 404 | `{"error":"User not found"}` | No user with this username |
-| 500 | `{"error":"Failed to read user database"}` | Cannot read `users.yml` |
-| 500 | `{"error":"Failed to hash password"}` | bcrypt hashing failed (when password is updated) |
-| 500 | `{"error":"Failed to update user database"}` | Cannot write `users.yml` |
+| Status | Body                                                       | When                                             |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------ |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}` | No fields provided, or invalid field values      |
+| 404    | `{"error":"User not found"}`                               | No user with this username                       |
+| 500    | `{"error":"Failed to read user database"}`                 | Cannot read `users.yml`                          |
+| 500    | `{"error":"Failed to hash password"}`                      | bcrypt hashing failed (when password is updated) |
+| 500    | `{"error":"Failed to update user database"}`               | Cannot write `users.yml`                         |
 
 ---
 
@@ -222,12 +222,12 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Cannot delete the last user"}` | Only one user remains |
-| 404 | `{"error":"User not found"}` | No user with this username |
-| 500 | `{"error":"Failed to read user database"}` | Cannot read `users.yml` |
-| 500 | `{"error":"Failed to update user database"}` | Cannot write `users.yml` |
+| Status | Body                                         | When                       |
+| ------ | -------------------------------------------- | -------------------------- |
+| 400    | `{"error":"Cannot delete the last user"}`    | Only one user remains      |
+| 404    | `{"error":"User not found"}`                 | No user with this username |
+| 500    | `{"error":"Failed to read user database"}`   | Cannot read `users.yml`    |
+| 500    | `{"error":"Failed to update user database"}` | Cannot write `users.yml`   |
 
 ---
 
@@ -254,30 +254,30 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ok` | `boolean` | Always `true` on success |
-| `totpUri` | `string` | `otpauth://` URI for QR code generation or manual entry in an authenticator app |
+| Field     | Type      | Description                                                                     |
+| --------- | --------- | ------------------------------------------------------------------------------- |
+| `ok`      | `boolean` | Always `true` on success                                                        |
+| `totpUri` | `string`  | `otpauth://` URI for QR code generation or manual entry in an authenticator app |
 
 The `totpUri` follows the [Key Uri Format](https://github.com/google/google-authenticator/wiki/Key-Uri-Format) standard. The panel client renders this as a QR code for scanning with Google Authenticator, Authy, or similar apps.
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 404 | `{"error":"User not found"}` | No user with this username |
-| 500 | `{"error":"Failed to read user database"}` | Cannot read `users.yml` |
-| 500 | `{"error":"Failed to write TOTP configuration"}` | Cannot write TOTP secret to Authelia's SQLite database |
+| Status | Body                                             | When                                                   |
+| ------ | ------------------------------------------------ | ------------------------------------------------------ |
+| 404    | `{"error":"User not found"}`                     | No user with this username                             |
+| 500    | `{"error":"Failed to read user database"}`       | Cannot read `users.yml`                                |
+| 500    | `{"error":"Failed to write TOTP configuration"}` | Cannot write TOTP secret to Authelia's SQLite database |
 
 ## Quick Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/users` | List all users (alphabetical, no sensitive fields) |
-| POST | `/api/users` | Create user (bcrypt hash + Authelia reload) |
-| PUT | `/api/users/:username` | Update user fields (partial update) |
-| DELETE | `/api/users/:username` | Delete user (not the last one) |
-| POST | `/api/users/:username/reset-totp` | Generate new TOTP secret |
+| Method | Path                              | Description                                        |
+| ------ | --------------------------------- | -------------------------------------------------- |
+| GET    | `/api/users`                      | List all users (alphabetical, no sensitive fields) |
+| POST   | `/api/users`                      | Create user (bcrypt hash + Authelia reload)        |
+| PUT    | `/api/users/:username`            | Update user fields (partial update)                |
+| DELETE | `/api/users/:username`            | Delete user (not the last one)                     |
+| POST   | `/api/users/:username/reset-totp` | Generate new TOTP secret                           |
 
 ### User Object Shape
 
@@ -294,13 +294,13 @@ Returned by list and mutation endpoints (sensitive fields excluded):
 
 ### Validation Summary
 
-| Field | Rules |
-|-------|-------|
-| `username` | 2-32 chars, `/^[a-z0-9_-]+$/`, unique |
-| `displayname` | 1-100 chars |
-| `email` | Valid email format |
-| `password` | 8-128 chars |
-| `groups` | Array of strings, optional |
+| Field         | Rules                                 |
+| ------------- | ------------------------------------- |
+| `username`    | 2-32 chars, `/^[a-z0-9_-]+$/`, unique |
+| `displayname` | 1-100 chars                           |
+| `email`       | Valid email format                    |
+| `password`    | 8-128 chars                           |
+| `groups`      | Array of strings, optional            |
 
 ### curl Cheat Sheet
 

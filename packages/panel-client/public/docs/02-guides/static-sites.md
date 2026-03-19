@@ -31,18 +31,18 @@ A managed subdomain site uses your Portlama domain (e.g., `blog.example.com`). C
 2. Select **Managed Subdomain** as the domain type.
 3. Enter a name (this becomes the subdomain):
 
-| Field | Rules | Example |
-|-------|-------|---------|
-| **Name** | Lowercase alphanumeric with hyphens, max 100 chars | `blog` |
+| Field    | Rules                                              | Example |
+| -------- | -------------------------------------------------- | ------- |
+| **Name** | Lowercase alphanumeric with hyphens, max 100 chars | `blog`  |
 
 The name must not conflict with existing tunnels or reserved subdomains (`panel`, `auth`, `tunnel`, `www`, `mail`, `ftp`, `api`).
 
 4. Configure options:
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| **SPA Mode** | Off | If enabled, all non-file requests return `index.html` (for React, Vue, Angular apps) |
-| **Authelia Protected** | Off | If enabled, visitors must log in through Authelia before accessing the site |
+| Option                 | Default | Description                                                                          |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------ |
+| **SPA Mode**           | Off     | If enabled, all non-file requests return `index.html` (for React, Vue, Angular apps) |
+| **Authelia Protected** | Off     | If enabled, visitors must log in through Authelia before accessing the site          |
 
 5. Click **Create Site**.
 
@@ -63,9 +63,9 @@ A custom domain site uses a domain you own (e.g., `myblog.com`). You must config
 2. Select **Custom Domain** as the domain type.
 3. Enter a name and the custom domain:
 
-| Field | Example |
-|-------|---------|
-| **Name** | `myblog` |
+| Field             | Example      |
+| ----------------- | ------------ |
+| **Name**          | `myblog`     |
 | **Custom Domain** | `myblog.com` |
 
 4. Configure SPA Mode and Authelia Protection as needed.
@@ -77,8 +77,8 @@ The site is created with a "DNS Pending" status. No certificate is issued yet be
 
 1. Add an A record at your domain registrar:
 
-| Type | Name | Value |
-|------|------|-------|
+| Type  | Name                  | Value                                 |
+| ----- | --------------------- | ------------------------------------- |
 | **A** | `myblog.com` (or `@`) | Your server IP (e.g., `203.0.113.42`) |
 
 2. Wait for DNS propagation (usually a few minutes).
@@ -86,11 +86,13 @@ The site is created with a "DNS Pending" status. No certificate is issued yet be
 4. The panel checks if the domain resolves to your server.
 
 **If DNS is verified:**
+
 - A Let's Encrypt certificate is issued automatically.
 - An nginx vhost is configured.
 - The site status changes to "Live".
 
 **If DNS is not verified:**
+
 - The panel shows the current resolution and expected IP.
 - Wait longer and try again.
 
@@ -104,6 +106,7 @@ After creating a site (whether managed or custom with verified DNS), upload your
 4. Files are uploaded to the site directory and served immediately.
 
 **File upload details:**
+
 - Files are uploaded via multipart form data to `POST /api/sites/:id/files`.
 - The upload target directory can be specified with the `?path=` query parameter.
 - Files are served directly by nginx — no Node.js involvement in serving static content.
@@ -162,6 +165,7 @@ The file browser lets you:
 3. Confirm the deletion.
 
 **What is removed:**
+
 - The nginx vhost configuration
 - All uploaded files in the site directory
 - The site record from `sites.json`
@@ -195,16 +199,16 @@ Each site is stored in `/etc/portlama/sites.json` as a JSON array:
 
 ### API Endpoints
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/api/sites` | List all sites |
-| `POST` | `/api/sites` | Create a new site |
-| `PATCH` | `/api/sites/:id` | Update site settings (spaMode, autheliaProtected, allowedUsers) |
-| `DELETE` | `/api/sites/:id` | Delete a site |
-| `POST` | `/api/sites/:id/verify-dns` | Verify DNS for custom domain sites |
-| `GET` | `/api/sites/:id/files` | List files in a directory |
-| `POST` | `/api/sites/:id/files` | Upload files (multipart) |
-| `DELETE` | `/api/sites/:id/files` | Delete a file |
+| Method   | Path                        | Purpose                                                         |
+| -------- | --------------------------- | --------------------------------------------------------------- |
+| `GET`    | `/api/sites`                | List all sites                                                  |
+| `POST`   | `/api/sites`                | Create a new site                                               |
+| `PATCH`  | `/api/sites/:id`            | Update site settings (spaMode, autheliaProtected, allowedUsers) |
+| `DELETE` | `/api/sites/:id`            | Delete a site                                                   |
+| `POST`   | `/api/sites/:id/verify-dns` | Verify DNS for custom domain sites                              |
+| `GET`    | `/api/sites/:id/files`      | List files in a directory                                       |
+| `POST`   | `/api/sites/:id/files`      | Upload files (multipart)                                        |
+| `DELETE` | `/api/sites/:id/files`      | Delete a file                                                   |
 
 ### Create Site Request
 
@@ -235,20 +239,21 @@ POST /api/sites
 
 ### Validation Rules
 
-| Field | Rules |
-|-------|-------|
-| `name` | 1-100 chars, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, unique across sites, not reserved, not colliding with tunnels |
-| `type` | `managed` or `custom` |
-| `customDomain` | Required for `custom` type, max 253 chars, valid domain format |
-| `spaMode` | Boolean, defaults to `false` |
-| `autheliaProtected` | Boolean, defaults to `false` |
-| `allowedUsers` | Array of strings (Authelia usernames), defaults to `[]` |
+| Field               | Rules                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `name`              | 1-100 chars, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, unique across sites, not reserved, not colliding with tunnels |
+| `type`              | `managed` or `custom`                                                                                               |
+| `customDomain`      | Required for `custom` type, max 253 chars, valid domain format                                                      |
+| `spaMode`           | Boolean, defaults to `false`                                                                                        |
+| `autheliaProtected` | Boolean, defaults to `false`                                                                                        |
+| `allowedUsers`      | Array of strings (Authelia usernames), defaults to `[]`                                                             |
 
 ### File Storage
 
 Static files are stored under `/var/www/portlama/<site-id>/`. The directory is owned by `www-data:www-data` and served directly by nginx.
 
 File operations use sudo commands with restricted paths:
+
 - `mkdir -p /var/www/portlama/<id>/`
 - `chown -R www-data:www-data /var/www/portlama/<id>/`
 - `rm -rf /var/www/portlama/<id>/`
@@ -320,29 +325,29 @@ For the full list of flags and options, see the [agent CLI README](https://githu
 
 ## Quick Reference
 
-| Feature | Managed Subdomain | Custom Domain |
-|---------|-------------------|---------------|
-| DNS setup | Automatic (wildcard) | Manual (A record) |
-| Certificate | Automatic | After DNS verification |
-| Goes live | Immediately | After DNS + cert |
-| Example domain | `blog.example.com` | `myblog.com` |
+| Feature        | Managed Subdomain    | Custom Domain          |
+| -------------- | -------------------- | ---------------------- |
+| DNS setup      | Automatic (wildcard) | Manual (A record)      |
+| Certificate    | Automatic            | After DNS verification |
+| Goes live      | Immediately          | After DNS + cert       |
+| Example domain | `blog.example.com`   | `myblog.com`           |
 
-| Action | Steps |
-|--------|-------|
-| **Create managed site** | Add Site, Managed Subdomain, enter name, Create |
-| **Create custom site** | Add Site, Custom Domain, enter name + domain, Create |
-| **Verify DNS** | Click "Verify DNS" next to pending site |
-| **Upload files** | Click "Files", then "Upload" |
-| **Enable SPA mode** | Check "SPA Mode" when creating |
-| **Enable auth** | Check "Authelia Protected" when creating |
-| **Delete site** | Click "Delete", confirm |
+| Action                  | Steps                                                |
+| ----------------------- | ---------------------------------------------------- |
+| **Create managed site** | Add Site, Managed Subdomain, enter name, Create      |
+| **Create custom site**  | Add Site, Custom Domain, enter name + domain, Create |
+| **Verify DNS**          | Click "Verify DNS" next to pending site              |
+| **Upload files**        | Click "Files", then "Upload"                         |
+| **Enable SPA mode**     | Check "SPA Mode" when creating                       |
+| **Enable auth**         | Check "Authelia Protected" when creating             |
+| **Delete site**         | Click "Delete", confirm                              |
 
 | Reserved Names | Cannot Use As Site Name |
-|---------------|------------------------|
-| `panel` | Admin panel subdomain |
-| `auth` | Authelia subdomain |
-| `tunnel` | Chisel tunnel subdomain |
-| `www` | Common web prefix |
-| `mail` | Email subdomain |
-| `ftp` | File transfer subdomain |
-| `api` | API subdomain |
+| -------------- | ----------------------- |
+| `panel`        | Admin panel subdomain   |
+| `auth`         | Authelia subdomain      |
+| `tunnel`       | Chisel tunnel subdomain |
+| `www`          | Common web prefix       |
+| `mail`         | Email subdomain         |
+| `ftp`          | File transfer subdomain |
+| `api`          | API subdomain           |

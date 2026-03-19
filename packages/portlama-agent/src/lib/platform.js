@@ -19,8 +19,7 @@ export const ERROR_LOG_FILE = path.join(LOGS_DIR, 'chisel.error.log');
 export function assertMacOS() {
   if (process.platform !== 'darwin') {
     throw new Error(
-      'portlama-agent is designed for macOS only. ' +
-        `Detected platform: ${process.platform}`,
+      'portlama-agent is designed for macOS only. ' + `Detected platform: ${process.platform}`,
     );
   }
 }

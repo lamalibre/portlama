@@ -103,10 +103,20 @@ export default function Tunnels() {
 
       {/* Create form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 mb-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 mb-4"
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-white">Create Tunnel</h2>
-            <button type="button" onClick={() => { setShowForm(false); setFormError(null); }} className="text-zinc-500 hover:text-zinc-300">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setFormError(null);
+              }}
+              className="text-zinc-500 hover:text-zinc-300"
+            >
               <X size={16} />
             </button>
           </div>
@@ -117,7 +127,9 @@ export default function Tunnels() {
                 type="text"
                 placeholder="myapp"
                 value={formData.subdomain}
-                onChange={(e) => setFormData({ ...formData, subdomain: e.target.value.toLowerCase() })}
+                onChange={(e) =>
+                  setFormData({ ...formData, subdomain: e.target.value.toLowerCase() })
+                }
                 className="w-full rounded bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white placeholder-zinc-600 focus:border-cyan-500 focus:outline-none"
               />
             </div>
@@ -144,9 +156,7 @@ export default function Tunnels() {
               className="w-full rounded bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white placeholder-zinc-600 focus:border-cyan-500 focus:outline-none"
             />
           </div>
-          {formError && (
-            <p className="text-red-400 text-xs mb-3">{formError}</p>
-          )}
+          {formError && <p className="text-red-400 text-xs mb-3">{formError}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
@@ -158,7 +168,10 @@ export default function Tunnels() {
             </button>
             <button
               type="button"
-              onClick={() => { setShowForm(false); setFormError(null); }}
+              onClick={() => {
+                setShowForm(false);
+                setFormError(null);
+              }}
               className="rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
             >
               Cancel
@@ -185,16 +198,21 @@ export default function Tunnels() {
           {tunnels.map((tunnel) => {
             const enabled = tunnel.enabled !== false;
             return (
-              <div key={tunnel.id || tunnel.fqdn} className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 ${!enabled ? 'opacity-60' : ''}`}>
+              <div
+                key={tunnel.id || tunnel.fqdn}
+                className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 ${!enabled ? 'opacity-60' : ''}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm text-white font-semibold">{tunnel.fqdn}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                        enabled
-                          ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                          : 'text-zinc-500 bg-zinc-800 border-zinc-700'
-                      }`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full border ${
+                          enabled
+                            ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                            : 'text-zinc-500 bg-zinc-800 border-zinc-700'
+                        }`}
+                      >
                         {enabled ? 'active' : 'disabled'}
                       </span>
                     </div>
@@ -246,7 +264,9 @@ export default function Tunnels() {
       )}
 
       {deleteMutation.isError && (
-        <p className="text-red-400 text-xs mt-3">{deleteMutation.error?.message || 'Delete failed'}</p>
+        <p className="text-red-400 text-xs mt-3">
+          {deleteMutation.error?.message || 'Delete failed'}
+        </p>
       )}
     </div>
   );

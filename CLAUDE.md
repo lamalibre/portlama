@@ -31,22 +31,23 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Installer | Node.js ESM, Listr2, execa |
-| Panel backend | Fastify 5, Zod validation, WebSocket |
-| Panel frontend | React 18, Vite, Tailwind, react-query |
-| Tunnel server | Chisel (Go binary, WebSocket-over-HTTPS) |
-| Auth | Authelia (TOTP 2FA, bcrypt) |
-| Reverse proxy | nginx (TLS termination, mTLS, forward auth) |
-| TLS | Let's Encrypt / certbot |
-| Panel auth | mTLS client certificates |
-| State | JSON files + YAML (no database) |
-| Target OS | Ubuntu 24.04 LTS |
+| Layer          | Technology                                  |
+| -------------- | ------------------------------------------- |
+| Installer      | Node.js ESM, Listr2, execa                  |
+| Panel backend  | Fastify 5, Zod validation, WebSocket        |
+| Panel frontend | React 18, Vite, Tailwind, react-query       |
+| Tunnel server  | Chisel (Go binary, WebSocket-over-HTTPS)    |
+| Auth           | Authelia (TOTP 2FA, bcrypt)                 |
+| Reverse proxy  | nginx (TLS termination, mTLS, forward auth) |
+| TLS            | Let's Encrypt / certbot                     |
+| Panel auth     | mTLS client certificates                    |
+| State          | JSON files + YAML (no database)             |
+| Target OS      | Ubuntu 24.04 LTS                            |
 
 ## Coding Conventions
 
 **JavaScript / Node.js:**
+
 - ES Modules everywhere (`import`, not `require`)
 - `execa` for shell commands with array arguments — never `child_process` or string interpolation
 - Zod schemas for all API input validation at route level
@@ -54,6 +55,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Fastify logger, never `console.log` in library code
 
 **React / Frontend:**
+
 - Functional components with hooks
 - `@tanstack/react-query` for data fetching — no `useEffect + fetch`
 - Tailwind utility classes only — no CSS files
@@ -61,6 +63,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Icons from `lucide-react`
 
 **Rust / Tauri (Desktop):**
+
 - Shared HTTP helpers in `api.rs` — all panel API calls go through `curl_panel`
 - Service discovery in `services.rs` — detection via `which`/`pgrep`/`lsof`/TCP probe, Docker via `docker ps`
 - `tokio::task::spawn_blocking` for subprocess calls — never block the Tauri event loop
@@ -68,6 +71,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Atomic file writes (temp → rename) for registry and config
 
 **Installer:**
+
 - Zero prompts — all configuration happens through browser onboarding UI
 - Listr2 subtask lists with idempotent skip guards
 
@@ -76,6 +80,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 **RAM budget (512MB droplet):** Total stack ~245MB with ~265MB headroom + 1GB swap. Authelia MUST use bcrypt, NOT argon2id (argon2id uses ~93MB per hash → OOM).
 
 **Security rules:**
+
 - Panel vhost: `ssl_verify_client on` — no cert = TLS rejected before HTTP
 - All services bind `127.0.0.1` — nginx is the sole public-facing service
 - `https://<ip>:9292` always works (mTLS) — fallback if domain is lost
@@ -84,6 +89,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Management endpoints: 503 before onboarding completes
 
 **Certificate scoping:**
+
 - Admin cert (`CN=admin`) — full panel access
 - Agent cert (`CN=agent:<label>`) — capability-based access, stored server-side in registry
   - `tunnels:read` / `tunnels:write` — tunnel listing and management
@@ -95,6 +101,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Never give admin cert to Mac agents — generate scoped agent certs
 
 **File operations:**
+
 - YAML writes: atomic (temp → rename) — Authelia reads `users.yml` live
 - After `users.yml` change: `systemctl restart authelia`
 - Before nginx reload: `nginx -t` — rollback on failure
@@ -102,10 +109,10 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 ## Environment Variables
 
-| Variable | Package | Purpose |
-|----------|---------|---------|
+| Variable          | Package      | Purpose                                                  |
+| ----------------- | ------------ | -------------------------------------------------------- |
 | `PORTLAMA_CONFIG` | panel-server | Path to panel.json (default: `/etc/portlama/panel.json`) |
-| `NODE_ENV` | panel-server | `development` skips mTLS check |
+| `NODE_ENV`        | panel-server | `development` skips mTLS check                           |
 
 ## License
 

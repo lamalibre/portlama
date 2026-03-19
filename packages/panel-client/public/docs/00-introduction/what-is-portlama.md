@@ -8,7 +8,7 @@ Imagine you have a computer at home running a web app — maybe a side project, 
 
 The traditional solution is to rent a server in the cloud and deploy your app there. But that means maintaining a server, managing deployments, and paying for compute you might not need.
 
-Portlama takes a different approach. You rent the cheapest possible server (a $4/month DigitalOcean droplet) and use it as a **relay**. Your home computer connects *out* to the relay through a secure tunnel, and when someone visits your domain, the relay forwards the request back through the tunnel to your app.
+Portlama takes a different approach. You rent the cheapest possible server (a $4/month DigitalOcean droplet) and use it as a **relay**. Your home computer connects _out_ to the relay through a secure tunnel, and when someone visits your domain, the relay forwards the request back through the tunnel to your app.
 
 Think of it like a postal forwarding service. Your app stays at home, but mail gets forwarded to the right address.
 
@@ -19,17 +19,20 @@ The clever part: after the initial 5-minute setup, you never need to SSH into th
 Portlama solves the problem of exposing local services to the internet securely. Here is what you get:
 
 **What it does:**
+
 - Exposes local web apps (any port) through HTTPS on your own domain
 - Protects each app with TOTP two-factor authentication (Google Authenticator, Authy, etc.)
 - Manages TLS certificates automatically via Let's Encrypt
 - Provides a browser-based admin panel for everything — no SSH needed after setup
 
 **What you need:**
+
 - A Mac (or Linux machine) running the web apps you want to expose
 - A $4/month DigitalOcean droplet (Ubuntu 24.04, 512MB RAM)
 - A domain name (or use a managed subdomain)
 
 **How setup works:**
+
 1. Create a fresh Ubuntu 24.04 droplet on DigitalOcean
 2. SSH in once and run `npx @lamalibre/create-portlama`
 3. Download the client certificate it prints
@@ -40,6 +43,7 @@ Portlama solves the problem of exposing local services to the internet securely.
 8. Disconnect SSH. You never need it again.
 
 **Key design choices:**
+
 - The admin panel always works via IP address (`:9292`), even if your domain goes down
 - Client certificate authentication means zero-login — your browser proves identity at the TLS level
 - All services run on the cheapest possible VPS (512MB RAM budget, carefully tuned)
@@ -48,13 +52,13 @@ Portlama solves the problem of exposing local services to the internet securely.
 
 Portlama is a monorepo with five packages:
 
-| Package | Technology | Purpose |
-|---------|------------|---------|
-| `create-portlama` | Node.js ESM, Listr2, execa | Zero-prompt installer CLI |
-| `panel-server` | Fastify 5, Node.js ESM | REST API + WebSocket backend |
-| `panel-client` | React 18, Vite, Tailwind | Management UI (SPA) |
-| `portlama-agent` | Node.js ESM | Mac tunnel agent CLI |
-| `portlama-desktop` | Tauri v2 | Desktop agent (WIP) |
+| Package            | Technology                 | Purpose                      |
+| ------------------ | -------------------------- | ---------------------------- |
+| `create-portlama`  | Node.js ESM, Listr2, execa | Zero-prompt installer CLI    |
+| `panel-server`     | Fastify 5, Node.js ESM     | REST API + WebSocket backend |
+| `panel-client`     | React 18, Vite, Tailwind   | Management UI (SPA)          |
+| `portlama-agent`   | Node.js ESM                | Mac tunnel agent CLI         |
+| `portlama-desktop` | Tauri v2                   | Desktop agent (WIP)          |
 
 **Architecture summary:**
 
@@ -76,16 +80,16 @@ The installer (`npx @lamalibre/create-portlama`) is completely non-interactive �
 
 ## Quick Reference
 
-| Item | Value |
-|------|-------|
-| **Minimum VPS** | 512MB RAM, Ubuntu 24.04 |
-| **Install command** | `npx @lamalibre/create-portlama` |
-| **Admin panel** | `https://<ip>:9292` (mTLS) |
-| **Auth for admin** | Client certificate (zero-login) |
-| **Auth for apps** | TOTP 2FA via Authelia |
-| **Tunnel protocol** | WebSocket-over-HTTPS (Chisel) |
-| **TLS certificates** | Let's Encrypt (auto-renewing) |
-| **State storage** | JSON files (no database) |
-| **RAM usage** | ~245MB total (all services) |
-| **npm package** | `@lamalibre/create-portlama` |
-| **License** | Polyform Noncommercial 1.0.0 |
+| Item                 | Value                            |
+| -------------------- | -------------------------------- |
+| **Minimum VPS**      | 512MB RAM, Ubuntu 24.04          |
+| **Install command**  | `npx @lamalibre/create-portlama` |
+| **Admin panel**      | `https://<ip>:9292` (mTLS)       |
+| **Auth for admin**   | Client certificate (zero-login)  |
+| **Auth for apps**    | TOTP 2FA via Authelia            |
+| **Tunnel protocol**  | WebSocket-over-HTTPS (Chisel)    |
+| **TLS certificates** | Let's Encrypt (auto-renewing)    |
+| **State storage**    | JSON files (no database)         |
+| **RAM usage**        | ~245MB total (all services)      |
+| **npm package**      | `@lamalibre/create-portlama`     |
+| **License**          | Polyform Noncommercial 1.0.0     |

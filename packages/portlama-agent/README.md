@@ -15,17 +15,17 @@ connection details and an agent-scoped mTLS certificate.
 
 ## Commands
 
-| Command     | Description                              |
-| ----------- | ---------------------------------------- |
-| `setup`     | Install Chisel and configure the tunnel  |
-| `update`    | Update Chisel binary to latest version   |
-| `uninstall` | Remove Chisel, plist, and configuration  |
-| `status`    | Show tunnel connection status            |
-| `logs`      | Display recent tunnel logs               |
-| `sites`     | List all static sites                    |
-| `sites create <name>` | Create a new static site (admin cert only) |
-| `sites delete <name-or-id>` | Delete a static site (admin cert only) |
-| `deploy <name-or-id> <local-path>` | Deploy a local directory to a site |
+| Command                            | Description                                |
+| ---------------------------------- | ------------------------------------------ |
+| `setup`                            | Install Chisel and configure the tunnel    |
+| `update`                           | Update Chisel binary to latest version     |
+| `uninstall`                        | Remove Chisel, plist, and configuration    |
+| `status`                           | Show tunnel connection status              |
+| `logs`                             | Display recent tunnel logs                 |
+| `sites`                            | List all static sites                      |
+| `sites create <name>`              | Create a new static site (admin cert only) |
+| `sites delete <name-or-id>`        | Delete a static site (admin cert only)     |
+| `deploy <name-or-id> <local-path>` | Deploy a local directory to a site         |
 
 ### Sites Command
 
@@ -57,12 +57,12 @@ portlama-agent sites create docs --spa --auth
 portlama-agent sites create myblog --type custom --domain myblog.com
 ```
 
-| Flag | Default | Description |
-| ---- | ------- | ----------- |
-| `--type <managed\|custom>` | `managed` | Site type: managed subdomain or custom domain |
-| `--domain <fqdn>` | — | Custom domain (required when `--type custom`) |
-| `--spa` | off | Enable SPA mode (serve `index.html` for all routes) |
-| `--auth` | off | Enable Authelia protection |
+| Flag                       | Default   | Description                                         |
+| -------------------------- | --------- | --------------------------------------------------- |
+| `--type <managed\|custom>` | `managed` | Site type: managed subdomain or custom domain       |
+| `--domain <fqdn>`          | —         | Custom domain (required when `--type custom`)       |
+| `--spa`                    | off       | Enable SPA mode (serve `index.html` for all routes) |
+| `--auth`                   | off       | Enable Authelia protection                          |
 
 **Delete a site:**
 
@@ -102,10 +102,10 @@ portlama-agent deploy blog ./dist
 
 ## Requirements
 
-| Requirement | Details         |
-| ----------- | --------------- |
-| OS          | macOS           |
-| Node.js     | >= 20.0.0       |
+| Requirement | Details                         |
+| ----------- | ------------------------------- |
+| OS          | macOS                           |
+| Node.js     | >= 20.0.0                       |
 | Access      | User account (no root required) |
 
 ## How It Works

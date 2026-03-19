@@ -53,8 +53,8 @@ export default function DomainStep({ domain: existingDomain, onComplete }) {
     <div>
       <h2 className="mb-2 text-xl font-semibold text-white">Configure your domain</h2>
       <p className="mb-6 text-sm text-zinc-400">
-        Enter the domain you want to use for Portlama. You will need to configure DNS records in
-        the next step.
+        Enter the domain you want to use for Portlama. You will need to configure DNS records in the
+        next step.
       </p>
 
       {mutation.isError && (
@@ -79,9 +79,7 @@ export default function DomainStep({ domain: existingDomain, onComplete }) {
             }}
             className="w-full rounded-md border border-zinc-600 bg-zinc-900 px-3 py-2 font-mono text-sm text-white placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
           />
-          {fieldErrors.domain && (
-            <p className="mt-1 text-xs text-red-400">{fieldErrors.domain}</p>
-          )}
+          {fieldErrors.domain && <p className="mt-1 text-xs text-red-400">{fieldErrors.domain}</p>}
         </div>
 
         <div>
@@ -99,10 +97,10 @@ export default function DomainStep({ domain: existingDomain, onComplete }) {
             }}
             className="w-full rounded-md border border-zinc-600 bg-zinc-900 px-3 py-2 font-mono text-sm text-white placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
           />
-          <p className="mt-1 text-xs text-zinc-500">Used for Let&apos;s Encrypt certificate registration</p>
-          {fieldErrors.email && (
-            <p className="mt-1 text-xs text-red-400">{fieldErrors.email}</p>
-          )}
+          <p className="mt-1 text-xs text-zinc-500">
+            Used for Let&apos;s Encrypt certificate registration
+          </p>
+          {fieldErrors.email && <p className="mt-1 text-xs text-red-400">{fieldErrors.email}</p>}
         </div>
 
         <div className="flex justify-end pt-2">

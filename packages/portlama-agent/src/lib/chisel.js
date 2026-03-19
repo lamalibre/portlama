@@ -50,8 +50,10 @@ export async function installChisel() {
   let releaseInfo;
   try {
     const { stdout } = await execa('curl', [
-      '-s', '-L',
-      '-H', 'Accept: application/vnd.github+json',
+      '-s',
+      '-L',
+      '-H',
+      'Accept: application/vnd.github+json',
       GITHUB_API,
     ]);
     releaseInfo = JSON.parse(stdout);
@@ -87,9 +89,7 @@ export async function installChisel() {
   try {
     await execa('curl', ['-L', '-o', tmpGz, downloadUrl]);
   } catch (err) {
-    throw new Error(
-      `Failed to download Chisel from ${downloadUrl}: ${err.stderr || err.message}`,
-    );
+    throw new Error(`Failed to download Chisel from ${downloadUrl}: ${err.stderr || err.message}`);
   }
 
   try {

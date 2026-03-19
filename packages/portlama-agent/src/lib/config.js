@@ -34,9 +34,7 @@ export async function saveAgentConfig(config) {
 export async function requireAgentConfig() {
   const config = await loadAgentConfig();
   if (!config) {
-    throw new Error(
-      'No agent configuration found. Run "portlama-agent setup" first.',
-    );
+    throw new Error('No agent configuration found. Run "portlama-agent setup" first.');
   }
   return config;
 }

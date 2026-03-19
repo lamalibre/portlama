@@ -38,9 +38,9 @@ curl -sk https://203.0.113.42:9292/api/health | jq
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | `string` | Always `"ok"` if the server is responding |
+| Field     | Type     | Description                                                        |
+| --------- | -------- | ------------------------------------------------------------------ |
+| `status`  | `string` | Always `"ok"` if the server is responding                          |
 | `version` | `string` | Panel server version from `package.json` (falls back to `"0.0.0"`) |
 
 This endpoint has no error cases — if the server is running, it returns 200.
@@ -82,34 +82,34 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Unit | Description |
-|-------|------|------|-------------|
-| `cpu.usage` | `number` | Percent | Current CPU utilization (0-100), rounded to one decimal |
-| `cpu.cores` | `number` | Count | Number of CPU cores |
-| `memory.total` | `number` | Bytes | Total physical RAM |
-| `memory.used` | `number` | Bytes | Used RAM |
-| `memory.free` | `number` | Bytes | Free RAM |
-| `disk.total` | `number` | Bytes | Total disk space on root filesystem |
-| `disk.used` | `number` | Bytes | Used disk space on root filesystem |
-| `disk.free` | `number` | Bytes | Free disk space on root filesystem |
-| `uptime` | `number` | Seconds | System uptime since last boot |
+| Field          | Type     | Unit    | Description                                             |
+| -------------- | -------- | ------- | ------------------------------------------------------- |
+| `cpu.usage`    | `number` | Percent | Current CPU utilization (0-100), rounded to one decimal |
+| `cpu.cores`    | `number` | Count   | Number of CPU cores                                     |
+| `memory.total` | `number` | Bytes   | Total physical RAM                                      |
+| `memory.used`  | `number` | Bytes   | Used RAM                                                |
+| `memory.free`  | `number` | Bytes   | Free RAM                                                |
+| `disk.total`   | `number` | Bytes   | Total disk space on root filesystem                     |
+| `disk.used`    | `number` | Bytes   | Used disk space on root filesystem                      |
+| `disk.free`    | `number` | Bytes   | Free disk space on root filesystem                      |
+| `uptime`       | `number` | Seconds | System uptime since last boot                           |
 
 **Example values for a typical 512MB droplet:**
 
-| Metric | Typical Value | Human-Readable |
-|--------|---------------|----------------|
-| `memory.total` | `536870912` | 512 MB |
-| `memory.used` | `260046848` | ~248 MB |
-| `disk.total` | `26843545600` | 25 GB |
-| `cpu.cores` | `1` | 1 vCPU |
-| `uptime` | `432000` | 5 days |
+| Metric         | Typical Value | Human-Readable |
+| -------------- | ------------- | -------------- |
+| `memory.total` | `536870912`   | 512 MB         |
+| `memory.used`  | `260046848`   | ~248 MB        |
+| `disk.total`   | `26843545600` | 25 GB          |
+| `cpu.cores`    | `1`           | 1 vCPU         |
+| `uptime`       | `432000`      | 5 days         |
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 500 | `{"error":"Failed to retrieve system stats"}` | `systeminformation` library call failed |
-| 503 | `{"error":"Onboarding not complete","onboardingStatus":"FRESH"}` | Onboarding has not finished |
+| Status | Body                                                             | When                                    |
+| ------ | ---------------------------------------------------------------- | --------------------------------------- |
+| 500    | `{"error":"Failed to retrieve system stats"}`                    | `systeminformation` library call failed |
+| 503    | `{"error":"Onboarding not complete","onboardingStatus":"FRESH"}` | Onboarding has not finished             |
 
 ### Caching Behavior
 
@@ -117,19 +117,21 @@ The stats response is cached for 2 seconds. Multiple requests within the cache w
 
 ## Quick Reference
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/health` | None (no mTLS) | Health check with version |
-| GET | `/api/system/stats` | mTLS (admin or agent with `system:read`) | CPU, memory, disk, uptime |
+| Method | Path                | Auth                                     | Description               |
+| ------ | ------------------- | ---------------------------------------- | ------------------------- |
+| GET    | `/api/health`       | None (no mTLS)                           | Health check with version |
+| GET    | `/api/system/stats` | mTLS (admin or agent with `system:read`) | CPU, memory, disk, uptime |
 
 ### Response Shapes
 
 **Health:**
+
 ```json
 { "status": "ok", "version": "0.1.0" }
 ```
 
 **Stats:**
+
 ```json
 {
   "cpu": { "usage": 12.5, "cores": 1 },
@@ -143,10 +145,10 @@ The stats response is cached for 2 seconds. Multiple requests within the cache w
 
 The API returns all size values in raw bytes. To convert:
 
-| Bytes | Formula | Result |
-|-------|---------|--------|
-| `536870912` | `/ 1024 / 1024` | 512 MB |
-| `26843545600` | `/ 1024 / 1024 / 1024` | 25 GB |
+| Bytes         | Formula                | Result |
+| ------------- | ---------------------- | ------ |
+| `536870912`   | `/ 1024 / 1024`        | 512 MB |
+| `26843545600` | `/ 1024 / 1024 / 1024` | 25 GB  |
 
 ### curl Cheat Sheet
 

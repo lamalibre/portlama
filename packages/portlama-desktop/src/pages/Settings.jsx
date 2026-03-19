@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
-import { Settings, Shield, Loader2, ExternalLink, AlertTriangle, Download, RefreshCw } from 'lucide-react';
+import {
+  Settings,
+  Shield,
+  Loader2,
+  ExternalLink,
+  AlertTriangle,
+  Download,
+  RefreshCw,
+} from 'lucide-react';
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -127,7 +135,11 @@ export default function SettingsPage() {
             disabled={rotateMutation.isPending || downloadMutation.isPending}
             className="flex items-center gap-2 rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {rotateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {rotateMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
             Rotate Certificate
           </button>
           <button
@@ -135,27 +147,44 @@ export default function SettingsPage() {
             disabled={rotateMutation.isPending || downloadMutation.isPending}
             className="flex items-center gap-2 rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {downloadMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            {downloadMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Download size={14} />
+            )}
             Download Certificate
           </button>
         </div>
         <p className="text-xs text-zinc-500 mt-2">
-          Rotate generates a new certificate on the server and downloads it. Download re-fetches the current certificate.
+          Rotate generates a new certificate on the server and downloads it. Download re-fetches the
+          current certificate.
         </p>
         {rotateMutation.isSuccess && (
           <p className="text-green-400 text-xs mt-2">
-            Certificate rotated{rotateMutation.data?.expiresAt ? ` — expires ${new Date(rotateMutation.data.expiresAt).toLocaleDateString()}` : ''}.
-            {rotateMutation.data?.warning && <span className="text-amber-400"> Warning: {rotateMutation.data.warning}</span>}
+            Certificate rotated
+            {rotateMutation.data?.expiresAt
+              ? ` — expires ${new Date(rotateMutation.data.expiresAt).toLocaleDateString()}`
+              : ''}
+            .
+            {rotateMutation.data?.warning && (
+              <span className="text-amber-400"> Warning: {rotateMutation.data.warning}</span>
+            )}
           </p>
         )}
         {rotateMutation.isError && (
-          <p className="text-red-400 text-xs mt-2">{rotateMutation.error?.message || 'Rotation failed'}</p>
+          <p className="text-red-400 text-xs mt-2">
+            {rotateMutation.error?.message || 'Rotation failed'}
+          </p>
         )}
         {downloadMutation.isSuccess && (
-          <p className="text-green-400 text-xs mt-2">Certificate saved to {downloadMutation.data}</p>
+          <p className="text-green-400 text-xs mt-2">
+            Certificate saved to {downloadMutation.data}
+          </p>
         )}
         {downloadMutation.isError && (
-          <p className="text-red-400 text-xs mt-2">{downloadMutation.error?.message || 'Download failed'}</p>
+          <p className="text-red-400 text-xs mt-2">
+            {downloadMutation.error?.message || 'Download failed'}
+          </p>
         )}
       </div>
 
@@ -163,9 +192,7 @@ export default function SettingsPage() {
       <div className="mt-4 bg-zinc-900 border border-zinc-800 rounded-lg p-5">
         <h2 className="text-xs font-medium uppercase text-zinc-400 mb-3">About</h2>
         <p className="text-sm text-zinc-300">Portlama Desktop v0.1.0</p>
-        <p className="text-xs text-zinc-500 mt-1">
-          Cross-platform tunnel agent with system tray
-        </p>
+        <p className="text-xs text-zinc-500 mt-1">Cross-platform tunnel agent with system tray</p>
       </div>
 
       {/* Danger Zone */}
@@ -189,7 +216,8 @@ export default function SettingsPage() {
         ) : (
           <div className="rounded bg-red-600/10 border border-red-500/30 p-4">
             <p className="text-sm text-red-300 mb-3">
-              This will remove all Portlama agent files including the chisel binary, configuration, and logs. This cannot be undone.
+              This will remove all Portlama agent files including the chisel binary, configuration,
+              and logs. This cannot be undone.
             </p>
             <div className="flex gap-2">
               <button
@@ -208,7 +236,9 @@ export default function SettingsPage() {
               </button>
             </div>
             {uninstallMutation.isError && (
-              <p className="text-red-400 text-xs mt-2">{uninstallMutation.error?.message || 'Uninstall failed'}</p>
+              <p className="text-red-400 text-xs mt-2">
+                {uninstallMutation.error?.message || 'Uninstall failed'}
+              </p>
             )}
           </div>
         )}

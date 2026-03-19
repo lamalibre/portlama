@@ -96,10 +96,10 @@ dig test.example.com +short
 
 Portlama requires two A records pointing to your server IP:
 
-| Name | Type | Value |
-|------|------|-------|
-| `example.com` | A | `203.0.113.42` |
-| `*.example.com` | A | `203.0.113.42` |
+| Name            | Type | Value          |
+| --------------- | ---- | -------------- |
+| `example.com`   | A    | `203.0.113.42` |
+| `*.example.com` | A    | `203.0.113.42` |
 
 The base domain A record is needed for the domain itself. The wildcard (`*`) A record allows all subdomains (panel, auth, tunnel, and any tunnel subdomains you create) to resolve to the server without adding individual records.
 
@@ -273,33 +273,33 @@ ls -la /usr/local/bin/authelia
 
 **Common causes:**
 
-| Cause | Log Message | Fix |
-|-------|-------------|-----|
-| Missing `panel.json` | `Config file not found` | Re-run installer or create the file manually |
-| Invalid JSON in `panel.json` | `contains invalid JSON` | Fix the JSON syntax |
-| Port 3100 in use | `EADDRINUSE` | Find and stop the conflicting process: `sudo ss -tlnp sport = :3100` |
-| Missing Node.js modules | `Cannot find module` | `cd /opt/portlama/panel-server && npm install --production` |
+| Cause                        | Log Message             | Fix                                                                  |
+| ---------------------------- | ----------------------- | -------------------------------------------------------------------- |
+| Missing `panel.json`         | `Config file not found` | Re-run installer or create the file manually                         |
+| Invalid JSON in `panel.json` | `contains invalid JSON` | Fix the JSON syntax                                                  |
+| Port 3100 in use             | `EADDRINUSE`            | Find and stop the conflicting process: `sudo ss -tlnp sport = :3100` |
+| Missing Node.js modules      | `Cannot find module`    | `cd /opt/portlama/panel-server && npm install --production`          |
 
 ### chisel fails to start
 
 **Common causes:**
 
-| Cause | Log Message | Fix |
-|-------|-------------|-----|
-| Binary missing | `exec format error` or `not found` | Re-download the binary (see [Upgrades](../05-operations/upgrades.md)) |
-| Port 9090 in use | `bind: address already in use` | `sudo ss -tlnp sport = :9090` to find conflicting process |
-| Wrong architecture | `exec format error` | Download the correct binary for your architecture (amd64 vs arm64) |
+| Cause              | Log Message                        | Fix                                                                   |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------- |
+| Binary missing     | `exec format error` or `not found` | Re-download the binary (see [Upgrades](../05-operations/upgrades.md)) |
+| Port 9090 in use   | `bind: address already in use`     | `sudo ss -tlnp sport = :9090` to find conflicting process             |
+| Wrong architecture | `exec format error`                | Download the correct binary for your architecture (amd64 vs arm64)    |
 
 ### authelia fails to start
 
 **Common causes:**
 
-| Cause | Log Message | Fix |
-|-------|-------------|-----|
+| Cause                       | Log Message            | Fix                                                                                               |
+| --------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------- |
 | Invalid `configuration.yml` | `configuration: error` | Check YAML syntax with `authelia validate-configuration --config /etc/authelia/configuration.yml` |
-| Missing `users.yml` | `cannot open file` | Create an initial users file (see [Config Files](config-files.md)) |
-| Binary missing | `not found` | Re-download the binary |
-| Wrong permissions | `permission denied` | `sudo chmod 600 /etc/authelia/configuration.yml /etc/authelia/users.yml` |
+| Missing `users.yml`         | `cannot open file`     | Create an initial users file (see [Config Files](config-files.md))                                |
+| Binary missing              | `not found`            | Re-download the binary                                                                            |
+| Wrong permissions           | `permission denied`    | `sudo chmod 600 /etc/authelia/configuration.yml /etc/authelia/users.yml`                          |
 
 ---
 
@@ -319,7 +319,7 @@ Verify the password algorithm in `/etc/authelia/configuration.yml`:
 authentication_backend:
   file:
     password:
-      algorithm: bcrypt    # MUST be bcrypt, not argon2id
+      algorithm: bcrypt # MUST be bcrypt, not argon2id
       bcrypt:
         cost: 12
 ```
@@ -382,12 +382,12 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 **Common causes:**
 
-| Error Message | Cause | Fix |
-|---------------|-------|-----|
-| `ssl_certificate ... not found` | Let's Encrypt cert missing or expired | Re-issue: `sudo certbot certonly --nginx -d <domain>` |
-| `host not found in upstream` | Backend service not resolvable | Check that the upstream is `127.0.0.1`, not a hostname |
-| `duplicate listen` | Two vhosts listening on the same port/name | Check for duplicate vhosts: `ls /etc/nginx/sites-enabled/` |
-| `unknown directive` | nginx version too old for directive | Check version: `nginx -v` |
+| Error Message                   | Cause                                      | Fix                                                        |
+| ------------------------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| `ssl_certificate ... not found` | Let's Encrypt cert missing or expired      | Re-issue: `sudo certbot certonly --nginx -d <domain>`      |
+| `host not found in upstream`    | Backend service not resolvable             | Check that the upstream is `127.0.0.1`, not a hostname     |
+| `duplicate listen`              | Two vhosts listening on the same port/name | Check for duplicate vhosts: `ls /etc/nginx/sites-enabled/` |
+| `unknown directive`             | nginx version too old for directive        | Check version: `nginx -v`                                  |
 
 **General fix procedure:**
 
@@ -536,22 +536,22 @@ df -h /
 
 ## Quick Reference: Diagnostic Commands
 
-| What to Check | Command |
-|---------------|---------|
+| What to Check        | Command                                                      |
+| -------------------- | ------------------------------------------------------------ |
 | All service statuses | `sudo systemctl status nginx chisel authelia portlama-panel` |
-| Panel health | `curl -s http://127.0.0.1:3100/api/health` |
-| nginx config test | `sudo nginx -t` |
-| Open ports | `sudo ss -tlnp` |
-| Memory usage | `free -h` |
-| Disk usage | `df -h /` |
-| DNS resolution | `dig panel.example.com +short` |
-| Certificate status | `sudo certbot certificates` |
-| Server time | `timedatectl status` |
-| Swap status | `swapon --show` |
-| fail2ban status | `sudo fail2ban-client status` |
-| Recent panel logs | `journalctl -u portlama-panel -n 30` |
-| Recent nginx errors | `tail -20 /var/log/nginx/error.log` |
-| Authelia logs | `journalctl -u authelia -n 30` |
-| Chisel logs | `journalctl -u chisel -n 30` |
-| Onboarding status | `cat /etc/portlama/panel.json \| grep status` |
-| PKI password | `sudo cat /etc/portlama/pki/.p12-password` |
+| Panel health         | `curl -s http://127.0.0.1:3100/api/health`                   |
+| nginx config test    | `sudo nginx -t`                                              |
+| Open ports           | `sudo ss -tlnp`                                              |
+| Memory usage         | `free -h`                                                    |
+| Disk usage           | `df -h /`                                                    |
+| DNS resolution       | `dig panel.example.com +short`                               |
+| Certificate status   | `sudo certbot certificates`                                  |
+| Server time          | `timedatectl status`                                         |
+| Swap status          | `swapon --show`                                              |
+| fail2ban status      | `sudo fail2ban-client status`                                |
+| Recent panel logs    | `journalctl -u portlama-panel -n 30`                         |
+| Recent nginx errors  | `tail -20 /var/log/nginx/error.log`                          |
+| Authelia logs        | `journalctl -u authelia -n 30`                               |
+| Chisel logs          | `journalctl -u chisel -n 30`                                 |
+| Onboarding status    | `cat /etc/portlama/panel.json \| grep status`                |
+| PKI password         | `sudo cat /etc/portlama/pki/.p12-password`                   |

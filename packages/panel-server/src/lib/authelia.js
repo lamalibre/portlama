@@ -81,8 +81,10 @@ export async function installAuthelia() {
   let releaseInfo;
   try {
     const { stdout } = await execa('curl', [
-      '-s', '-L',
-      '-H', 'Accept: application/vnd.github+json',
+      '-s',
+      '-L',
+      '-H',
+      'Accept: application/vnd.github+json',
       GITHUB_API,
     ]);
     releaseInfo = JSON.parse(stdout);
@@ -115,7 +117,10 @@ export async function installAuthelia() {
 
   const downloadUrl = asset.browser_download_url;
   const tmpTar = path.join(tmpdir(), `authelia-${crypto.randomBytes(4).toString('hex')}.tar.gz`);
-  const tmpExtractDir = path.join(tmpdir(), `authelia-extract-${crypto.randomBytes(4).toString('hex')}`);
+  const tmpExtractDir = path.join(
+    tmpdir(),
+    `authelia-extract-${crypto.randomBytes(4).toString('hex')}`,
+  );
 
   try {
     await execa('curl', ['-L', '-o', tmpTar, downloadUrl]);
@@ -131,18 +136,26 @@ export async function installAuthelia() {
 
     // Find the authelia binary in extracted contents.
     // Newer releases name it 'authelia-linux-amd64', older ones just 'authelia'.
-    const { stdout: findResult } = await execa('find', [tmpExtractDir, '-name', 'authelia*', '-type', 'f']);
+    const { stdout: findResult } = await execa('find', [
+      tmpExtractDir,
+      '-name',
+      'authelia*',
+      '-type',
+      'f',
+    ]);
     const candidates = findResult.trim().split('\n').filter(Boolean);
 
     // Prefer exact 'authelia' match, fall back to first authelia-* binary
-    const binaryPath = candidates.find((p) => path.basename(p) === 'authelia')
-      || candidates.find((p) => !path.basename(p).endsWith('.sha256') && !path.basename(p).endsWith('.md'))
-      || candidates[0];
+    const binaryPath =
+      candidates.find((p) => path.basename(p) === 'authelia') ||
+      candidates.find(
+        (p) => !path.basename(p).endsWith('.sha256') && !path.basename(p).endsWith('.md'),
+      ) ||
+      candidates[0];
 
     if (!binaryPath) {
       throw new Error(
-        'Could not find authelia binary in extracted archive. Contents: ' +
-          candidates.join(', '),
+        'Could not find authelia binary in extracted archive. Contents: ' + candidates.join(', '),
       );
     }
 
@@ -161,11 +174,15 @@ export async function installAuthelia() {
     try {
       const { stdout: fileInfo } = await execa('file', [AUTHELIA_BIN]);
       diag += `file: ${fileInfo}\n`;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       const { stdout: lsInfo } = await execa('ls', ['-la', AUTHELIA_BIN]);
       diag += `ls: ${lsInfo}\n`;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       const result = await execa(AUTHELIA_BIN, ['--version'], { reject: false });
       diag += `--version stdout: ${result.stdout}\n--version stderr: ${result.stderr}\nexitCode: ${result.exitCode}\n`;
@@ -197,68 +214,71 @@ export async function writeAutheliaConfig(domain, secrets) {
     throw new Error(`Failed to create Authelia directories: ${err.stderr || err.message}`);
   }
 
-  const configContent = yaml.dump({
-    server: {
-      address: 'tcp://127.0.0.1:9091/',
-    },
-    log: {
-      level: 'info',
-      file_path: path.join(AUTHELIA_LOG_DIR, 'authelia.log'),
-    },
-    identity_validation: {
-      reset_password: {
-        jwt_secret: jwtSecret,
+  const configContent = yaml.dump(
+    {
+      server: {
+        address: 'tcp://127.0.0.1:9091/',
       },
-    },
-    authentication_backend: {
-      file: {
-        path: AUTHELIA_USERS,
-        password: {
-          algorithm: 'bcrypt',
-          bcrypt: {
-            cost: 12,
+      log: {
+        level: 'info',
+        file_path: path.join(AUTHELIA_LOG_DIR, 'authelia.log'),
+      },
+      identity_validation: {
+        reset_password: {
+          jwt_secret: jwtSecret,
+        },
+      },
+      authentication_backend: {
+        file: {
+          path: AUTHELIA_USERS,
+          password: {
+            algorithm: 'bcrypt',
+            bcrypt: {
+              cost: 12,
+            },
           },
         },
       },
-    },
-    access_control: {
-      default_policy: 'two_factor',
-    },
-    session: {
-      name: 'portlama_session',
-      secret: sessionSecret,
-      cookies: [
-        {
-          domain: domain,
-          authelia_url: `https://auth.${domain}`,
-          default_redirection_url: `https://${domain}`,
+      access_control: {
+        default_policy: 'two_factor',
+      },
+      session: {
+        name: 'portlama_session',
+        secret: sessionSecret,
+        cookies: [
+          {
+            domain: domain,
+            authelia_url: `https://auth.${domain}`,
+            default_redirection_url: `https://${domain}`,
+          },
+        ],
+        expiration: '12h',
+        inactivity: '2h',
+      },
+      regulation: {
+        max_retries: 5,
+        find_time: '2m',
+        ban_time: '5m',
+      },
+      storage: {
+        encryption_key: storageEncryptionKey,
+        local: {
+          path: path.join(AUTHELIA_CONFIG_DIR, 'db.sqlite3'),
         },
-      ],
-      expiration: '12h',
-      inactivity: '2h',
-    },
-    regulation: {
-      max_retries: 5,
-      find_time: '2m',
-      ban_time: '5m',
-    },
-    storage: {
-      encryption_key: storageEncryptionKey,
-      local: {
-        path: path.join(AUTHELIA_CONFIG_DIR, 'db.sqlite3'),
+      },
+      notifier: {
+        filesystem: {
+          filename: path.join(AUTHELIA_CONFIG_DIR, 'notifications.txt'),
+        },
+      },
+      totp: {
+        issuer: 'Portlama',
+        period: 30,
+        digits: 6,
       },
     },
-    notifier: {
-      filesystem: {
-        filename: path.join(AUTHELIA_CONFIG_DIR, 'notifications.txt'),
-      },
-    },
-    totp: {
-      issuer: 'Portlama',
-      period: 30,
-      digits: 6,
-    },
-  }, { lineWidth: -1 });
+    { lineWidth: -1 },
+  );
 
   try {
     await sudoWriteFile(AUTHELIA_CONFIG, configContent, '600');
@@ -267,7 +287,8 @@ export async function writeAutheliaConfig(domain, secrets) {
   }
 
   // Store secrets reference
-  const secretsContent = JSON.stringify({ jwtSecret, sessionSecret, storageEncryptionKey }, null, 2) + '\n';
+  const secretsContent =
+    JSON.stringify({ jwtSecret, sessionSecret, storageEncryptionKey }, null, 2) + '\n';
   try {
     await sudoWriteFile(AUTHELIA_SECRETS, secretsContent, '600');
   } catch (err) {
@@ -413,13 +434,21 @@ export async function startAuthelia() {
 
   let journalOutput = '';
   try {
-    const { stdout } = await execa('journalctl', ['-u', AUTHELIA_SERVICE, '--no-pager', '-n', '10']);
+    const { stdout } = await execa('journalctl', [
+      '-u',
+      AUTHELIA_SERVICE,
+      '--no-pager',
+      '-n',
+      '10',
+    ]);
     journalOutput = stdout;
   } catch {
     journalOutput = 'Could not read journal logs';
   }
 
-  throw new Error(`Authelia service is not active after starting. Journal output:\n${journalOutput}`);
+  throw new Error(
+    `Authelia service is not active after starting. Journal output:\n${journalOutput}`,
+  );
 }
 
 /**
@@ -575,7 +604,11 @@ export async function updateAccessControl(sites) {
   }
 
   // Write updated config with forced quoting to prevent YAML type coercion
-  const configContent = yaml.dump(currentConfig, { lineWidth: -1, quotingType: '\'', forceQuotes: false });
+  const configContent = yaml.dump(currentConfig, {
+    lineWidth: -1,
+    quotingType: "'",
+    forceQuotes: false,
+  });
   try {
     await sudoWriteFile(AUTHELIA_CONFIG, configContent, '600');
   } catch (err) {
@@ -714,15 +747,26 @@ export async function writeTotpToDatabase(username, base32Secret) {
   const dbPath = path.join(AUTHELIA_CONFIG_DIR, 'db.sqlite3');
 
   await execa('sudo', [
-    AUTHELIA_BIN, 'storage', 'user', 'totp', 'generate', username,
-    '--secret', base32Secret,
+    AUTHELIA_BIN,
+    'storage',
+    'user',
+    'totp',
+    'generate',
+    username,
+    '--secret',
+    base32Secret,
     '--force',
-    '--issuer', 'Portlama',
-    '--algorithm', 'SHA1',
-    '--digits', '6',
-    '--period', '30',
-    '--config', AUTHELIA_CONFIG,
-    '--sqlite.path', dbPath,
+    '--issuer',
+    'Portlama',
+    '--algorithm',
+    'SHA1',
+    '--digits',
+    '6',
+    '--period',
+    '30',
+    '--config',
+    AUTHELIA_CONFIG,
+    '--sqlite.path',
+    dbPath,
   ]);
 }
-

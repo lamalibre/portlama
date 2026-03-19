@@ -108,15 +108,14 @@ export default function CompleteStep({ result, ip }) {
         <div className="flex items-center justify-between rounded border border-zinc-700 bg-zinc-900 px-3 py-2">
           <span className="text-sm text-zinc-400">IP Access</span>
           <span className="text-sm text-zinc-400">
-            {ipUrl}{' '}
-            <span className="text-xs text-zinc-500">(requires client certificate)</span>
+            {ipUrl} <span className="text-xs text-zinc-500">(requires client certificate)</span>
           </span>
         </div>
       </div>
 
       <p className="mb-6 text-xs text-zinc-400">
-        On your first login to {authUrl ? new URL(authUrl).hostname : 'the auth portal'}, you will be
-        prompted to set up two-factor authentication (TOTP). Use an authenticator app like Google
+        On your first login to {authUrl ? new URL(authUrl).hostname : 'the auth portal'}, you will
+        be prompted to set up two-factor authentication (TOTP). Use an authenticator app like Google
         Authenticator or Authy.
       </p>
 

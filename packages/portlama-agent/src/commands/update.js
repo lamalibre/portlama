@@ -28,7 +28,11 @@ export async function runUpdate() {
           const data = await fetchPlist(config.panelUrl, config.p12Path, config.p12Password);
           ctx.plistXml = data.plist;
 
-          const tunnelData = await fetchTunnels(config.panelUrl, config.p12Path, config.p12Password);
+          const tunnelData = await fetchTunnels(
+            config.panelUrl,
+            config.p12Path,
+            config.p12Password,
+          );
           ctx.tunnels = tunnelData.tunnels || [];
           task.output = `${ctx.tunnels.length} tunnel(s) configured`;
         },
@@ -74,9 +78,7 @@ export async function runUpdate() {
             if (loaded) {
               task.output = 'Agent loaded (process starting...)';
             } else {
-              throw new Error(
-                'Agent failed to load. Check logs with: portlama-agent logs',
-              );
+              throw new Error('Agent failed to load. Check logs with: portlama-agent logs');
             }
           }
         },

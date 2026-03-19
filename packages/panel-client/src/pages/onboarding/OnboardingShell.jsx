@@ -57,7 +57,8 @@ export default function OnboardingShell() {
   const derivedStep = statusToStep(status);
   // Override is only valid when navigating backwards; if the server state
   // has advanced past the override, ignore it.
-  const currentStep = overrideStep !== null && overrideStep < derivedStep ? overrideStep : derivedStep;
+  const currentStep =
+    overrideStep !== null && overrideStep < derivedStep ? overrideStep : derivedStep;
 
   if (isLoading) {
     return <LoadingScreen />;

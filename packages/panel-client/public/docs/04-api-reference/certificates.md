@@ -74,14 +74,14 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | `string` | `"letsencrypt"`, `"mtls-ca"`, or `"mtls-client"` |
-| `domain` | `string \| null` | Domain name for Let's Encrypt certs, `null` for mTLS certs |
-| `expiresAt` | `string` | ISO 8601 expiry date |
-| `daysUntilExpiry` | `number` | Days remaining until expiry |
-| `path` | `string` | Filesystem path to the certificate |
-| `expiringSoon` | `boolean` | `true` if fewer than 30 days remain |
+| Field             | Type             | Description                                                |
+| ----------------- | ---------------- | ---------------------------------------------------------- |
+| `type`            | `string`         | `"letsencrypt"`, `"mtls-ca"`, or `"mtls-client"`           |
+| `domain`          | `string \| null` | Domain name for Let's Encrypt certs, `null` for mTLS certs |
+| `expiresAt`       | `string`         | ISO 8601 expiry date                                       |
+| `daysUntilExpiry` | `number`         | Days remaining until expiry                                |
+| `path`            | `string`         | Filesystem path to the certificate                         |
+| `expiringSoon`    | `boolean`        | `true` if fewer than 30 days remain                        |
 
 The endpoint never fails entirely — if one source (Let's Encrypt or mTLS) cannot be read, the other source's certificates are still returned. Errors are logged server-side.
 
@@ -120,11 +120,11 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `active` | `boolean` | Whether the certbot renewal timer is running |
+| Field     | Type             | Description                                         |
+| --------- | ---------------- | --------------------------------------------------- |
+| `active`  | `boolean`        | Whether the certbot renewal timer is running        |
 | `nextRun` | `string \| null` | ISO 8601 timestamp of next scheduled run, or `null` |
-| `lastRun` | `string \| null` | ISO 8601 timestamp of last run, or `null` |
+| `lastRun` | `string \| null` | ISO 8601 timestamp of last run, or `null`           |
 
 This endpoint always returns 200. If the timer status cannot be determined, it returns `active: false` with null timestamps.
 
@@ -169,20 +169,20 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ok` | `boolean` | `true` if renewal succeeded |
-| `domain` | `string` | The renewed domain |
+| Field       | Type             | Description                                                                    |
+| ----------- | ---------------- | ------------------------------------------------------------------------------ |
+| `ok`        | `boolean`        | `true` if renewal succeeded                                                    |
+| `domain`    | `string`         | The renewed domain                                                             |
 | `newExpiry` | `string \| null` | ISO 8601 expiry date of the new certificate, or `null` if it could not be read |
-| `warning` | `string` | Present if nginx reload or config test failed after renewal |
+| `warning`   | `string`         | Present if nginx reload or config test failed after renewal                    |
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid domain format |
-| 404 | `{"error":"Certificate not found"}` | certbot has no certificate with this name |
-| 500 | `{"error":"Certificate renewal failed","details":"..."}` | certbot command failed |
+| Status | Body                                                       | When                                      |
+| ------ | ---------------------------------------------------------- | ----------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid domain format                     |
+| 404    | `{"error":"Certificate not found"}`                        | certbot has no certificate with this name |
+| 500    | `{"error":"Certificate renewal failed","details":"..."}`   | certbot command failed                    |
 
 The certbot command has a 90-second timeout. If it times out, a 500 error is returned.
 
@@ -215,19 +215,19 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ok` | `boolean` | `true` if rotation succeeded |
-| `p12Password` | `string` | Random hex password for the new `.p12` bundle. Only shown once |
-| `expiresAt` | `string` | ISO 8601 expiry date of the new certificate (2-year validity) |
-| `warning` | `string` | Always present. Notes that the old certificate is now invalid. If nginx reload or config test also fails, the warning is appended with details |
+| Field         | Type      | Description                                                                                                                                    |
+| ------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ok`          | `boolean` | `true` if rotation succeeded                                                                                                                   |
+| `p12Password` | `string`  | Random hex password for the new `.p12` bundle. Only shown once                                                                                 |
+| `expiresAt`   | `string`  | ISO 8601 expiry date of the new certificate (2-year validity)                                                                                  |
+| `warning`     | `string`  | Always present. Notes that the old certificate is now invalid. If nginx reload or config test also fails, the warning is appended with details |
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 500 | `{"error":"mTLS rotation failed: ..."}` | Certificate generation or file operations failed |
-| 500 | `{"error":"CA key not found — cannot sign new certificate"}` | CA key missing from PKI directory |
+| Status | Body                                                         | When                                             |
+| ------ | ------------------------------------------------------------ | ------------------------------------------------ |
+| 500    | `{"error":"mTLS rotation failed: ..."}`                      | Certificate generation or file operations failed |
+| 500    | `{"error":"CA key not found — cannot sign new certificate"}` | CA key missing from PKI directory                |
 
 ---
 
@@ -253,10 +253,10 @@ The response body is the raw binary PKCS#12 file.
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 404 | `{"error":"No client certificate found"}` | The `.p12` file does not exist at the expected path |
-| 500 | `{"error":"Failed to download certificate"}` | File read failed |
+| Status | Body                                         | When                                                |
+| ------ | -------------------------------------------- | --------------------------------------------------- |
+| 404    | `{"error":"No client certificate found"}`    | The `.p12` file does not exist at the expected path |
+| 500    | `{"error":"Failed to download certificate"}` | File read failed                                    |
 
 ---
 
@@ -278,11 +278,11 @@ Generates a new agent-scoped certificate with the specified label, capabilities,
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `label` | `string` | Yes | 1-50 characters, lowercase letters, numbers, and hyphens only |
-| `capabilities` | `string[]` | No | List of capabilities. Defaults to `["tunnels:read"]`. Must always include `tunnels:read` |
-| `allowedSites` | `string[]` | No | List of site names this agent can access for file operations. Defaults to `[]` (no site access). Only relevant when `sites:read` or `sites:write` capabilities are granted |
+| Field          | Type       | Required | Description                                                                                                                                                                |
+| -------------- | ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`        | `string`   | Yes      | 1-50 characters, lowercase letters, numbers, and hyphens only                                                                                                              |
+| `capabilities` | `string[]` | No       | List of capabilities. Defaults to `["tunnels:read"]`. Must always include `tunnels:read`                                                                                   |
+| `allowedSites` | `string[]` | No       | List of site names this agent can access for file operations. Defaults to `[]` (no site access). Only relevant when `sites:read` or `sites:write` capabilities are granted |
 
 **Valid capabilities:** `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`
 
@@ -305,23 +305,23 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ok` | `boolean` | `true` if generation succeeded |
-| `label` | `string` | The agent label |
-| `p12Password` | `string` | Random hex password for the `.p12` bundle. Only shown once |
-| `serial` | `string` | Certificate serial number |
-| `expiresAt` | `string` | ISO 8601 expiry date (2-year validity) |
+| Field         | Type      | Description                                                |
+| ------------- | --------- | ---------------------------------------------------------- |
+| `ok`          | `boolean` | `true` if generation succeeded                             |
+| `label`       | `string`  | The agent label                                            |
+| `p12Password` | `string`  | Random hex password for the `.p12` bundle. Only shown once |
+| `serial`      | `string`  | Certificate serial number                                  |
+| `expiresAt`   | `string`  | ISO 8601 expiry date (2-year validity)                     |
 
 **Important:** The `p12Password` is only returned at generation time. It cannot be retrieved later.
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{...}}` | Invalid label format or missing `tunnels:read` |
-| 409 | `{"error":"Agent certificate with label \"macbook-pro\" already exists"}` | Label already in use (non-revoked) |
-| 500 | `{"error":"Agent certificate generation failed: ..."}` | OpenSSL or file operation failed |
+| Status | Body                                                                      | When                                           |
+| ------ | ------------------------------------------------------------------------- | ---------------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{...}}`                           | Invalid label format or missing `tunnels:read` |
+| 409    | `{"error":"Agent certificate with label \"macbook-pro\" already exists"}` | Label already in use (non-revoked)             |
+| 500    | `{"error":"Agent certificate generation failed: ..."}`                    | OpenSSL or file operation failed               |
 
 ---
 
@@ -367,16 +367,16 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `label` | `string` | Agent identifier (matches certificate CN `agent:<label>`) |
-| `serial` | `string` | Certificate serial number |
-| `capabilities` | `string[]` | Granted capabilities |
-| `allowedSites` | `string[]` | Site names this agent can access for file operations |
-| `createdAt` | `string` | ISO 8601 creation timestamp |
-| `expiresAt` | `string` | ISO 8601 expiry timestamp |
-| `revoked` | `boolean` | Whether the certificate has been revoked |
-| `expiringSoon` | `boolean` | `true` if the certificate is not revoked and fewer than 30 days remain until expiry |
+| Field          | Type       | Description                                                                         |
+| -------------- | ---------- | ----------------------------------------------------------------------------------- |
+| `label`        | `string`   | Agent identifier (matches certificate CN `agent:<label>`)                           |
+| `serial`       | `string`   | Certificate serial number                                                           |
+| `capabilities` | `string[]` | Granted capabilities                                                                |
+| `allowedSites` | `string[]` | Site names this agent can access for file operations                                |
+| `createdAt`    | `string`   | ISO 8601 creation timestamp                                                         |
+| `expiresAt`    | `string`   | ISO 8601 expiry timestamp                                                           |
+| `revoked`      | `boolean`  | Whether the certificate has been revoked                                            |
+| `expiringSoon` | `boolean`  | `true` if the certificate is not revoked and fewer than 30 days remain until expiry |
 
 ---
 
@@ -400,10 +400,10 @@ Returns `Content-Type: application/x-pkcs12` with `Content-Disposition: attachme
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed",...}` | Invalid label format |
-| 404 | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No P12 file on disk (may have been revoked) |
+| Status | Body                                                      | When                                        |
+| ------ | --------------------------------------------------------- | ------------------------------------------- |
+| 400    | `{"error":"Validation failed",...}`                       | Invalid label format                        |
+| 404    | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No P12 file on disk (may have been revoked) |
 
 ---
 
@@ -419,9 +419,9 @@ Updates the capabilities for an existing agent certificate. Capabilities are sto
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `capabilities` | `string[]` | Yes | New capability list. Must include `tunnels:read` |
+| Field          | Type       | Required | Description                                      |
+| -------------- | ---------- | -------- | ------------------------------------------------ |
+| `capabilities` | `string[]` | Yes      | New capability list. Must include `tunnels:read` |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -442,10 +442,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed",...}` | Invalid capability or missing `tunnels:read` |
-| 404 | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No active agent with this label |
+| Status | Body                                                      | When                                         |
+| ------ | --------------------------------------------------------- | -------------------------------------------- |
+| 400    | `{"error":"Validation failed",...}`                       | Invalid capability or missing `tunnels:read` |
+| 404    | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No active agent with this label              |
 
 ---
 
@@ -461,9 +461,9 @@ Updates the list of sites an agent certificate is allowed to access. This contro
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `allowedSites` | `string[]` | Yes | New list of site names this agent can access. Use `[]` to remove all site access |
+| Field          | Type       | Required | Description                                                                      |
+| -------------- | ---------- | -------- | -------------------------------------------------------------------------------- |
+| `allowedSites` | `string[]` | Yes      | New list of site names this agent can access. Use `[]` to remove all site access |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -484,10 +484,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed",...}` | Invalid request body |
-| 404 | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No active agent with this label |
+| Status | Body                                                      | When                            |
+| ------ | --------------------------------------------------------- | ------------------------------- |
+| 400    | `{"error":"Validation failed",...}`                       | Invalid request body            |
+| 404    | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No active agent with this label |
 
 ---
 
@@ -516,10 +516,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed",...}` | Invalid label format |
-| 404 | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No agent with this label, or already revoked |
+| Status | Body                                                      | When                                         |
+| ------ | --------------------------------------------------------- | -------------------------------------------- |
+| 400    | `{"error":"Validation failed",...}`                       | Invalid label format                         |
+| 404    | `{"error":"Agent certificate \"macbook-pro\" not found"}` | No agent with this label, or already revoked |
 
 ---
 
@@ -556,19 +556,19 @@ curl -s --cert client.p12:password \
 
 ## Quick Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/certs` | List all certs (sorted by expiry) |
-| GET | `/api/certs/auto-renew-status` | Check certbot timer status |
-| POST | `/api/certs/:domain/renew` | Force-renew a Let's Encrypt cert |
-| POST | `/api/certs/mtls/rotate` | Rotate mTLS client certificate |
-| GET | `/api/certs/mtls/download` | Download client.p12 file |
-| POST | `/api/certs/agent` | Generate agent certificate |
-| GET | `/api/certs/agent` | List agent certificates |
-| GET | `/api/certs/agent/:label/download` | Download agent .p12 file |
-| PATCH | `/api/certs/agent/:label/capabilities` | Update agent capabilities |
-| PATCH | `/api/certs/agent/:label/allowed-sites` | Update agent site access |
-| DELETE | `/api/certs/agent/:label` | Revoke agent certificate |
+| Method | Path                                    | Description                       |
+| ------ | --------------------------------------- | --------------------------------- |
+| GET    | `/api/certs`                            | List all certs (sorted by expiry) |
+| GET    | `/api/certs/auto-renew-status`          | Check certbot timer status        |
+| POST   | `/api/certs/:domain/renew`              | Force-renew a Let's Encrypt cert  |
+| POST   | `/api/certs/mtls/rotate`                | Rotate mTLS client certificate    |
+| GET    | `/api/certs/mtls/download`              | Download client.p12 file          |
+| POST   | `/api/certs/agent`                      | Generate agent certificate        |
+| GET    | `/api/certs/agent`                      | List agent certificates           |
+| GET    | `/api/certs/agent/:label/download`      | Download agent .p12 file          |
+| PATCH  | `/api/certs/agent/:label/capabilities`  | Update agent capabilities         |
+| PATCH  | `/api/certs/agent/:label/allowed-sites` | Update agent site access          |
+| DELETE | `/api/certs/agent/:label`               | Revoke agent certificate          |
 
 ### Certificate Object Shape
 

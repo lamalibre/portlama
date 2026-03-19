@@ -43,7 +43,7 @@ async function mtlsPlugin(fastify, _opts) {
 
     // Check certificate serial against revocation list
     const serial = request.headers['x-ssl-client-serial'];
-    if (serial && await isRevoked(serial)) {
+    if (serial && (await isRevoked(serial))) {
       return reply.code(403).send({
         error: 'Certificate has been revoked',
       });
@@ -60,13 +60,19 @@ async function mtlsPlugin(fastify, _opts) {
       try {
         request.certCapabilities = await getAgentCapabilities(request.certLabel);
       } catch (err) {
-        request.log.warn({ err, label: request.certLabel }, 'Failed to load agent capabilities, using defaults');
+        request.log.warn(
+          { err, label: request.certLabel },
+          'Failed to load agent capabilities, using defaults',
+        );
         request.certCapabilities = ['tunnels:read'];
       }
       try {
         request.certAllowedSites = await getAgentAllowedSites(request.certLabel);
       } catch (err) {
-        request.log.warn({ err, label: request.certLabel }, 'Failed to load agent allowed sites, using defaults');
+        request.log.warn(
+          { err, label: request.certLabel },
+          'Failed to load agent allowed sites, using defaults',
+        );
         request.certAllowedSites = [];
       }
     } else {

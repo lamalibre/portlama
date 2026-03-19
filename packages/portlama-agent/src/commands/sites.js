@@ -113,7 +113,9 @@ async function runList(config) {
     }
     const size = site.totalSize != null ? d(`(${formatBytes(site.totalSize)})`) : '';
 
-    console.log(`  ${c('•')} ${b(site.name)} ${d(site.fqdn || '')} ${typeBadge} ${statusLabel} ${size}`);
+    console.log(
+      `  ${c('•')} ${b(site.name)} ${d(site.fqdn || '')} ${typeBadge} ${statusLabel} ${size}`,
+    );
   }
 
   console.log('');
@@ -129,13 +131,17 @@ async function runCreate(config, args) {
   const name = positional[0];
 
   if (!name) {
-    console.error(`\n  Usage: ${chalk.cyan('portlama-agent sites create <name> [--type managed|custom] [--domain <fqdn>] [--spa] [--auth]')}\n`);
+    console.error(
+      `\n  Usage: ${chalk.cyan('portlama-agent sites create <name> [--type managed|custom] [--domain <fqdn>] [--spa] [--auth]')}\n`,
+    );
     process.exit(1);
   }
 
   const type = flags.type || 'managed';
   if (type !== 'managed' && type !== 'custom') {
-    console.error(`\n  Invalid type: ${chalk.red(type)}. Must be ${chalk.cyan('managed')} or ${chalk.cyan('custom')}.\n`);
+    console.error(
+      `\n  Invalid type: ${chalk.red(type)}. Must be ${chalk.cyan('managed')} or ${chalk.cyan('custom')}.\n`,
+    );
     process.exit(1);
   }
 

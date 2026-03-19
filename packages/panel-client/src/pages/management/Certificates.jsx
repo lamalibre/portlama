@@ -122,7 +122,9 @@ function TypeBadge({ type }) {
   };
 
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${styles[type] || 'bg-zinc-500/20 text-zinc-400'}`}>
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full ${styles[type] || 'bg-zinc-500/20 text-zinc-400'}`}
+    >
       {labels[type] || type}
     </span>
   );
@@ -200,7 +202,9 @@ function CertTable({ certs, onRenew, renewingDomain }) {
   if (leCerts.length === 0) {
     return (
       <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-6">
-        <p className="text-zinc-500 text-sm text-center">No Let&apos;s Encrypt certificates found.</p>
+        <p className="text-zinc-500 text-sm text-center">
+          No Let&apos;s Encrypt certificates found.
+        </p>
       </div>
     );
   }
@@ -210,11 +214,21 @@ function CertTable({ certs, onRenew, renewingDomain }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-zinc-700 bg-zinc-900">
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Type</th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Domain</th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Expiry Date</th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Days Remaining</th>
-            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Actions</th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+              Type
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+              Domain
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+              Expiry Date
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+              Days Remaining
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -343,13 +357,22 @@ function AgentStatusBadge({ status }) {
 }
 
 const CAPABILITY_OPTIONS = [
-  { value: 'tunnels:read', label: 'tunnels:read', description: 'List tunnels and download plist', mandatory: true },
+  {
+    value: 'tunnels:read',
+    label: 'tunnels:read',
+    description: 'List tunnels and download plist',
+    mandatory: true,
+  },
   { value: 'tunnels:write', label: 'tunnels:write', description: 'Create and delete tunnels' },
   { value: 'services:read', label: 'services:read', description: 'View service status' },
   { value: 'services:write', label: 'services:write', description: 'Start/stop/restart services' },
   { value: 'system:read', label: 'system:read', description: 'View system stats (CPU, RAM, disk)' },
   { value: 'sites:read', label: 'sites:read', description: 'List sites and browse files' },
-  { value: 'sites:write', label: 'sites:write', description: 'Create, delete, and deploy to sites' },
+  {
+    value: 'sites:write',
+    label: 'sites:write',
+    description: 'Create, delete, and deploy to sites',
+  },
 ];
 
 function CapabilityCheckboxes({ capabilities, onChange, disabled }) {
@@ -426,7 +449,9 @@ function AgentGenerateModal({ onClose }) {
         return;
       }
       if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(label)) {
-        setError('Lowercase letters, numbers, and hyphens only. Cannot start or end with a hyphen.');
+        setError(
+          'Lowercase letters, numbers, and hyphens only. Cannot start or end with a hyphen.',
+        );
         return;
       }
       generateMutation.mutate({ label, capabilities, allowedSites });
@@ -465,7 +490,11 @@ function AgentGenerateModal({ onClose }) {
             {result ? 'Certificate Generated' : 'Generate Agent Certificate'}
           </h3>
           {!generateMutation.isPending && (
-            <button type="button" onClick={handleClose} className="text-zinc-500 hover:text-zinc-300">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="text-zinc-500 hover:text-zinc-300"
+            >
               <X size={18} />
             </button>
           )}
@@ -503,35 +532,42 @@ function AgentGenerateModal({ onClose }) {
               </div>
 
               {(capabilities.includes('sites:read') || capabilities.includes('sites:write')) && (
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">Site Access</label>
-                <p className="text-xs text-zinc-500 mb-2">Select which static sites this agent can manage files for.</p>
-                {sitesData?.sites?.length > 0 ? (
-                  <div className="space-y-1">
-                    {sitesData.sites.map((site) => (
-                      <label key={site.id} className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={allowedSites.includes(site.name)}
-                          onChange={() => {
-                            setAllowedSites((prev) =>
-                              prev.includes(site.name)
-                                ? prev.filter((s) => s !== site.name)
-                                : [...prev, site.name]
-                            );
-                          }}
-                          disabled={generateMutation.isPending}
-                          className="rounded border-zinc-600 bg-zinc-800 text-cyan-400 focus:ring-cyan-400"
-                        />
-                        <span className="font-mono">{site.name}</span>
-                        <span className="text-zinc-500 text-xs">({site.fqdn})</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-zinc-500">No sites created yet.</p>
-                )}
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Site Access
+                  </label>
+                  <p className="text-xs text-zinc-500 mb-2">
+                    Select which static sites this agent can manage files for.
+                  </p>
+                  {sitesData?.sites?.length > 0 ? (
+                    <div className="space-y-1">
+                      {sitesData.sites.map((site) => (
+                        <label
+                          key={site.id}
+                          className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={allowedSites.includes(site.name)}
+                            onChange={() => {
+                              setAllowedSites((prev) =>
+                                prev.includes(site.name)
+                                  ? prev.filter((s) => s !== site.name)
+                                  : [...prev, site.name],
+                              );
+                            }}
+                            disabled={generateMutation.isPending}
+                            className="rounded border-zinc-600 bg-zinc-800 text-cyan-400 focus:ring-cyan-400"
+                          />
+                          <span className="font-mono">{site.name}</span>
+                          <span className="text-zinc-500 text-xs">({site.fqdn})</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-500">No sites created yet.</p>
+                  )}
+                </div>
               )}
 
               {error && (
@@ -630,8 +666,8 @@ function AgentRevokeConfirmation({ label, onConfirm, onCancel, isPending }) {
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
         <h3 className="text-lg font-semibold text-white mb-2">Revoke Certificate</h3>
         <p className="text-zinc-400 text-sm mb-6">
-          Revoke certificate for &lsquo;<span className="text-cyan-400 font-mono">{label}</span>&rsquo;?
-          The Mac agent using this certificate will immediately lose access.
+          Revoke certificate for &lsquo;<span className="text-cyan-400 font-mono">{label}</span>
+          &rsquo;? The Mac agent using this certificate will immediately lose access.
         </p>
         <div className="flex items-center justify-end gap-3">
           <button
@@ -766,11 +802,16 @@ function AgentEditSitesModal({ agent, onClose }) {
           </button>
         </div>
         <div className="px-6 py-5 space-y-4">
-          <p className="text-xs text-zinc-500">Select which static sites this agent can manage files for.</p>
+          <p className="text-xs text-zinc-500">
+            Select which static sites this agent can manage files for.
+          </p>
           {sitesData?.sites?.length > 0 ? (
             <div className="space-y-1">
               {sitesData.sites.map((site) => (
-                <label key={site.id} className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+                <label
+                  key={site.id}
+                  className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={selectedSites.includes(site.name)}
@@ -778,7 +819,7 @@ function AgentEditSitesModal({ agent, onClose }) {
                       setSelectedSites((prev) =>
                         prev.includes(site.name)
                           ? prev.filter((s) => s !== site.name)
-                          : [...prev, site.name]
+                          : [...prev, site.name],
                       );
                     }}
                     disabled={updateMutation.isPending}
@@ -906,13 +947,27 @@ function AgentCertsSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-700 bg-zinc-900">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Label</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Serial</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Created</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Expires</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Capabilities</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-zinc-400">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Label
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Serial
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Created
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Expires
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Capabilities
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-zinc-400">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -997,9 +1052,7 @@ function AgentCertsSection() {
       </div>
 
       {/* Generate modal */}
-      {showGenerateModal && (
-        <AgentGenerateModal onClose={() => setShowGenerateModal(false)} />
-      )}
+      {showGenerateModal && <AgentGenerateModal onClose={() => setShowGenerateModal(false)} />}
 
       {/* Revoke confirmation */}
       {revokeTarget && (
@@ -1013,18 +1066,12 @@ function AgentCertsSection() {
 
       {/* Edit capabilities modal */}
       {editCapsTarget && (
-        <AgentEditCapsModal
-          agent={editCapsTarget}
-          onClose={() => setEditCapsTarget(null)}
-        />
+        <AgentEditCapsModal agent={editCapsTarget} onClose={() => setEditCapsTarget(null)} />
       )}
 
       {/* Edit site access modal */}
       {editSitesTarget && (
-        <AgentEditSitesModal
-          agent={editSitesTarget}
-          onClose={() => setEditSitesTarget(null)}
-        />
+        <AgentEditSitesModal agent={editSitesTarget} onClose={() => setEditSitesTarget(null)} />
       )}
     </div>
   );
@@ -1127,14 +1174,16 @@ function RotationModal({ onClose }) {
           {stage === 'warning' && (
             <div className="space-y-4">
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 text-sm text-amber-400 space-y-2">
-                <p className="font-semibold">This will immediately invalidate your current browser certificate.</p>
-                <p>
-                  You <strong>MUST</strong> download and import the new certificate before closing this
-                  page or your browser.
+                <p className="font-semibold">
+                  This will immediately invalidate your current browser certificate.
                 </p>
                 <p>
-                  If you fail to do this, you will be locked out of the panel and will need SSH access
-                  to recover.
+                  You <strong>MUST</strong> download and import the new certificate before closing
+                  this page or your browser.
+                </p>
+                <p>
+                  If you fail to do this, you will be locked out of the panel and will need SSH
+                  access to recover.
                 </p>
               </div>
               <div className="flex justify-end gap-3">
@@ -1201,7 +1250,9 @@ function RotationModal({ onClose }) {
               <ol className="list-decimal list-inside text-sm text-zinc-400 space-y-1.5 pl-1">
                 <li>Copy the password above</li>
                 <li>Click Download Certificate</li>
-                <li>Double-click the downloaded file to import it into your browser&apos;s keychain</li>
+                <li>
+                  Double-click the downloaded file to import it into your browser&apos;s keychain
+                </li>
                 <li>Enter the password when prompted</li>
                 <li>Restart your browser to use the new certificate</li>
               </ol>
@@ -1219,10 +1270,11 @@ function RotationModal({ onClose }) {
                 {showRecovery && (
                   <div className="mt-3 rounded border border-zinc-700 bg-zinc-950 p-3">
                     <p className="text-xs text-zinc-400 mb-2">
-                      If you get locked out, connect via SSH and run these commands to restore the backup:
+                      If you get locked out, connect via SSH and run these commands to restore the
+                      backup:
                     </p>
                     <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
-{`sudo cp /etc/portlama/pki/client.crt.bak /etc/portlama/pki/client.crt
+                      {`sudo cp /etc/portlama/pki/client.crt.bak /etc/portlama/pki/client.crt
 sudo cp /etc/portlama/pki/client.key.bak /etc/portlama/pki/client.key
 sudo cp /etc/portlama/pki/client.p12.bak /etc/portlama/pki/client.p12
 sudo systemctl reload nginx`}

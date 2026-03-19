@@ -312,22 +312,22 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 
 ## Quick Reference
 
-| Component | Location | Update Method |
-|-----------|----------|---------------|
+| Component    | Location                      | Update Method                                  |
+| ------------ | ----------------------------- | ---------------------------------------------- |
 | Panel server | `/opt/portlama/panel-server/` | Re-run `npx @lamalibre/create-portlama@latest` |
 | Panel client | `/opt/portlama/panel-client/` | Re-run `npx @lamalibre/create-portlama@latest` |
-| Chisel | `/usr/local/bin/chisel` | Download binary from GitHub, replace, restart |
-| Authelia | `/usr/local/bin/authelia` | Download binary from GitHub, replace, restart |
-| nginx | System package | `sudo apt-get update && sudo apt-get upgrade` |
-| certbot | System package | `sudo apt-get update && sudo apt-get upgrade` |
-| Node.js | System package | Managed by installer (NodeSource repo) |
-| Ubuntu | System packages | `sudo apt-get update && sudo apt-get upgrade` |
+| Chisel       | `/usr/local/bin/chisel`       | Download binary from GitHub, replace, restart  |
+| Authelia     | `/usr/local/bin/authelia`     | Download binary from GitHub, replace, restart  |
+| nginx        | System package                | `sudo apt-get update && sudo apt-get upgrade`  |
+| certbot      | System package                | `sudo apt-get update && sudo apt-get upgrade`  |
+| Node.js      | System package                | Managed by installer (NodeSource repo)         |
+| Ubuntu       | System packages               | `sudo apt-get update && sudo apt-get upgrade`  |
 
-| Post-Upgrade Check | Command |
-|--------------------|---------|
+| Post-Upgrade Check   | Command                                                      |
+| -------------------- | ------------------------------------------------------------ |
 | All services running | `sudo systemctl status nginx chisel authelia portlama-panel` |
-| nginx config valid | `sudo nginx -t` |
-| Panel health | `curl -s http://127.0.0.1:3100/api/health` |
-| Certificate renewal | `sudo certbot renew --dry-run` |
-| Chisel version | `/usr/local/bin/chisel --version` |
-| Authelia version | `/usr/local/bin/authelia --version` |
+| nginx config valid   | `sudo nginx -t`                                              |
+| Panel health         | `curl -s http://127.0.0.1:3100/api/health`                   |
+| Certificate renewal  | `sudo certbot renew --dry-run`                               |
+| Chisel version       | `/usr/local/bin/chisel --version`                            |
+| Authelia version     | `/usr/local/bin/authelia --version`                          |

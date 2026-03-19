@@ -52,13 +52,14 @@ function VerificationResult({ result }) {
           <XCircle size={18} className="mt-0.5 shrink-0 text-red-400" />
         )}
         <div className="text-sm">
-          <span className={result.ok ? 'text-green-400' : 'text-red-400'}>
-            {result.domain}
-          </span>
+          <span className={result.ok ? 'text-green-400' : 'text-red-400'}>{result.domain}</span>
           {result.ok ? (
             <span className="text-zinc-400"> resolves to {result.expectedIp}</span>
           ) : result.resolvedIps.length > 0 ? (
-            <span className="text-zinc-400"> resolves to {result.resolvedIps.join(', ')} (expected {result.expectedIp})</span>
+            <span className="text-zinc-400">
+              {' '}
+              resolves to {result.resolvedIps.join(', ')} (expected {result.expectedIp})
+            </span>
           ) : (
             <span className="text-zinc-400"> does not resolve</span>
           )}
@@ -78,7 +79,10 @@ function VerificationResult({ result }) {
           {result.wildcardOk ? (
             <span className="text-zinc-400"> resolves to {result.expectedIp}</span>
           ) : (
-            <span className="text-zinc-400"> not configured — you can add individual subdomain records later</span>
+            <span className="text-zinc-400">
+              {' '}
+              not configured — you can add individual subdomain records later
+            </span>
           )}
         </div>
       </div>
@@ -136,9 +140,15 @@ export default function DnsStep({ domain, ip, onComplete, onBack }) {
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-zinc-700 bg-zinc-800/50">
-              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Type</th>
-              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Name</th>
-              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Value</th>
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Type
+              </th>
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Name
+              </th>
+              <th className="px-3 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Value
+              </th>
             </tr>
           </thead>
           <tbody className="bg-zinc-900">

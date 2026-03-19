@@ -92,11 +92,7 @@ export function panelTasks(ctx, task) {
           );
         }
 
-        await execa('chown', [
-          '-R',
-          'portlama:portlama',
-          serverDest,
-        ]);
+        await execa('chown', ['-R', 'portlama:portlama', serverDest]);
 
         subtask.output = 'Panel server deployed';
       },
@@ -203,16 +199,9 @@ export function panelTasks(ctx, task) {
           };
         }
 
-        await writeFile(
-          configPath,
-          JSON.stringify(config, null, 2) + '\n',
-          { mode: 0o640 },
-        );
+        await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', { mode: 0o640 });
 
-        await execa('chown', [
-          'portlama:portlama',
-          configPath,
-        ]);
+        await execa('chown', ['portlama:portlama', configPath]);
 
         subtask.output = `Configuration written to ${configPath}`;
       },
@@ -222,10 +211,7 @@ export function panelTasks(ctx, task) {
       title: 'Writing systemd service unit',
       task: async (_ctx, subtask) => {
         const serviceUnit = generateServiceUnit({ installDir, configDir });
-        await writeFile(
-          '/etc/systemd/system/portlama-panel.service',
-          serviceUnit,
-        );
+        await writeFile('/etc/systemd/system/portlama-panel.service', serviceUnit);
 
         subtask.output = 'Systemd service unit written';
       },
@@ -267,10 +253,7 @@ export function panelTasks(ctx, task) {
         subtask.output = 'Waiting for service to start...';
         await sleep(3000);
 
-        const { stdout: status } = await execa('systemctl', [
-          'is-active',
-          'portlama-panel',
-        ]);
+        const { stdout: status } = await execa('systemctl', ['is-active', 'portlama-panel']);
         if (status.trim() !== 'active') {
           const { stdout: logs } = await execa('journalctl', [
             '-u',

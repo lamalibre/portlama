@@ -9,6 +9,7 @@ While tunnels forward requests to an app running on your local machine, static s
 This is useful for landing pages, documentation sites, or any content that does not need a backend server.
 
 There are two types of sites:
+
 - **Managed** — uses a subdomain of your Portlama domain (like `docs.example.com`). The certificate and DNS are handled automatically.
 - **Custom** — uses a domain you own (like `myblog.net`). You need to point its DNS to your droplet, then verify DNS through the API before the site goes live.
 
@@ -24,18 +25,18 @@ Site endpoints use a two-level access model: capabilities control which operatio
 
 **Admin-only endpoints (require admin certificate):**
 
-| Endpoint | Description |
-|----------|-------------|
-| `POST /api/sites` | Create a new site |
-| `PATCH /api/sites/:id` | Update site settings |
-| `DELETE /api/sites/:id` | Delete a site |
+| Endpoint                         | Description                        |
+| -------------------------------- | ---------------------------------- |
+| `POST /api/sites`                | Create a new site                  |
+| `PATCH /api/sites/:id`           | Update site settings               |
+| `DELETE /api/sites/:id`          | Delete a site                      |
 | `POST /api/sites/:id/verify-dns` | Verify DNS for custom domain sites |
 
 **Agent-accessible endpoints (require capability + site in allowedSites):**
 
-| Capability | Grants Access To | Site Scoping |
-|------------|-----------------|--------------|
-| `sites:read` | `GET /api/sites` (list sites), `GET /api/sites/:id/files` (list files) | Agent sees only sites in its `allowedSites` list |
+| Capability    | Grants Access To                                                                         | Site Scoping                                                    |
+| ------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `sites:read`  | `GET /api/sites` (list sites), `GET /api/sites/:id/files` (list files)                   | Agent sees only sites in its `allowedSites` list                |
 | `sites:write` | `POST /api/sites/:id/files` (upload files), `DELETE /api/sites/:id/files` (delete files) | Agent can only modify files on sites in its `allowedSites` list |
 
 Admin certificates have full access to all endpoints and see all sites regardless of `allowedSites`. Agent certificates must have both the relevant capability and the site name in their `allowedSites` list. The admin assigns sites to agents from **Panel** > **Certificates** > **Agent Certificates** > edit agent > **Site Access**.
@@ -92,20 +93,20 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | UUID v4 identifier |
-| `name` | `string` | Site name (used as subdomain for managed sites) |
-| `fqdn` | `string` | Fully qualified domain name |
-| `type` | `string` | `"managed"` (subdomain) or `"custom"` (your own domain) |
-| `spaMode` | `boolean` | If `true`, all routes serve `index.html` (for single-page apps) |
-| `autheliaProtected` | `boolean` | If `true`, Authelia authentication is required to access the site |
-| `allowedUsers` | `string[]` | List of Authelia usernames allowed to access the site (empty array means all authenticated users) |
-| `dnsVerified` | `boolean` | Whether DNS has been verified (always `true` for managed sites) |
-| `certIssued` | `boolean` | Whether a TLS certificate has been issued |
-| `rootPath` | `string` | Filesystem path where uploaded files are stored |
-| `createdAt` | `string` | ISO 8601 timestamp |
-| `totalSize` | `number` | Total size of uploaded files in bytes |
+| Field               | Type       | Description                                                                                       |
+| ------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| `id`                | `string`   | UUID v4 identifier                                                                                |
+| `name`              | `string`   | Site name (used as subdomain for managed sites)                                                   |
+| `fqdn`              | `string`   | Fully qualified domain name                                                                       |
+| `type`              | `string`   | `"managed"` (subdomain) or `"custom"` (your own domain)                                           |
+| `spaMode`           | `boolean`  | If `true`, all routes serve `index.html` (for single-page apps)                                   |
+| `autheliaProtected` | `boolean`  | If `true`, Authelia authentication is required to access the site                                 |
+| `allowedUsers`      | `string[]` | List of Authelia usernames allowed to access the site (empty array means all authenticated users) |
+| `dnsVerified`       | `boolean`  | Whether DNS has been verified (always `true` for managed sites)                                   |
+| `certIssued`        | `boolean`  | Whether a TLS certificate has been issued                                                         |
+| `rootPath`          | `string`   | Filesystem path where uploaded files are stored                                                   |
+| `createdAt`         | `string`   | ISO 8601 timestamp                                                                                |
+| `totalSize`         | `number`   | Total size of uploaded files in bytes                                                             |
 
 ---
 
@@ -140,13 +141,13 @@ For a custom domain:
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `name` | `string` | 1-100 chars, lowercase alphanumeric + hyphens, cannot start/end with hyphen | Site name (used as subdomain for managed type) |
-| `type` | `string` | `"managed"` or `"custom"` | Site type |
-| `customDomain` | `string` | Max 253 chars, lowercase alphanumeric + dots + hyphens; required for `custom` type | Your own domain |
-| `spaMode` | `boolean` | Optional, defaults to `false` | Serve `index.html` for all routes |
-| `autheliaProtected` | `boolean` | Optional, defaults to `false` | Require Authelia login |
+| Field               | Type      | Validation                                                                         | Description                                    |
+| ------------------- | --------- | ---------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `name`              | `string`  | 1-100 chars, lowercase alphanumeric + hyphens, cannot start/end with hyphen        | Site name (used as subdomain for managed type) |
+| `type`              | `string`  | `"managed"` or `"custom"`                                                          | Site type                                      |
+| `customDomain`      | `string`  | Max 253 chars, lowercase alphanumeric + dots + hyphens; required for `custom` type | Your own domain                                |
+| `spaMode`           | `boolean` | Optional, defaults to `false`                                                      | Serve `index.html` for all routes              |
+| `autheliaProtected` | `boolean` | Optional, defaults to `false`                                                      | Require Authelia login                         |
 
 **Name regex:**
 
@@ -221,20 +222,20 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid name format, type, or custom domain |
-| 400 | `{"error":"Custom domain is required for custom type sites"}` | `type` is `custom` but `customDomain` is missing |
-| 400 | `{"error":"Site name 'docs' is already in use"}` | Another site uses this name |
-| 400 | `{"error":"Name 'panel' is reserved"}` | Name collides with a reserved subdomain |
-| 400 | `{"error":"Name 'app' is already in use by a tunnel"}` | Name collides with an existing tunnel subdomain |
-| 400 | `{"error":"Domain 'docs.example.com' is already in use by another site"}` | FQDN collision with another site |
-| 400 | `{"error":"Domain 'app.example.com' is already in use by a tunnel"}` | FQDN collision with an existing tunnel |
-| 400 | `{"error":"Domain and email must be configured before creating sites"}` | Domain not set in config |
-| 500 | `{"error":"Failed to create site","details":"Certificate issuance failed: ..."}` | certbot failed (managed sites) |
-| 500 | `{"error":"Failed to create site","details":"Nginx configuration failed: ..."}` | nginx vhost failed (managed sites) |
-| 500 | `{"error":"Failed to create site","details":"Directory creation failed: ..."}` | Could not create site directory |
-| 500 | `{"error":"Failed to create site","details":"State persistence failed: ..."}` | Could not write sites.json |
+| Status | Body                                                                             | When                                             |
+| ------ | -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}`                       | Invalid name format, type, or custom domain      |
+| 400    | `{"error":"Custom domain is required for custom type sites"}`                    | `type` is `custom` but `customDomain` is missing |
+| 400    | `{"error":"Site name 'docs' is already in use"}`                                 | Another site uses this name                      |
+| 400    | `{"error":"Name 'panel' is reserved"}`                                           | Name collides with a reserved subdomain          |
+| 400    | `{"error":"Name 'app' is already in use by a tunnel"}`                           | Name collides with an existing tunnel subdomain  |
+| 400    | `{"error":"Domain 'docs.example.com' is already in use by another site"}`        | FQDN collision with another site                 |
+| 400    | `{"error":"Domain 'app.example.com' is already in use by a tunnel"}`             | FQDN collision with an existing tunnel           |
+| 400    | `{"error":"Domain and email must be configured before creating sites"}`          | Domain not set in config                         |
+| 500    | `{"error":"Failed to create site","details":"Certificate issuance failed: ..."}` | certbot failed (managed sites)                   |
+| 500    | `{"error":"Failed to create site","details":"Nginx configuration failed: ..."}`  | nginx vhost failed (managed sites)               |
+| 500    | `{"error":"Failed to create site","details":"Directory creation failed: ..."}`   | Could not create site directory                  |
+| 500    | `{"error":"Failed to create site","details":"State persistence failed: ..."}`    | Could not write sites.json                       |
 
 **Reserved names** (for managed type):
 
@@ -266,10 +267,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 404 | `{"error":"Site not found"}` | No site with the given UUID |
-| 500 | `{"error":"Failed to delete site","details":"..."}` | nginx, directory, or state operation failed |
+| Status | Body                                                | When                                        |
+| ------ | --------------------------------------------------- | ------------------------------------------- |
+| 404    | `{"error":"Site not found"}`                        | No site with the given UUID                 |
+| 500    | `{"error":"Failed to delete site","details":"..."}` | nginx, directory, or state operation failed |
 
 ---
 
@@ -287,11 +288,11 @@ Updates a site's settings. Any combination of fields can be sent; only provided 
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `spaMode` | `boolean` | Optional | Serve `index.html` for all routes |
-| `autheliaProtected` | `boolean` | Optional | Require Authelia login |
-| `allowedUsers` | `string[]` | Optional, each element min 1 char | Authelia usernames allowed to access this site |
+| Field               | Type       | Validation                        | Description                                    |
+| ------------------- | ---------- | --------------------------------- | ---------------------------------------------- |
+| `spaMode`           | `boolean`  | Optional                          | Serve `index.html` for all routes              |
+| `autheliaProtected` | `boolean`  | Optional                          | Require Authelia login                         |
+| `allowedUsers`      | `string[]` | Optional, each element min 1 char | Authelia usernames allowed to access this site |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -335,11 +336,11 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 404 | `{"error":"Site not found"}` | No site with the given UUID |
-| 500 | `{"error":"Failed to update site configuration","details":"Nginx configuration failed: ..."}` | nginx vhost regeneration failed |
-| 500 | `{"error":"Site saved but Authelia configuration failed","details":"..."}` | Authelia access control update failed |
+| Status | Body                                                                                          | When                                  |
+| ------ | --------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 404    | `{"error":"Site not found"}`                                                                  | No site with the given UUID           |
+| 500    | `{"error":"Failed to update site configuration","details":"Nginx configuration failed: ..."}` | nginx vhost regeneration failed       |
+| 500    | `{"error":"Site saved but Authelia configuration failed","details":"..."}`                    | Authelia access control update failed |
 
 ---
 
@@ -403,12 +404,12 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"DNS verification is only needed for custom domains"}` | Site type is `managed` |
-| 404 | `{"error":"Site not found"}` | No site with the given UUID |
-| 500 | `{"error":"DNS verified but certificate issuance failed","details":"..."}` | DNS passed but certbot failed |
-| 500 | `{"error":"Certificate issued but nginx configuration failed","details":"..."}` | Cert issued but vhost write failed |
+| Status | Body                                                                            | When                               |
+| ------ | ------------------------------------------------------------------------------- | ---------------------------------- |
+| 400    | `{"error":"DNS verification is only needed for custom domains"}`                | Site type is `managed`             |
+| 404    | `{"error":"Site not found"}`                                                    | No site with the given UUID        |
+| 500    | `{"error":"DNS verified but certificate issuance failed","details":"..."}`      | DNS passed but certbot failed      |
+| 500    | `{"error":"Certificate issued but nginx configuration failed","details":"..."}` | Cert issued but vhost write failed |
 
 ---
 
@@ -418,9 +419,9 @@ Lists files in a site's upload directory. Supports browsing subdirectories via t
 
 **Query parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `path` | `string` | `"."` | Relative path within the site directory to list |
+| Parameter | Type     | Default | Description                                     |
+| --------- | -------- | ------- | ----------------------------------------------- |
+| `path`    | `string` | `"."`   | Relative path within the site directory to list |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -436,9 +437,27 @@ curl -s --cert client.p12:password \
 ```json
 {
   "files": [
-    { "name": "index.html", "type": "file", "size": 2048, "modifiedAt": "2026-03-19T10:30:00.000Z", "relativePath": "index.html" },
-    { "name": "css", "type": "directory", "size": 4096, "modifiedAt": "2026-03-19T10:30:00.000Z", "relativePath": "css" },
-    { "name": "logo.png", "type": "file", "size": 15360, "modifiedAt": "2026-03-19T10:30:00.000Z", "relativePath": "logo.png" }
+    {
+      "name": "index.html",
+      "type": "file",
+      "size": 2048,
+      "modifiedAt": "2026-03-19T10:30:00.000Z",
+      "relativePath": "index.html"
+    },
+    {
+      "name": "css",
+      "type": "directory",
+      "size": 4096,
+      "modifiedAt": "2026-03-19T10:30:00.000Z",
+      "relativePath": "css"
+    },
+    {
+      "name": "logo.png",
+      "type": "file",
+      "size": 15360,
+      "modifiedAt": "2026-03-19T10:30:00.000Z",
+      "relativePath": "logo.png"
+    }
   ],
   "path": "."
 }
@@ -446,10 +465,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"..."}` | Invalid or disallowed path (path traversal attempt) |
-| 404 | `{"error":"Site not found"}` | No site with the given UUID |
+| Status | Body                         | When                                                |
+| ------ | ---------------------------- | --------------------------------------------------- |
+| 400    | `{"error":"..."}`            | Invalid or disallowed path (path traversal attempt) |
+| 404    | `{"error":"Site not found"}` | No site with the given UUID                         |
 
 ---
 
@@ -459,9 +478,9 @@ Uploads one or more files to a site's directory via multipart form data. Files a
 
 **Query parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `path` | `string` | `"."` | Target directory within the site for uploaded files |
+| Parameter | Type     | Default | Description                                         |
+| --------- | -------- | ------- | --------------------------------------------------- |
+| `path`    | `string` | `"."`   | Target directory within the site for uploaded files |
 
 **Request:**
 
@@ -512,10 +531,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Upload failed: ..."}` | Path traversal attempt, invalid path, disallowed file extension, or stream error |
-| 404 | `{"error":"Site not found"}` | No site with the given UUID |
+| Status | Body                             | When                                                                             |
+| ------ | -------------------------------- | -------------------------------------------------------------------------------- |
+| 400    | `{"error":"Upload failed: ..."}` | Path traversal attempt, invalid path, disallowed file extension, or stream error |
+| 404    | `{"error":"Site not found"}`     | No site with the given UUID                                                      |
 
 File paths are validated to prevent directory traversal. Paths containing `..` or absolute paths are rejected.
 
@@ -533,8 +552,8 @@ Deletes a single file from a site's directory.
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
+| Field  | Type     | Validation           | Description                                         |
+| ------ | -------- | -------------------- | --------------------------------------------------- |
 | `path` | `string` | Min 1 char, required | Relative path to the file within the site directory |
 
 ```bash
@@ -555,24 +574,24 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Missing or empty path |
-| 400 | `{"error":"..."}` | Path traversal attempt or file not found |
-| 404 | `{"error":"Site not found"}` | No site with the given UUID |
+| Status | Body                                                       | When                                     |
+| ------ | ---------------------------------------------------------- | ---------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}` | Missing or empty path                    |
+| 400    | `{"error":"..."}`                                          | Path traversal attempt or file not found |
+| 404    | `{"error":"Site not found"}`                               | No site with the given UUID              |
 
 ## Quick Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/sites` | List all static sites (newest first) |
-| POST | `/api/sites` | Create a static site |
-| PATCH | `/api/sites/:id` | Update site settings (spaMode, autheliaProtected, allowedUsers) |
-| DELETE | `/api/sites/:id` | Delete a site and all its files |
-| POST | `/api/sites/:id/verify-dns` | Verify DNS for custom domain sites |
-| GET | `/api/sites/:id/files` | List files in a site directory |
-| POST | `/api/sites/:id/files` | Upload files (multipart) |
-| DELETE | `/api/sites/:id/files` | Delete a file |
+| Method | Path                        | Description                                                     |
+| ------ | --------------------------- | --------------------------------------------------------------- |
+| GET    | `/api/sites`                | List all static sites (newest first)                            |
+| POST   | `/api/sites`                | Create a static site                                            |
+| PATCH  | `/api/sites/:id`            | Update site settings (spaMode, autheliaProtected, allowedUsers) |
+| DELETE | `/api/sites/:id`            | Delete a site and all its files                                 |
+| POST   | `/api/sites/:id/verify-dns` | Verify DNS for custom domain sites                              |
+| GET    | `/api/sites/:id/files`      | List files in a site directory                                  |
+| POST   | `/api/sites/:id/files`      | Upload files (multipart)                                        |
+| DELETE | `/api/sites/:id/files`      | Delete a file                                                   |
 
 ### Site Object Shape
 

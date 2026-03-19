@@ -70,10 +70,7 @@ export function redeployTasks(ctx, task) {
       title: 'Stopping panel service',
       task: async (_ctx, subtask) => {
         try {
-          const { stdout: status } = await execa('systemctl', [
-            'is-active',
-            'portlama-panel',
-          ]);
+          const { stdout: status } = await execa('systemctl', ['is-active', 'portlama-panel']);
           if (status.trim() === 'active') {
             await execa('systemctl', ['stop', 'portlama-panel']);
             subtask.output = 'Service stopped';
@@ -134,9 +131,7 @@ export function redeployTasks(ctx, task) {
 
         const prebuiltDist = join(clientSrc, 'dist');
         if (!existsSync(join(prebuiltDist, 'index.html'))) {
-          throw new Error(
-            'Pre-built panel-client dist not found. The package may be corrupted.',
-          );
+          throw new Error('Pre-built panel-client dist not found. The package may be corrupted.');
         }
 
         subtask.output = 'Copying panel-client dist...';
@@ -169,11 +164,7 @@ export function redeployTasks(ctx, task) {
           staticDir: join(installDir, 'panel-client', 'dist'),
         };
 
-        await writeFile(
-          configPath,
-          JSON.stringify(config, null, 2) + '\n',
-          { mode: 0o640 },
-        );
+        await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', { mode: 0o640 });
         await execa('chown', ['portlama:portlama', configPath]);
 
         subtask.output = 'Configuration updated';
@@ -185,10 +176,7 @@ export function redeployTasks(ctx, task) {
       task: async (_ctx, subtask) => {
         subtask.output = 'Writing systemd service unit...';
         const serviceUnit = generateServiceUnit({ installDir, configDir });
-        await writeFile(
-          '/etc/systemd/system/portlama-panel.service',
-          serviceUnit,
-        );
+        await writeFile('/etc/systemd/system/portlama-panel.service', serviceUnit);
 
         subtask.output = 'Writing sudoers rules...';
         const sudoersContent = generateSudoersContent();
@@ -220,10 +208,7 @@ export function redeployTasks(ctx, task) {
         subtask.output = 'Waiting for service to start...';
         await sleep(3000);
 
-        const { stdout: status } = await execa('systemctl', [
-          'is-active',
-          'portlama-panel',
-        ]);
+        const { stdout: status } = await execa('systemctl', ['is-active', 'portlama-panel']);
         if (status.trim() !== 'active') {
           const { stdout: logs } = await execa('journalctl', [
             '-u',
@@ -254,9 +239,7 @@ export function redeployTasks(ctx, task) {
             '-n',
             '20',
           ]);
-          throw new Error(
-            `Panel health check failed.\nRecent logs:\n${logs}\n${error.message}`,
-          );
+          throw new Error(`Panel health check failed.\nRecent logs:\n${logs}\n${error.message}`);
         }
       },
       rendererOptions: { persistentOutput: true },

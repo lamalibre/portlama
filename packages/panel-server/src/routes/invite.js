@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { readInvitations, writeInvitations } from '../lib/state.js';
-import { createUserFromInvitation, hashPassword, readUsersRaw, generateTotpSecret, writeTotpToDatabase } from '../lib/authelia.js';
+import {
+  createUserFromInvitation,
+  hashPassword,
+  readUsersRaw,
+  generateTotpSecret,
+  writeTotpToDatabase,
+} from '../lib/authelia.js';
 import { getConfig } from '../lib/config.js';
 
 const AcceptInvitationSchema = z.object({

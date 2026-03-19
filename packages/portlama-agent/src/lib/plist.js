@@ -15,18 +15,9 @@ import { CHISEL_BIN_PATH, LOG_FILE, ERROR_LOG_FILE, PLIST_PATH } from './platfor
  */
 export function rewritePlist(xml) {
   let result = xml;
-  result = result.replace(
-    /\/usr\/local\/bin\/chisel/g,
-    CHISEL_BIN_PATH,
-  );
-  result = result.replace(
-    /\/usr\/local\/var\/log\/chisel\.log/g,
-    LOG_FILE,
-  );
-  result = result.replace(
-    /\/usr\/local\/var\/log\/chisel\.error\.log/g,
-    ERROR_LOG_FILE,
-  );
+  result = result.replace(/\/usr\/local\/bin\/chisel/g, CHISEL_BIN_PATH);
+  result = result.replace(/\/usr\/local\/var\/log\/chisel\.log/g, LOG_FILE);
+  result = result.replace(/\/usr\/local\/var\/log\/chisel\.error\.log/g, ERROR_LOG_FILE);
   return result;
 }
 

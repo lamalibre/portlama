@@ -35,7 +35,9 @@ export async function runStatus() {
   const loaded = await isAgentLoaded();
   const pid = await getAgentPid();
 
-  console.log(`  ${b('Agent:')}     ${loaded ? g('loaded') : r('not loaded')}${pid ? ` (PID ${pid})` : ''}`);
+  console.log(
+    `  ${b('Agent:')}     ${loaded ? g('loaded') : r('not loaded')}${pid ? ` (PID ${pid})` : ''}`,
+  );
   console.log(`  ${b('Panel:')}     ${c(config.panelUrl)}`);
 
   if (config.domain) {
@@ -45,7 +47,9 @@ export async function runStatus() {
   // Chisel
   const chiselVersion = await getInstalledVersion();
   const chiselInstalled = existsSync(CHISEL_BIN_PATH);
-  console.log(`  ${b('Chisel:')}    ${chiselInstalled ? g(chiselVersion || 'installed') : r('not installed')}`);
+  console.log(
+    `  ${b('Chisel:')}    ${chiselInstalled ? g(chiselVersion || 'installed') : r('not installed')}`,
+  );
 
   // Files
   console.log(`  ${b('Plist:')}     ${existsSync(PLIST_PATH) ? g('present') : y('missing')}`);
@@ -72,7 +76,9 @@ export async function runStatus() {
       console.log(`  ${d('No tunnels configured.')}`);
     } else {
       for (const t of tunnels) {
-        console.log(`  ${c('•')} ${b(t.subdomain)}.${config.domain || '?'} → localhost:${t.port}${t.description ? d(` (${t.description})`) : ''}`);
+        console.log(
+          `  ${c('•')} ${b(t.subdomain)}.${config.domain || '?'} → localhost:${t.port}${t.description ? d(` (${t.description})`) : ''}`,
+        );
       }
     }
   } catch {

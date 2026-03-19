@@ -160,13 +160,13 @@ Host static websites directly on the Portlama server, served via nginx.
 
 ### Tunnel Management
 
-| Method | Path                     | Description                                    | Roles |
-| ------ | ------------------------ | ---------------------------------------------- | ----- |
-| GET    | `/api/tunnels`           | List all tunnels                               | admin, agent (`tunnels:read`) |
+| Method | Path                     | Description                                    | Roles                          |
+| ------ | ------------------------ | ---------------------------------------------- | ------------------------------ |
+| GET    | `/api/tunnels`           | List all tunnels                               | admin, agent (`tunnels:read`)  |
 | POST   | `/api/tunnels`           | Add tunnel (triggers nginx + certbot + chisel) | admin, agent (`tunnels:write`) |
 | PATCH  | `/api/tunnels/:id`       | Toggle tunnel enabled/disabled                 | admin, agent (`tunnels:write`) |
 | DELETE | `/api/tunnels/:id`       | Remove tunnel                                  | admin, agent (`tunnels:write`) |
-| GET    | `/api/tunnels/mac-plist` | Download Mac launchd plist                     | admin, agent (`tunnels:read`) |
+| GET    | `/api/tunnels/mac-plist` | Download Mac launchd plist                     | admin, agent (`tunnels:read`)  |
 
 ### User Management
 
@@ -180,62 +180,62 @@ Host static websites directly on the Portlama server, served via nginx.
 
 ### Certificate Management
 
-| Method | Path                              | Description                          |
-| ------ | --------------------------------- | ------------------------------------ |
-| GET    | `/api/certs`                      | List all certs with expiry           |
-| GET    | `/api/certs/auto-renew-status`    | Certbot auto-renewal timer status    |
-| POST   | `/api/certs/:domain/renew`        | Force certbot renewal                |
-| POST   | `/api/certs/mtls/rotate`          | Generate new admin client cert + p12 |
-| GET    | `/api/certs/mtls/download`        | Download admin client.p12            |
-| POST   | `/api/certs/agent`                | Generate agent-scoped certificate    |
-| GET    | `/api/certs/agent`                | List agent certificates              |
-| GET    | `/api/certs/agent/:label/download`| Download agent .p12                  |
-| PATCH  | `/api/certs/agent/:label/capabilities` | Update agent capabilities       |
-| PATCH  | `/api/certs/agent/:label/allowed-sites` | Update agent site access      |
-| DELETE | `/api/certs/agent/:label`         | Revoke agent certificate             |
+| Method | Path                                    | Description                          |
+| ------ | --------------------------------------- | ------------------------------------ |
+| GET    | `/api/certs`                            | List all certs with expiry           |
+| GET    | `/api/certs/auto-renew-status`          | Certbot auto-renewal timer status    |
+| POST   | `/api/certs/:domain/renew`              | Force certbot renewal                |
+| POST   | `/api/certs/mtls/rotate`                | Generate new admin client cert + p12 |
+| GET    | `/api/certs/mtls/download`              | Download admin client.p12            |
+| POST   | `/api/certs/agent`                      | Generate agent-scoped certificate    |
+| GET    | `/api/certs/agent`                      | List agent certificates              |
+| GET    | `/api/certs/agent/:label/download`      | Download agent .p12                  |
+| PATCH  | `/api/certs/agent/:label/capabilities`  | Update agent capabilities            |
+| PATCH  | `/api/certs/agent/:label/allowed-sites` | Update agent site access             |
+| DELETE | `/api/certs/agent/:label`               | Revoke agent certificate             |
 
 ### Service Management
 
-| Method | Path                          | Description                | Roles |
-| ------ | ----------------------------- | -------------------------- | ----- |
-| GET    | `/api/services`               | List service statuses      | admin, agent (`services:read`) |
+| Method | Path                          | Description                       | Roles                           |
+| ------ | ----------------------------- | --------------------------------- | ------------------------------- |
+| GET    | `/api/services`               | List service statuses             | admin, agent (`services:read`)  |
 | POST   | `/api/services/:name/:action` | start/stop/restart/reload service | admin, agent (`services:write`) |
-| GET    | `/api/services/:name/logs`    | WebSocket log stream       | admin only |
+| GET    | `/api/services/:name/logs`    | WebSocket log stream              | admin only                      |
 
 ### Invitation Management
 
-| Method | Path                     | Description                           | Roles |
-| ------ | ------------------------ | ------------------------------------- | ----- |
-| GET    | `/api/invitations`       | List all invitations (tokens redacted)| admin |
-| POST   | `/api/invitations`       | Create a new invitation               | admin |
-| DELETE | `/api/invitations/:id`   | Revoke an invitation                  | admin |
+| Method | Path                   | Description                            | Roles |
+| ------ | ---------------------- | -------------------------------------- | ----- |
+| GET    | `/api/invitations`     | List all invitations (tokens redacted) | admin |
+| POST   | `/api/invitations`     | Create a new invitation                | admin |
+| DELETE | `/api/invitations/:id` | Revoke an invitation                   | admin |
 
 **Public invite routes** (no mTLS required):
 
-| Method | Path                          | Description                          |
-| ------ | ----------------------------- | ------------------------------------ |
-| GET    | `/api/invite/:token`          | Get invitation details               |
-| POST   | `/api/invite/:token/accept`   | Accept invitation and set password   |
+| Method | Path                        | Description                        |
+| ------ | --------------------------- | ---------------------------------- |
+| GET    | `/api/invite/:token`        | Get invitation details             |
+| POST   | `/api/invite/:token/accept` | Accept invitation and set password |
 
 ### Static Sites Management
 
-| Method | Path                          | Description                          | Roles |
-| ------ | ----------------------------- | ------------------------------------ | ----- |
-| GET    | `/api/sites`                  | List all static sites                | admin, agent (`sites:read`) |
-| POST   | `/api/sites`                  | Create a static site                 | admin |
-| DELETE | `/api/sites/:id`              | Delete a static site                 | admin |
-| PATCH  | `/api/sites/:id`              | Update site settings                 | admin |
-| POST   | `/api/sites/:id/verify-dns`   | Verify DNS for custom domain site    | admin |
-| GET    | `/api/sites/:id/files`        | List files in site directory         | admin, agent (`sites:read`) |
-| POST   | `/api/sites/:id/files`        | Upload files (multipart)             | admin, agent (`sites:write`) |
-| DELETE | `/api/sites/:id/files`        | Delete a file from site directory    | admin, agent (`sites:write`) |
+| Method | Path                        | Description                       | Roles                        |
+| ------ | --------------------------- | --------------------------------- | ---------------------------- |
+| GET    | `/api/sites`                | List all static sites             | admin, agent (`sites:read`)  |
+| POST   | `/api/sites`                | Create a static site              | admin                        |
+| DELETE | `/api/sites/:id`            | Delete a static site              | admin                        |
+| PATCH  | `/api/sites/:id`            | Update site settings              | admin                        |
+| POST   | `/api/sites/:id/verify-dns` | Verify DNS for custom domain site | admin                        |
+| GET    | `/api/sites/:id/files`      | List files in site directory      | admin, agent (`sites:read`)  |
+| POST   | `/api/sites/:id/files`      | Upload files (multipart)          | admin, agent (`sites:write`) |
+| DELETE | `/api/sites/:id/files`      | Delete a file from site directory | admin, agent (`sites:write`) |
 
 ### System
 
-| Method | Path                | Description          | Roles |
-| ------ | ------------------- | -------------------- | ----- |
+| Method | Path                | Description          | Roles                        |
+| ------ | ------------------- | -------------------- | ---------------------------- |
 | GET    | `/api/system/stats` | CPU, RAM, disk usage | admin, agent (`system:read`) |
-| GET    | `/api/health`       | Panel health check   | admin, agent (all) |
+| GET    | `/api/health`       | Panel health check   | admin, agent (all)           |
 
 ## Sudoers Rules
 

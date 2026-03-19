@@ -8,12 +8,15 @@ import { execa } from 'execa';
  */
 function certArgs(p12Path, p12Password) {
   return [
-    '--cert-type', 'P12',
-    '--cert', `${p12Path}:${p12Password}`,
+    '--cert-type',
+    'P12',
+    '--cert',
+    `${p12Path}:${p12Password}`,
     '-k', // accept self-signed server cert
     '-s', // silent
     '-f', // fail on HTTP errors
-    '--max-time', '30',
+    '--max-time',
+    '30',
   ];
 }
 
@@ -27,10 +30,7 @@ function certArgs(p12Path, p12Password) {
 export async function fetchHealth(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/health`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      url,
-    ]);
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -51,16 +51,10 @@ export async function fetchHealth(panelUrl, p12Path, p12Password) {
 export async function fetchPlist(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/tunnels/mac-plist?format=json`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      url,
-    ]);
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
     return JSON.parse(stdout);
   } catch (err) {
-    throw new Error(
-      `Failed to fetch plist from panel. ` +
-        `Details: ${err.stderr || err.message}`,
-    );
+    throw new Error(`Failed to fetch plist from panel. ` + `Details: ${err.stderr || err.message}`);
   }
 }
 
@@ -74,15 +68,11 @@ export async function fetchPlist(panelUrl, p12Path, p12Password) {
 export async function fetchTunnels(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/tunnels`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      url,
-    ]);
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
-      `Failed to fetch tunnels from panel. ` +
-        `Details: ${err.stderr || err.message}`,
+      `Failed to fetch tunnels from panel. ` + `Details: ${err.stderr || err.message}`,
     );
   }
 }
@@ -97,16 +87,10 @@ export async function fetchTunnels(panelUrl, p12Path, p12Password) {
 export async function fetchSites(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/sites`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      url,
-    ]);
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
     return JSON.parse(stdout);
   } catch (err) {
-    throw new Error(
-      `Failed to fetch sites from panel. ` +
-        `Details: ${err.stderr || err.message}`,
-    );
+    throw new Error(`Failed to fetch sites from panel. ` + `Details: ${err.stderr || err.message}`);
   }
 }
 
@@ -123,17 +107,17 @@ export async function createSite(panelUrl, p12Path, p12Password, body) {
   try {
     const { stdout } = await execa('curl', [
       ...certArgs(p12Path, p12Password),
-      '-X', 'POST',
-      '-H', 'Content-Type: application/json',
-      '-d', JSON.stringify(body),
+      '-X',
+      'POST',
+      '-H',
+      'Content-Type: application/json',
+      '-d',
+      JSON.stringify(body),
       url,
     ]);
     return JSON.parse(stdout);
   } catch (err) {
-    throw new Error(
-      `Failed to create site on panel. ` +
-        `Details: ${err.stderr || err.message}`,
-    );
+    throw new Error(`Failed to create site on panel. ` + `Details: ${err.stderr || err.message}`);
   }
 }
 
@@ -150,15 +134,13 @@ export async function deleteSite(panelUrl, p12Path, p12Password, siteId) {
   try {
     const { stdout } = await execa('curl', [
       ...certArgs(p12Path, p12Password),
-      '-X', 'DELETE',
+      '-X',
+      'DELETE',
       url,
     ]);
     return JSON.parse(stdout);
   } catch (err) {
-    throw new Error(
-      `Failed to delete site from panel. ` +
-        `Details: ${err.stderr || err.message}`,
-    );
+    throw new Error(`Failed to delete site from panel. ` + `Details: ${err.stderr || err.message}`);
   }
 }
 
@@ -174,15 +156,11 @@ export async function deleteSite(panelUrl, p12Path, p12Password, siteId) {
 export async function fetchSiteFiles(panelUrl, p12Path, p12Password, siteId, dirPath = '.') {
   const url = `${panelUrl}/api/sites/${encodeURIComponent(siteId)}/files?path=${encodeURIComponent(dirPath)}`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      url,
-    ]);
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
-      `Failed to fetch site files from panel. ` +
-        `Details: ${err.stderr || err.message}`,
+      `Failed to fetch site files from panel. ` + `Details: ${err.stderr || err.message}`,
     );
   }
 }
@@ -197,22 +175,27 @@ export async function fetchSiteFiles(panelUrl, p12Path, p12Password, siteId, dir
  * @param {string[]} localFilePaths - Array of absolute local file paths
  * @returns {Promise<object>}
  */
-export async function uploadSiteFiles(panelUrl, p12Path, p12Password, siteId, dirPath, localFilePaths) {
+export async function uploadSiteFiles(
+  panelUrl,
+  p12Path,
+  p12Password,
+  siteId,
+  dirPath,
+  localFilePaths,
+) {
   const url = `${panelUrl}/api/sites/${encodeURIComponent(siteId)}/files?path=${encodeURIComponent(dirPath)}`;
   const fileArgs = localFilePaths.flatMap((fp) => ['-F', `file=@${fp}`]);
   try {
     const { stdout } = await execa('curl', [
       ...certArgs(p12Path, p12Password),
-      '-X', 'POST',
+      '-X',
+      'POST',
       ...fileArgs,
       url,
     ]);
     return JSON.parse(stdout);
   } catch (err) {
-    throw new Error(
-      `Failed to upload files to site. ` +
-        `Details: ${err.stderr || err.message}`,
-    );
+    throw new Error(`Failed to upload files to site. ` + `Details: ${err.stderr || err.message}`);
   }
 }
 
@@ -230,16 +213,18 @@ export async function deleteSiteFile(panelUrl, p12Path, p12Password, siteId, fil
   try {
     const { stdout } = await execa('curl', [
       ...certArgs(p12Path, p12Password),
-      '-X', 'DELETE',
-      '-H', 'Content-Type: application/json',
-      '-d', JSON.stringify({ path: filePath }),
+      '-X',
+      'DELETE',
+      '-H',
+      'Content-Type: application/json',
+      '-d',
+      JSON.stringify({ path: filePath }),
       url,
     ]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
-      `Failed to delete site file from panel. ` +
-        `Details: ${err.stderr || err.message}`,
+      `Failed to delete site file from panel. ` + `Details: ${err.stderr || err.message}`,
     );
   }
 }

@@ -72,27 +72,27 @@ These three pieces interact through a clear lifecycle: the installer creates the
 
 ## Component Roles
 
-| Component | Binary / Process | Role |
-|-----------|-----------------|------|
-| **nginx** | `nginx` (system package) | Only public-facing service. TLS termination, mTLS enforcement, reverse proxy, forward auth |
-| **Panel Server** | `node src/index.js` (Fastify 5) | REST API + WebSocket backend for all management operations |
-| **Panel Client** | Static files (React SPA) | Browser-based UI served by Panel Server via `@fastify/static` |
-| **Chisel Server** | `/usr/local/bin/chisel` | WebSocket tunnel server accepting reverse connections from clients |
-| **Chisel Client** | `/usr/local/bin/chisel` (on Mac) | Connects outbound to VPS, exposes local ports via reverse tunneling |
-| **Authelia** | `/usr/local/bin/authelia` | TOTP two-factor authentication for tunneled apps via nginx forward auth |
-| **certbot** | `certbot` (system package) | Issues and auto-renews Let's Encrypt TLS certificates |
-| **fail2ban** | `fail2ban` (system package) | Rate-limits brute-force attempts on SSH and nginx |
+| Component         | Binary / Process                 | Role                                                                                       |
+| ----------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| **nginx**         | `nginx` (system package)         | Only public-facing service. TLS termination, mTLS enforcement, reverse proxy, forward auth |
+| **Panel Server**  | `node src/index.js` (Fastify 5)  | REST API + WebSocket backend for all management operations                                 |
+| **Panel Client**  | Static files (React SPA)         | Browser-based UI served by Panel Server via `@fastify/static`                              |
+| **Chisel Server** | `/usr/local/bin/chisel`          | WebSocket tunnel server accepting reverse connections from clients                         |
+| **Chisel Client** | `/usr/local/bin/chisel` (on Mac) | Connects outbound to VPS, exposes local ports via reverse tunneling                        |
+| **Authelia**      | `/usr/local/bin/authelia`        | TOTP two-factor authentication for tunneled apps via nginx forward auth                    |
+| **certbot**       | `certbot` (system package)       | Issues and auto-renews Let's Encrypt TLS certificates                                      |
+| **fail2ban**      | `fail2ban` (system package)      | Rate-limits brute-force attempts on SSH and nginx                                          |
 
 ## Port Allocation
 
-| Port | Listener | Protocol | Exposure | Purpose |
-|------|----------|----------|----------|---------|
-| `22` | sshd | TCP | Public (UFW) | SSH access (key-only after hardening) |
-| `443` | nginx | TCP | Public (UFW) | All domain-based HTTPS traffic |
-| `9292` | nginx | TCP | Public (UFW) | IP-based admin panel access (mTLS) |
-| `3100` | Panel Server | TCP | Loopback only | Fastify API + static file serving |
-| `9090` | Chisel Server | TCP | Loopback only | WebSocket tunnel endpoint |
-| `9091` | Authelia | TCP | Loopback only | Authentication portal + forward auth API |
+| Port   | Listener      | Protocol | Exposure      | Purpose                                  |
+| ------ | ------------- | -------- | ------------- | ---------------------------------------- |
+| `22`   | sshd          | TCP      | Public (UFW)  | SSH access (key-only after hardening)    |
+| `443`  | nginx         | TCP      | Public (UFW)  | All domain-based HTTPS traffic           |
+| `9292` | nginx         | TCP      | Public (UFW)  | IP-based admin panel access (mTLS)       |
+| `3100` | Panel Server  | TCP      | Loopback only | Fastify API + static file serving        |
+| `9090` | Chisel Server | TCP      | Loopback only | WebSocket tunnel endpoint                |
+| `9091` | Authelia      | TCP      | Loopback only | Authentication portal + forward auth API |
 
 All backend services (Panel Server, Chisel, Authelia) bind exclusively to `127.0.0.1`. nginx is the only process listening on public interfaces.
 
@@ -100,16 +100,16 @@ All backend services (Panel Server, Chisel, Authelia) bind exclusively to `127.0
 
 The platform is designed to run on the cheapest possible VPS. Every technology choice was made with this constraint in mind.
 
-| Component | Approximate RAM | Notes |
-|-----------|----------------|-------|
-| Ubuntu 24.04 baseline | ~120 MB | Systemd, kernel, base services |
-| nginx | ~15 MB | Efficient C-based reverse proxy |
-| Authelia | ~25 MB | Go binary, **must use bcrypt** (not argon2id) |
-| Chisel Server | ~20 MB | Go binary, lightweight |
-| Panel Server (Node.js) | ~30 MB | Fastify is one of the leanest Node.js frameworks |
-| fail2ban | ~35 MB | Python-based, runs as daemon |
-| **Total** | **~245 MB** | |
-| **Headroom** | **~265 MB** | Plus 1 GB swap as safety net |
+| Component              | Approximate RAM | Notes                                            |
+| ---------------------- | --------------- | ------------------------------------------------ |
+| Ubuntu 24.04 baseline  | ~120 MB         | Systemd, kernel, base services                   |
+| nginx                  | ~15 MB          | Efficient C-based reverse proxy                  |
+| Authelia               | ~25 MB          | Go binary, **must use bcrypt** (not argon2id)    |
+| Chisel Server          | ~20 MB          | Go binary, lightweight                           |
+| Panel Server (Node.js) | ~30 MB          | Fastify is one of the leanest Node.js frameworks |
+| fail2ban               | ~35 MB          | Python-based, runs as daemon                     |
+| **Total**              | **~245 MB**     |                                                  |
+| **Headroom**           | **~265 MB**     | Plus 1 GB swap as safety net                     |
 
 Authelia is configured with bcrypt (cost factor 12) instead of argon2id. argon2id uses ~93 MB per hash operation and causes OOM kills on 512 MB droplets. This is a hard constraint documented in Authelia's configuration at `packages/panel-server/src/lib/authelia.js`.
 
@@ -404,20 +404,20 @@ Phase 4: Recovery (if needed)
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `/etc/portlama/panel.json` | Central configuration (IP, domain, onboarding state) |
-| `/etc/portlama/tunnels.json` | Tunnel definitions |
-| `/etc/portlama/sites.json` | Static site definitions |
-| `/etc/portlama/pki/` | mTLS certificates (CA, client, server, PKCS12) |
-| `/opt/portlama/panel-server/` | Deployed Panel Server code |
-| `/opt/portlama/panel-client/dist/` | Built Panel Client SPA |
-| `/var/www/portlama/` | Static site file roots |
-| `/etc/nginx/sites-available/portlama-*` | nginx vhost configurations |
-| `/etc/nginx/snippets/portlama-mtls.conf` | Shared mTLS snippet |
-| `/etc/authelia/configuration.yml` | Authelia main config |
-| `/etc/authelia/users.yml` | Authelia user database |
-| `/etc/systemd/system/portlama-panel.service` | Panel Server systemd unit |
-| `/etc/systemd/system/chisel.service` | Chisel Server systemd unit |
-| `/etc/systemd/system/authelia.service` | Authelia systemd unit |
-| `/etc/sudoers.d/portlama` | Scoped sudo rules for portlama user |
+| File                                         | Role                                                 |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `/etc/portlama/panel.json`                   | Central configuration (IP, domain, onboarding state) |
+| `/etc/portlama/tunnels.json`                 | Tunnel definitions                                   |
+| `/etc/portlama/sites.json`                   | Static site definitions                              |
+| `/etc/portlama/pki/`                         | mTLS certificates (CA, client, server, PKCS12)       |
+| `/opt/portlama/panel-server/`                | Deployed Panel Server code                           |
+| `/opt/portlama/panel-client/dist/`           | Built Panel Client SPA                               |
+| `/var/www/portlama/`                         | Static site file roots                               |
+| `/etc/nginx/sites-available/portlama-*`      | nginx vhost configurations                           |
+| `/etc/nginx/snippets/portlama-mtls.conf`     | Shared mTLS snippet                                  |
+| `/etc/authelia/configuration.yml`            | Authelia main config                                 |
+| `/etc/authelia/users.yml`                    | Authelia user database                               |
+| `/etc/systemd/system/portlama-panel.service` | Panel Server systemd unit                            |
+| `/etc/systemd/system/chisel.service`         | Chisel Server systemd unit                           |
+| `/etc/systemd/system/authelia.service`       | Authelia systemd unit                                |
+| `/etc/sudoers.d/portlama`                    | Scoped sudo rules for portlama user                  |

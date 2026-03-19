@@ -58,10 +58,12 @@ The server entry point follows a straightforward initialization sequence:
 ```
 
 **Route registration contexts:** The server separates routes into two Fastify encapsulated contexts:
+
 - **`publicContext`** — registers invite routes (`/api/invite/*`) without mTLS middleware, allowing unauthenticated users to accept invitations
 - **`protectedContext`** — registers mTLS middleware, role-guard, and all other routes (health, onboarding, management), requiring a valid client certificate
 
 **Static file serving** resolves the panel-client `dist/` directory through a fallback chain:
+
 - `config.staticDir` if set in `panel.json` (production: `/opt/portlama/panel-client/dist`)
 - `../../panel-client/dist` relative to server source (development)
 - `config.dataDir/panel-client/dist` as final fallback
@@ -75,6 +77,7 @@ The server entry point follows a straightforward initialization sequence:
 Registered as a global `onRequest` hook that runs on every request before route handlers.
 
 **Production behavior:**
+
 - Reads the `X-SSL-Client-Verify` header set by nginx
 - If the value is not `SUCCESS`, returns `403 { error: "mTLS certificate required" }`
 - Checks the certificate serial (`X-SSL-Client-Serial` header) against `revoked.json` via `isRevoked()` — if revoked, returns `403 { error: "Certificate has been revoked" }`
@@ -83,11 +86,13 @@ Registered as a global `onRequest` hook that runs on every request before route 
 - Otherwise, sets `request.certRole = 'admin'`
 
 **Development behavior:**
+
 - When `NODE_ENV` is `development` (or unset), the check is bypassed
 - Logs a warning on the first bypassed request
 - Sets `request.certRole = 'admin'` by default
 
 **Health check bypass:**
+
 - `GET /api/health` always bypasses mTLS verification (used by systemd, load balancers, and internal provisioning checks)
 
 In production, nginx's `ssl_verify_client on` directive rejects connections without a valid client certificate at the TLS level, before any HTTP request reaches the server. The middleware is a defense-in-depth measure that also performs revocation checking and role extraction.
@@ -97,10 +102,12 @@ In production, nginx's `ssl_verify_client on` directive rejects connections with
 Two hook factories that enforce route access based on `config.onboarding.status`:
 
 **`onboardingOnly()`** — applied to `/api/onboarding/*` (except `/status`):
+
 - If status is `COMPLETED`, returns `410 Gone`
 - Otherwise, allows the request
 
 **`managementOnly()`** — applied to all `/api/*` management routes:
+
 - If status is not `COMPLETED`, returns `503 { error: "Onboarding not complete", onboardingStatus }`
 - Otherwise, allows the request
 
@@ -111,11 +118,13 @@ The `/api/onboarding/status` endpoint is deliberately unguarded — the panel cl
 Registered as a Fastify plugin that decorates the server with a `requireRole(allowedRoles, opts)` function. This returns a `preHandler` hook used on individual routes to enforce role-based access control.
 
 **Usage patterns:**
+
 - `fastify.requireRole(['admin'])` — admin-only routes
 - `fastify.requireRole(['admin', 'agent'])` — admin or any agent
 - `fastify.requireRole(['admin', 'agent'], { capability: 'tunnels:write' })` — admin or agents with a specific capability
 
 **Behavior:**
+
 - Admin role always passes without capability checks
 - If the request's `certRole` is not in the allowed list, returns `403 { error: "Insufficient certificate scope" }`
 - If a capability is required and the agent lacks it, returns `403 { error: "Insufficient certificate capability" }`
@@ -127,18 +136,18 @@ Registered as the global Fastify error handler. Normalizes all errors into a con
 ```json
 {
   "error": "Human-readable error summary",
-  "details": { }
+  "details": {}
 }
 ```
 
 Error type resolution order:
 
-| Error Type | Detection | Response |
-|------------|-----------|----------|
-| Zod validation | `error.name === 'ZodError'` or `Array.isArray(error.issues)` | `400` with issue paths and messages |
-| Operational (AppError) | `error.isOperational === true` | Custom `statusCode` from error |
-| Fastify built-in | `error.statusCode` in 400-499 | Pass through status and message |
-| Unexpected | Everything else | `500 { error: "Internal server error" }` |
+| Error Type             | Detection                                                    | Response                                 |
+| ---------------------- | ------------------------------------------------------------ | ---------------------------------------- |
+| Zod validation         | `error.name === 'ZodError'` or `Array.isArray(error.issues)` | `400` with issue paths and messages      |
+| Operational (AppError) | `error.isOperational === true`                               | Custom `statusCode` from error           |
+| Fastify built-in       | `error.statusCode` in 400-499                                | Pass through status and message          |
+| Unexpected             | Everything else                                              | `500 { error: "Internal server error" }` |
 
 In development mode, unexpected errors include `details.message` and `details.stack`. In production, no internal details are leaked.
 
@@ -233,6 +242,7 @@ export default async function onboardingRoutes(fastify, _opts) {
 ```
 
 **Provisioning** is the most complex onboarding route. It uses a background task pattern:
+
 1. `POST /provision` validates the onboarding state, starts the provisioning function asynchronously, and returns `202 Accepted`
 2. `WS /provision/stream` connects clients to a real-time progress feed via an `EventEmitter`
 3. The provisioning function emits progress events as it installs Chisel, Authelia, issues certificates, configures nginx, and verifies services
@@ -285,6 +295,7 @@ Config schema:
 ```
 
 Config path resolution:
+
 1. `PORTLAMA_CONFIG` environment variable (if set)
 2. `dev/panel.json` relative to package root (if `NODE_ENV` is `development`)
 3. `/etc/portlama/panel.json` (production default)
@@ -301,6 +312,7 @@ writeSites()   → void              (atomic: tmp → fsync → rename)
 ```
 
 The atomic write pattern:
+
 1. `writeFile` to `<path>.tmp`
 2. Open the temp file and call `fd.sync()` to flush to disk
 3. `rename` temp to final path (atomic on POSIX filesystems)
@@ -418,32 +430,32 @@ const shutdown = async (signal) => {
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `packages/panel-server/src/index.js` | Server entry, plugin + route registration |
-| `packages/panel-server/src/middleware/mtls.js` | mTLS verification, revocation check, role parsing |
-| `packages/panel-server/src/middleware/role-guard.js` | Role-based access control (admin vs agent capabilities) |
-| `packages/panel-server/src/middleware/onboarding-guard.js` | Route access control by onboarding state |
-| `packages/panel-server/src/middleware/errors.js` | Global error handler (Zod, AppError, 500) |
-| `packages/panel-server/src/routes/onboarding/index.js` | Onboarding route registration + guard |
-| `packages/panel-server/src/routes/onboarding/provision.js` | Provisioning POST + WebSocket stream |
-| `packages/panel-server/src/routes/invite.js` | Public invite acceptance routes (no mTLS) |
-| `packages/panel-server/src/routes/management.js` | Management route registration + guard |
-| `packages/panel-server/src/routes/management/invitations.js` | Invitation CRUD (admin-only) |
-| `packages/panel-server/src/lib/config.js` | Config loading, validation (Zod), atomic update |
-| `packages/panel-server/src/lib/state.js` | tunnels.json + sites.json + invitations.json atomic read/write |
-| `packages/panel-server/src/lib/revocation.js` | Certificate revocation list management (revoked.json) |
-| `packages/panel-server/src/lib/invite-page.js` | Invitation acceptance HTML page generator |
-| `packages/panel-server/src/lib/nginx.js` | Vhost generation, write-with-rollback, reload |
-| `packages/panel-server/src/lib/chisel.js` | Chisel install, service management, config update |
-| `packages/panel-server/src/lib/authelia.js` | Authelia install, config, user CRUD, TOTP |
-| `packages/panel-server/src/lib/certbot.js` | Let's Encrypt issuance, renewal, listing |
-| `packages/panel-server/src/lib/mtls.js` | mTLS cert info, client cert rotation |
-| `packages/panel-server/src/lib/services.js` | systemctl wrapper with allowlists |
-| `packages/panel-server/src/lib/system-stats.js` | CPU, memory, disk stats (cached) |
-| `packages/panel-server/src/lib/files.js` | Static site file operations with path validation |
-| `packages/panel-server/src/lib/plist.js` | macOS launchd plist generator |
-| `packages/panel-server/src/lib/app-error.js` | Operational error class |
+| File                                                         | Role                                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------------- |
+| `packages/panel-server/src/index.js`                         | Server entry, plugin + route registration                      |
+| `packages/panel-server/src/middleware/mtls.js`               | mTLS verification, revocation check, role parsing              |
+| `packages/panel-server/src/middleware/role-guard.js`         | Role-based access control (admin vs agent capabilities)        |
+| `packages/panel-server/src/middleware/onboarding-guard.js`   | Route access control by onboarding state                       |
+| `packages/panel-server/src/middleware/errors.js`             | Global error handler (Zod, AppError, 500)                      |
+| `packages/panel-server/src/routes/onboarding/index.js`       | Onboarding route registration + guard                          |
+| `packages/panel-server/src/routes/onboarding/provision.js`   | Provisioning POST + WebSocket stream                           |
+| `packages/panel-server/src/routes/invite.js`                 | Public invite acceptance routes (no mTLS)                      |
+| `packages/panel-server/src/routes/management.js`             | Management route registration + guard                          |
+| `packages/panel-server/src/routes/management/invitations.js` | Invitation CRUD (admin-only)                                   |
+| `packages/panel-server/src/lib/config.js`                    | Config loading, validation (Zod), atomic update                |
+| `packages/panel-server/src/lib/state.js`                     | tunnels.json + sites.json + invitations.json atomic read/write |
+| `packages/panel-server/src/lib/revocation.js`                | Certificate revocation list management (revoked.json)          |
+| `packages/panel-server/src/lib/invite-page.js`               | Invitation acceptance HTML page generator                      |
+| `packages/panel-server/src/lib/nginx.js`                     | Vhost generation, write-with-rollback, reload                  |
+| `packages/panel-server/src/lib/chisel.js`                    | Chisel install, service management, config update              |
+| `packages/panel-server/src/lib/authelia.js`                  | Authelia install, config, user CRUD, TOTP                      |
+| `packages/panel-server/src/lib/certbot.js`                   | Let's Encrypt issuance, renewal, listing                       |
+| `packages/panel-server/src/lib/mtls.js`                      | mTLS cert info, client cert rotation                           |
+| `packages/panel-server/src/lib/services.js`                  | systemctl wrapper with allowlists                              |
+| `packages/panel-server/src/lib/system-stats.js`              | CPU, memory, disk stats (cached)                               |
+| `packages/panel-server/src/lib/files.js`                     | Static site file operations with path validation               |
+| `packages/panel-server/src/lib/plist.js`                     | macOS launchd plist generator                                  |
+| `packages/panel-server/src/lib/app-error.js`                 | Operational error class                                        |
 
 ## Design Decisions
 

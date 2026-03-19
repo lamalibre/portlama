@@ -229,21 +229,21 @@ sudo apt-get autoremove -y
 
 ### Summary Checklist
 
-| Step | Command | Required? |
-|------|---------|-----------|
-| 1. Stop services | `systemctl stop/disable` + remove unit files | Yes |
-| 2. Remove nginx config | `rm portlama-*` vhosts and snippet | Yes |
-| 3. Remove Portlama dirs | `rm -rf /etc/portlama/ /opt/portlama/ /var/www/portlama/` | Yes |
-| 4. Remove Authelia files | `rm -rf /etc/authelia/ /var/log/authelia/` | Yes |
-| 5. Remove binaries | `rm /usr/local/bin/chisel /usr/local/bin/authelia` | Yes |
-| 6. Remove user | `userdel -r portlama` | Yes |
-| 7. Remove sudoers | `rm /etc/sudoers.d/portlama` | Yes |
-| 8. Remove fail2ban config | `rm /etc/fail2ban/jail.d/portlama.conf` | Optional |
-| 9. Revert SSH hardening | Restore `sshd_config.pre-portlama` | Optional |
-| 10. Revert firewall | `ufw delete allow 9292/tcp` | Optional |
-| 11. Remove swap | `swapoff /swapfile && rm /swapfile` | Optional |
-| 12. Remove LE certs | `certbot delete --cert-name <domain>` | Optional |
-| 13. Remove packages | `apt-get remove nginx certbot fail2ban` | Optional |
+| Step                      | Command                                                   | Required? |
+| ------------------------- | --------------------------------------------------------- | --------- |
+| 1. Stop services          | `systemctl stop/disable` + remove unit files              | Yes       |
+| 2. Remove nginx config    | `rm portlama-*` vhosts and snippet                        | Yes       |
+| 3. Remove Portlama dirs   | `rm -rf /etc/portlama/ /opt/portlama/ /var/www/portlama/` | Yes       |
+| 4. Remove Authelia files  | `rm -rf /etc/authelia/ /var/log/authelia/`                | Yes       |
+| 5. Remove binaries        | `rm /usr/local/bin/chisel /usr/local/bin/authelia`        | Yes       |
+| 6. Remove user            | `userdel -r portlama`                                     | Yes       |
+| 7. Remove sudoers         | `rm /etc/sudoers.d/portlama`                              | Yes       |
+| 8. Remove fail2ban config | `rm /etc/fail2ban/jail.d/portlama.conf`                   | Optional  |
+| 9. Revert SSH hardening   | Restore `sshd_config.pre-portlama`                        | Optional  |
+| 10. Revert firewall       | `ufw delete allow 9292/tcp`                               | Optional  |
+| 11. Remove swap           | `swapoff /swapfile && rm /swapfile`                       | Optional  |
+| 12. Remove LE certs       | `certbot delete --cert-name <domain>`                     | Optional  |
+| 13. Remove packages       | `apt-get remove nginx certbot fail2ban`                   | Optional  |
 
 ## For Developers
 
@@ -252,11 +252,13 @@ sudo apt-get autoremove -y
 For reference, here is a complete list of everything the installer and onboarding provisioning create on the system:
 
 **Systemd services:**
+
 - `/etc/systemd/system/portlama-panel.service`
 - `/etc/systemd/system/chisel.service`
 - `/etc/systemd/system/authelia.service`
 
 **Directories:**
+
 - `/etc/portlama/` (config, state)
 - `/etc/portlama/pki/` (certificates)
 - `/opt/portlama/` (panel server and client)
@@ -267,10 +269,12 @@ For reference, here is a complete list of everything the installer and onboardin
 - `/var/log/authelia/` (auth logs)
 
 **Binaries:**
+
 - `/usr/local/bin/chisel`
 - `/usr/local/bin/authelia`
 
 **nginx files:**
+
 - `/etc/nginx/sites-available/portlama-panel-ip`
 - `/etc/nginx/sites-available/portlama-panel-domain`
 - `/etc/nginx/sites-available/portlama-auth`
@@ -281,6 +285,7 @@ For reference, here is a complete list of everything the installer and onboardin
 - `/etc/nginx/snippets/portlama-mtls.conf`
 
 **System configuration:**
+
 - `/etc/sudoers.d/portlama`
 - `/etc/fail2ban/jail.d/portlama.conf`
 - `/etc/ssh/sshd_config.pre-portlama` (backup only)
@@ -288,6 +293,7 @@ For reference, here is a complete list of everything the installer and onboardin
 - `/swapfile` (and entry in `/etc/fstab`)
 
 **System user:**
+
 - `portlama` (system user, no login shell)
 
 ## Quick Reference

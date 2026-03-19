@@ -17,8 +17,7 @@ import { generatePassword } from '../lib/secrets.js';
  */
 export function mtlsTasks(ctx, task) {
   const pkiDir = ctx.pkiDir;
-  const alreadyProvisioned =
-    existsSync(`${pkiDir}/ca.key`) && existsSync(`${pkiDir}/client.p12`);
+  const alreadyProvisioned = existsSync(`${pkiDir}/ca.key`) && existsSync(`${pkiDir}/client.p12`);
 
   if (alreadyProvisioned) {
     return task.newListr([
@@ -26,10 +25,7 @@ export function mtlsTasks(ctx, task) {
         title: 'mTLS certificates already exist — skipping generation',
         task: async () => {
           // Read the existing p12 password so the summary can display it.
-          ctx.p12Password = await readFile(
-            `${pkiDir}/.p12-password`,
-            'utf8',
-          );
+          ctx.p12Password = await readFile(`${pkiDir}/.p12-password`, 'utf8');
         },
       },
     ]);
@@ -83,12 +79,7 @@ export function mtlsTasks(ctx, task) {
       title: 'Generating client key and CSR',
       task: async (_ctx, subtask) => {
         subtask.output = 'Generating 4096-bit RSA client key...';
-        await execa('openssl', [
-          'genrsa',
-          '-out',
-          `${pkiDir}/client.key`,
-          '4096',
-        ]);
+        await execa('openssl', ['genrsa', '-out', `${pkiDir}/client.key`, '4096']);
 
         subtask.output = 'Creating certificate signing request...';
         await execa('openssl', [
@@ -149,22 +140,30 @@ export function mtlsTasks(ctx, task) {
         const password = generatePassword();
 
         subtask.output = 'Creating PKCS12 bundle for browser import...';
-        await execa('openssl', [
-          'pkcs12',
-          '-export',
-          '-keypbe', 'PBE-SHA1-3DES',
-          '-certpbe', 'PBE-SHA1-3DES',
-          '-macalg', 'sha1',
-          '-out',
-          `${pkiDir}/client.p12`,
-          '-inkey',
-          `${pkiDir}/client.key`,
-          '-in',
-          `${pkiDir}/client.crt`,
-          '-certfile',
-          `${pkiDir}/ca.crt`,
-          '-passout', 'stdin',
-        ], { input: password });
+        await execa(
+          'openssl',
+          [
+            'pkcs12',
+            '-export',
+            '-keypbe',
+            'PBE-SHA1-3DES',
+            '-certpbe',
+            'PBE-SHA1-3DES',
+            '-macalg',
+            'sha1',
+            '-out',
+            `${pkiDir}/client.p12`,
+            '-inkey',
+            `${pkiDir}/client.key`,
+            '-in',
+            `${pkiDir}/client.crt`,
+            '-certfile',
+            `${pkiDir}/ca.crt`,
+            '-passout',
+            'stdin',
+          ],
+          { input: password },
+        );
 
         // Save password to file (no trailing newline)
         await writeFile(`${pkiDir}/.p12-password`, password, { mode: 0o600 });

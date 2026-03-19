@@ -167,7 +167,7 @@ ${b('9. Remove swap file (optional)')}
   ${c('sudo rm /swapfile')}
   ${d('Remove the /swapfile line from /etc/fstab')}
 
-${b('10. Remove Let\'s Encrypt certificates (optional)')}
+${b("10. Remove Let's Encrypt certificates (optional)")}
 
   ${d('List Portlama-issued certs:')}
   ${c('sudo certbot certificates')}
@@ -364,13 +364,10 @@ ${chalk.cyan.bold('└───────────────────�
   });
 
   await new Promise((resolve) => {
-    rl.question(
-      `\n  ${chalk.white.bold('Press Enter to continue or Ctrl+C to abort...')} `,
-      () => {
-        rl.close();
-        resolve();
-      },
-    );
+    rl.question(`\n  ${chalk.white.bold('Press Enter to continue or Ctrl+C to abort...')} `, () => {
+      rl.close();
+      resolve();
+    });
   });
 }
 

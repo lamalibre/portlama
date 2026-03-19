@@ -58,6 +58,7 @@ Three checks run as subtasks of a single Listr2 group:
 Between Phase 1 and Phase 2, the installer runs `detectExistingState()` to gather warnings for the confirmation banner. All checks are wrapped in try/catch — detection failures never block the installer.
 
 Detected conditions:
+
 - Existing `/etc/portlama/panel.json` → "Re-running will update the installation but preserve your configuration"
 - Non-portlama nginx sites in `sites-enabled` → "Existing nginx sites will be affected"
 - Port 3100 in use (checked via `ss`) → "The panel may fail to start"
@@ -67,41 +68,46 @@ Detected conditions:
 
 Five task groups run sequentially through Listr2:
 
-| Order | Task Group | Source | Key Operations |
-|-------|-----------|--------|----------------|
-| 1 | Hardening | `tasks/harden.js` | Swap file, UFW firewall, fail2ban, SSH hardening, system packages |
-| 2 | Node.js | `tasks/node.js` | Check existing, add NodeSource repo, install, verify |
-| 3 | mTLS | `tasks/mtls.js` | CA key + cert, client key + CSR, sign, PKCS12 bundle |
-| 4 | nginx | `tasks/nginx.js` | Self-signed TLS cert, mTLS snippet, IP vhost, cert help page, enable site, start |
-| 5 | Panel | `tasks/panel.js` | System user, directories, deploy server + client, config, systemd, sudoers, start + health check |
+| Order | Task Group | Source            | Key Operations                                                                                   |
+| ----- | ---------- | ----------------- | ------------------------------------------------------------------------------------------------ |
+| 1     | Hardening  | `tasks/harden.js` | Swap file, UFW firewall, fail2ban, SSH hardening, system packages                                |
+| 2     | Node.js    | `tasks/node.js`   | Check existing, add NodeSource repo, install, verify                                             |
+| 3     | mTLS       | `tasks/mtls.js`   | CA key + cert, client key + CSR, sign, PKCS12 bundle                                             |
+| 4     | nginx      | `tasks/nginx.js`  | Self-signed TLS cert, mTLS snippet, IP vhost, cert help page, enable site, start                 |
+| 5     | Panel      | `tasks/panel.js`  | System user, directories, deploy server + client, config, systemd, sudoers, start + health check |
 
 ## Task Implementation Details
 
 ### Hardening (`tasks/harden.js`)
 
 **Swap file creation:**
+
 - Checks if swap is already active via `swapon --show`
 - Creates 1 GB swap at `/swapfile` with `fallocate`, `mkswap`, `swapon`
 - Adds to `/etc/fstab` if not already present
 - Sets `vm.swappiness=10` via sysctl (reduces swap aggressiveness)
 
 **UFW firewall:**
+
 - If UFW is already active, only adds missing port rules (22, 443, 9292)
 - If inactive, sets defaults (deny incoming, allow outgoing), allows ports, enables
 - Never resets an active firewall — preserves existing rules
 
 **fail2ban:**
+
 - Installs via `apt-get`, writes drop-in config at `/etc/fail2ban/jail.d/portlama.conf`
 - Configures SSH jail (5 attempts, 1 hour ban) and nginx-http-auth jail
 - Skip guard: checks if config already exists with expected content and service is active
 
 **SSH hardening:**
+
 - Sets `PasswordAuthentication no`, `PermitRootLogin prohibit-password`, `ChallengeResponseAuthentication no`
 - Uses write-validate-swap pattern: writes to temp file, validates with `sshd -t -f`, then moves into place
 - Creates backup at `/etc/ssh/sshd_config.pre-portlama` before first modification
 - If validation fails, temp file is deleted and original config remains untouched
 
 **System dependencies:**
+
 - Runs `apt-get update` then installs `curl`, `openssl`, `nginx`, `certbot`, `python3-certbot-nginx`
 - Stops nginx after installation (will be configured and started by the nginx task)
 - Removes the default nginx site from `sites-enabled`
@@ -109,17 +115,20 @@ Five task groups run sequentially through Listr2:
 ### mTLS Certificates (`tasks/mtls.js`)
 
 **CA generation:**
+
 - 4096-bit RSA key at `/etc/portlama/pki/ca.key` (mode 600)
 - Self-signed CA certificate at `/etc/portlama/pki/ca.crt` (mode 644) with 10-year validity
 - Subject: `CN=Portlama CA, O=Portlama`
 
 **Client certificate:**
+
 - 4096-bit RSA key at `/etc/portlama/pki/client.key` (mode 600)
 - CSR signed by CA with 2-year validity
 - Subject: `CN=admin, O=Portlama`
 - CSR is deleted after signing (no longer needed)
 
 **PKCS12 bundle:**
+
 - Combines client key + cert + CA cert into `/etc/portlama/pki/client.p12` (mode 600)
 - Uses legacy algorithms (`PBE-SHA1-3DES`, `sha1` MAC) for maximum browser compatibility — modern PKCS12 defaults are not supported by macOS Keychain Access
 - Password generated via `crypto.randomBytes(24).toString('base64url')`
@@ -128,16 +137,19 @@ Five task groups run sequentially through Listr2:
 ### nginx Configuration (`tasks/nginx.js`)
 
 **Self-signed TLS certificate:**
+
 - 2048-bit RSA key for the IP-based vhost
 - Includes `subjectAltName=IP:<detected-ip>` for browser compatibility
 - 10-year validity — this cert is only for IP access, not public-facing
 
 **mTLS snippet:**
+
 - Written to `/etc/nginx/snippets/portlama-mtls.conf`
 - Contains two lines: `ssl_client_certificate` pointing to CA cert, and `ssl_verify_client on`
 - Shared by the IP vhost and the domain panel vhost (after onboarding)
 
 **IP-based panel vhost:**
+
 - Listens on port 9292 with SSL
 - Includes the mTLS snippet for client certificate enforcement
 - Proxies all traffic to `127.0.0.1:3100` (Panel Server)
@@ -145,6 +157,7 @@ Five task groups run sequentially through Listr2:
 - Custom error pages (495/496) serve a certificate help page for visitors without certs
 
 **Certificate help page:**
+
 - Static HTML at `/opt/portlama/panel-client/cert-help.html`
 - Styled with the same dark terminal aesthetic as the panel
 - Shows step-by-step instructions for downloading and importing the client certificate
@@ -153,37 +166,44 @@ Five task groups run sequentially through Listr2:
 ### Panel Deployment (`tasks/panel.js`)
 
 **System user:**
+
 - Creates `portlama` user with `--system --no-create-home --shell /usr/sbin/nologin`
 - Idempotent: checks if user exists first with `id portlama`
 
 **Directory structure:**
+
 - `/opt/portlama/panel-server/` — deployed server code
 - `/opt/portlama/panel-client/` — built client SPA
 - `/etc/portlama/` — configuration files
 - `/var/www/portlama/` — static site roots
 
 **Server deployment:**
+
 - Copies `package.json` and `src/` from `vendor/panel-server/`
 - Runs `npm install --production` in the deployment directory
 - Sets ownership to `portlama:portlama`
 
 **Client deployment:**
+
 - Prefers pre-built `dist/` directory from vendor (avoids Vite build on low-RAM VPS)
 - Falls back to building from source in `/tmp/` if no pre-built dist exists
 - Only the `dist/` output is deployed to the panel-client directory
 
 **Configuration:**
+
 - Writes `/etc/portlama/panel.json` with detected IP, directory paths, and `onboarding.status: "FRESH"`
 - On re-run: merges with existing config, preserving user/onboarding state
 - File mode 0640, owned by `portlama:portlama`
 
 **Systemd service:**
+
 - Unit file at `/etc/systemd/system/portlama-panel.service`
 - Runs as `portlama` user with security hardening: `NoNewPrivileges=true`, `ProtectSystem=strict`, `ProtectHome=true`, `PrivateTmp=true`
 - `ReadWritePaths=/etc/portlama /var/www/portlama` are allowed
 - Restart on failure with 5-second delay
 
 **Sudoers rules:**
+
 - Written to `/etc/sudoers.d/portlama` with granular permissions
 - Scoped to specific `systemctl` commands for managed services (nginx, chisel, authelia, portlama-panel)
 - Scoped `mv` rules restricted to specific source/destination paths (e.g., `/tmp/* → /etc/nginx/sites-available/*`)
@@ -192,6 +212,7 @@ Five task groups run sequentially through Listr2:
 - No blanket root access
 
 **Health check:**
+
 - After starting the service, waits 3 seconds, checks `systemctl is-active`
 - Sends HTTP request to `http://127.0.0.1:3100/api/health`
 - If either check fails, captures recent journal logs and reports them in the error message
@@ -200,16 +221,16 @@ Five task groups run sequentially through Listr2:
 
 The installer is designed to be safely re-run on the same machine. Every task group implements skip guards that detect existing state:
 
-| Task | Skip Condition | Behavior |
-|------|---------------|----------|
-| Swap creation | `swapon --show` returns data | Skip silently |
-| UFW firewall | All required ports already allowed and active | Skip silently |
-| fail2ban | Config exists with expected content and service is active | Skip silently |
-| SSH hardening | All settings already correct in `sshd_config` | Skip silently |
-| Node.js install | `node --version` returns v20+ | Skip NodeSource + apt-get |
-| mTLS certs | `ca.key` and `client.p12` both exist | Skip entire group, read existing password |
-| Panel config | `panel.json` exists | Merge instead of overwrite |
-| System user | `id portlama` succeeds | Skip `useradd` |
+| Task            | Skip Condition                                            | Behavior                                  |
+| --------------- | --------------------------------------------------------- | ----------------------------------------- |
+| Swap creation   | `swapon --show` returns data                              | Skip silently                             |
+| UFW firewall    | All required ports already allowed and active             | Skip silently                             |
+| fail2ban        | Config exists with expected content and service is active | Skip silently                             |
+| SSH hardening   | All settings already correct in `sshd_config`             | Skip silently                             |
+| Node.js install | `node --version` returns v20+                             | Skip NodeSource + apt-get                 |
+| mTLS certs      | `ca.key` and `client.p12` both exist                      | Skip entire group, read existing password |
+| Panel config    | `panel.json` exists                                       | Merge instead of overwrite                |
+| System user     | `id portlama` succeeds                                    | Skip `useradd`                            |
 
 The mTLS certificate skip guard is especially important: regenerating certificates would invalidate the admin's already-imported client certificate, locking them out of the panel.
 
@@ -251,29 +272,32 @@ When `dist/` contains a pre-built `index.html`, the installer copies it directly
 The installer follows a fail-fast philosophy with safe re-run guarantees:
 
 **At the orchestrator level:**
+
 - `exitOnError: true` on both Listr2 task groups — any failure stops the entire pipeline
 - The error handler prints a formatted box with the error message and a "You can safely re-run this installer to retry" note
 - Exit code 1 on any failure
 
 **At the task level:**
+
 - Every `execa` call includes descriptive error messages that explain what failed and suggest recovery steps
 - Network errors (apt-get, curl, npm) include "Check your internet connection" hints
 - Validation errors (sshd, nginx, sudoers) clean up temp files before throwing
 
 **At the subtask level:**
+
 - `subtask.output` provides real-time progress for long-running operations (e.g., "Downloading NodeSource setup script...")
 - `rendererOptions: { persistentOutput: true }` keeps the last status visible in the terminal
 
 ## CLI Flags
 
-| Flag | Purpose |
-|------|---------|
-| `--help`, `-h` | Print help message describing what the installer does and exit |
-| `--yes`, `-y` | Skip the confirmation prompt (for automated installs) |
-| `--skip-harden` | Skip OS hardening tasks (swap, UFW, fail2ban, SSH) |
-| `--dev` | Accept private/non-routable IP addresses (for VM testing) |
-| `--force-full` | Run the full installation even on existing installs (bypasses redeploy mode) |
-| `--uninstall` | Print manual removal guide and exit |
+| Flag            | Purpose                                                                      |
+| --------------- | ---------------------------------------------------------------------------- |
+| `--help`, `-h`  | Print help message describing what the installer does and exit               |
+| `--yes`, `-y`   | Skip the confirmation prompt (for automated installs)                        |
+| `--skip-harden` | Skip OS hardening tasks (swap, UFW, fail2ban, SSH)                           |
+| `--dev`         | Accept private/non-routable IP addresses (for VM testing)                    |
+| `--force-full`  | Run the full installation even on existing installs (bypasses redeploy mode) |
+| `--uninstall`   | Print manual removal guide and exit                                          |
 
 ## Shared Context Object
 
@@ -281,35 +305,35 @@ All tasks share a `ctx` object that accumulates state through the pipeline:
 
 ```javascript
 const ctx = {
-  ip: null,                           // Detected public IP
-  osRelease: null,                     // { id, versionId, prettyName }
-  skipHarden: false,                   // --skip-harden flag
-  nodeAlreadyInstalled: false,         // Skip Node.js install if v20+
-  nodeVersion: null,                   // e.g., "v20.11.1"
-  npmVersion: null,                    // e.g., "10.2.4"
-  p12Password: null,                   // Generated PKCS12 password
-  pkiDir: '/etc/portlama/pki',        // Certificate directory
-  configDir: '/etc/portlama',         // Configuration directory
-  installDir: '/opt/portlama',        // Deployment directory
+  ip: null, // Detected public IP
+  osRelease: null, // { id, versionId, prettyName }
+  skipHarden: false, // --skip-harden flag
+  nodeAlreadyInstalled: false, // Skip Node.js install if v20+
+  nodeVersion: null, // e.g., "v20.11.1"
+  npmVersion: null, // e.g., "10.2.4"
+  p12Password: null, // Generated PKCS12 password
+  pkiDir: '/etc/portlama/pki', // Certificate directory
+  configDir: '/etc/portlama', // Configuration directory
+  installDir: '/opt/portlama', // Deployment directory
 };
 ```
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `packages/create-portlama/bin/create-portlama.js` | CLI entry point (`#!/usr/bin/env node`) |
-| `packages/create-portlama/src/index.js` | Main orchestrator with Listr2 pipeline |
-| `packages/create-portlama/src/tasks/harden.js` | OS hardening subtasks |
-| `packages/create-portlama/src/tasks/node.js` | Node.js 20 installation subtasks |
-| `packages/create-portlama/src/tasks/mtls.js` | mTLS certificate generation subtasks |
-| `packages/create-portlama/src/tasks/nginx.js` | nginx IP-based configuration subtasks |
-| `packages/create-portlama/src/tasks/panel.js` | Panel deployment subtasks |
-| `packages/create-portlama/src/tasks/redeploy.js` | Panel-only redeployment subtasks |
-| `packages/create-portlama/src/lib/env.js` | OS detection, IP detection, root check |
-| `packages/create-portlama/src/lib/secrets.js` | `crypto.randomBytes` wrappers |
-| `packages/create-portlama/src/lib/summary.js` | Post-install summary box printer |
-| `packages/create-portlama/src/lib/cert-help-page.js` | HTML help page generator |
+| File                                                 | Role                                      |
+| ---------------------------------------------------- | ----------------------------------------- |
+| `packages/create-portlama/bin/create-portlama.js`    | CLI entry point (`#!/usr/bin/env node`)   |
+| `packages/create-portlama/src/index.js`              | Main orchestrator with Listr2 pipeline    |
+| `packages/create-portlama/src/tasks/harden.js`       | OS hardening subtasks                     |
+| `packages/create-portlama/src/tasks/node.js`         | Node.js 20 installation subtasks          |
+| `packages/create-portlama/src/tasks/mtls.js`         | mTLS certificate generation subtasks      |
+| `packages/create-portlama/src/tasks/nginx.js`        | nginx IP-based configuration subtasks     |
+| `packages/create-portlama/src/tasks/panel.js`        | Panel deployment subtasks                 |
+| `packages/create-portlama/src/tasks/redeploy.js`     | Panel-only redeployment subtasks          |
+| `packages/create-portlama/src/lib/env.js`            | OS detection, IP detection, root check    |
+| `packages/create-portlama/src/lib/secrets.js`        | `crypto.randomBytes` wrappers             |
+| `packages/create-portlama/src/lib/summary.js`        | Post-install summary box printer          |
+| `packages/create-portlama/src/lib/cert-help-page.js` | HTML help page generator                  |
 | `packages/create-portlama/src/lib/service-config.js` | Systemd unit + sudoers content generators |
 
 ## Confirmation Banner
@@ -317,6 +341,7 @@ const ctx = {
 Between environment checks and installation, the installer displays a confirmation banner. This is the only user interaction point (unless `--yes` is passed).
 
 The banner:
+
 - Shows a formatted box listing all system modifications that will be made
 - Displays detection warnings below the box (existing Portlama install, UFW rules, port conflicts, existing nginx sites)
 - Waits for the user to press Enter or Ctrl+C

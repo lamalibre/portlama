@@ -26,24 +26,24 @@ The page displays two sections: Let's Encrypt certificates and mTLS certificates
 
 **Let's Encrypt certificates** secure the HTTPS connection for your domains:
 
-| Certificate | Domain | Purpose |
-|-------------|--------|---------|
-| Panel | `panel.example.com` | Admin panel HTTPS |
-| Auth | `auth.example.com` | Authelia login portal HTTPS |
-| Tunnel | `tunnel.example.com` | Chisel WebSocket endpoint HTTPS |
-| Per-tunnel | `app.example.com` | Individual tunnel HTTPS |
-| Per-site | `blog.example.com` | Static site HTTPS |
+| Certificate | Domain               | Purpose                         |
+| ----------- | -------------------- | ------------------------------- |
+| Panel       | `panel.example.com`  | Admin panel HTTPS               |
+| Auth        | `auth.example.com`   | Authelia login portal HTTPS     |
+| Tunnel      | `tunnel.example.com` | Chisel WebSocket endpoint HTTPS |
+| Per-tunnel  | `app.example.com`    | Individual tunnel HTTPS         |
+| Per-site    | `blog.example.com`   | Static site HTTPS               |
 
 These are issued during onboarding and when you create tunnels or static sites. They have a 90-day validity and renew automatically via the certbot timer.
 
 **mTLS certificates** authenticate access to the panel:
 
-| Certificate | Subject | Purpose |
-|-------------|---------|---------|
-| CA certificate | `CN=Portlama CA` | Signs all client certificates (10-year validity) |
-| Admin certificate | `CN=admin` | Full panel access via browser (2-year validity) |
+| Certificate        | Subject            | Purpose                                                |
+| ------------------ | ------------------ | ------------------------------------------------------ |
+| CA certificate     | `CN=Portlama CA`   | Signs all client certificates (10-year validity)       |
+| Admin certificate  | `CN=admin`         | Full panel access via browser (2-year validity)        |
 | Agent certificates | `CN=agent:<label>` | Scoped access for Mac tunnel clients (2-year validity) |
-| Self-signed TLS | `CN=<server-ip>` | IP-based panel HTTPS (10-year validity) |
+| Self-signed TLS    | `CN=<server-ip>`   | IP-based panel HTTPS (10-year validity)                |
 
 The admin certificate is generated during installation. Agent certificates are created on demand through the panel. Neither type auto-renews — you rotate them manually when needed.
 
@@ -225,36 +225,36 @@ Revocation is immediate — the certificate serial is added to a revocation list
 
 ### Certificate File Locations
 
-| File | Path | Permission |
-|------|------|------------|
-| CA key | `/etc/portlama/pki/ca.key` | 600 |
-| CA certificate | `/etc/portlama/pki/ca.crt` | 644 |
-| Client key | `/etc/portlama/pki/client.key` | 600 |
-| Client certificate | `/etc/portlama/pki/client.crt` | 644 |
-| PKCS12 bundle | `/etc/portlama/pki/client.p12` | 600 |
-| P12 password | `/etc/portlama/pki/.p12-password` | 600 |
-| Self-signed key | `/etc/portlama/pki/self-signed-key.pem` | 600 |
-| Self-signed cert | `/etc/portlama/pki/self-signed.pem` | 644 |
-| Let's Encrypt certs | `/etc/letsencrypt/live/<domain>/` | certbot-managed |
-| Revocation list | `/etc/portlama/pki/revoked.json` | 600 |
-| Agent registry | `/etc/portlama/pki/agents/registry.json` | 600 |
-| Agent certs | `/etc/portlama/pki/agents/<label>/client.p12` | 600 |
+| File                | Path                                          | Permission      |
+| ------------------- | --------------------------------------------- | --------------- |
+| CA key              | `/etc/portlama/pki/ca.key`                    | 600             |
+| CA certificate      | `/etc/portlama/pki/ca.crt`                    | 644             |
+| Client key          | `/etc/portlama/pki/client.key`                | 600             |
+| Client certificate  | `/etc/portlama/pki/client.crt`                | 644             |
+| PKCS12 bundle       | `/etc/portlama/pki/client.p12`                | 600             |
+| P12 password        | `/etc/portlama/pki/.p12-password`             | 600             |
+| Self-signed key     | `/etc/portlama/pki/self-signed-key.pem`       | 600             |
+| Self-signed cert    | `/etc/portlama/pki/self-signed.pem`           | 644             |
+| Let's Encrypt certs | `/etc/letsencrypt/live/<domain>/`             | certbot-managed |
+| Revocation list     | `/etc/portlama/pki/revoked.json`              | 600             |
+| Agent registry      | `/etc/portlama/pki/agents/registry.json`      | 600             |
+| Agent certs         | `/etc/portlama/pki/agents/<label>/client.p12` | 600             |
 
 ### API Endpoints
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/api/certs` | List all certificates (LE + mTLS) |
-| `GET` | `/api/certs/auto-renew-status` | Certbot timer status |
-| `POST` | `/api/certs/:domain/renew` | Force-renew a Let's Encrypt cert |
-| `POST` | `/api/certs/mtls/rotate` | Rotate the mTLS client certificate |
-| `GET` | `/api/certs/mtls/download` | Download client.p12 |
-| `POST` | `/api/certs/agent` | Generate agent certificate |
-| `GET` | `/api/certs/agent` | List agent certificates |
-| `GET` | `/api/certs/agent/:label/download` | Download agent .p12 |
-| `PATCH` | `/api/certs/agent/:label/capabilities` | Update agent capabilities |
-| `PATCH` | `/api/certs/agent/:label/allowed-sites` | Update agent site access |
-| `DELETE` | `/api/certs/agent/:label` | Revoke agent certificate |
+| Method   | Path                                    | Purpose                            |
+| -------- | --------------------------------------- | ---------------------------------- |
+| `GET`    | `/api/certs`                            | List all certificates (LE + mTLS)  |
+| `GET`    | `/api/certs/auto-renew-status`          | Certbot timer status               |
+| `POST`   | `/api/certs/:domain/renew`              | Force-renew a Let's Encrypt cert   |
+| `POST`   | `/api/certs/mtls/rotate`                | Rotate the mTLS client certificate |
+| `GET`    | `/api/certs/mtls/download`              | Download client.p12                |
+| `POST`   | `/api/certs/agent`                      | Generate agent certificate         |
+| `GET`    | `/api/certs/agent`                      | List agent certificates            |
+| `GET`    | `/api/certs/agent/:label/download`      | Download agent .p12                |
+| `PATCH`  | `/api/certs/agent/:label/capabilities`  | Update agent capabilities          |
+| `PATCH`  | `/api/certs/agent/:label/allowed-sites` | Update agent site access           |
+| `DELETE` | `/api/certs/agent/:label`               | Revoke agent certificate           |
 
 ### Certificate Response Format
 
@@ -320,28 +320,28 @@ This tells nginx to require a client certificate signed by the Portlama CA. No c
 
 ## Quick Reference
 
-| Certificate Type | Validity | Renewal |
-|-----------------|----------|---------|
-| Let's Encrypt | 90 days | Automatic (certbot timer) |
-| mTLS CA | 10 years | Manual (rarely needed) |
-| Admin client cert | 2 years | Manual rotation via panel |
-| Agent certs | 2 years | Generate new, revoke old |
-| Self-signed TLS | 10 years | Manual (rarely needed) |
+| Certificate Type  | Validity | Renewal                   |
+| ----------------- | -------- | ------------------------- |
+| Let's Encrypt     | 90 days  | Automatic (certbot timer) |
+| mTLS CA           | 10 years | Manual (rarely needed)    |
+| Admin client cert | 2 years  | Manual rotation via panel |
+| Agent certs       | 2 years  | Generate new, revoke old  |
+| Self-signed TLS   | 10 years | Manual (rarely needed)    |
 
-| Action | How |
-|--------|-----|
-| **View all certs** | Certificates page in panel |
-| **Force renew LE cert** | Click "Renew" next to the certificate |
-| **Rotate mTLS cert** | Click "Rotate Client Certificate" |
-| **Download new .p12** | Click "Download" after rotation |
-| **Check auto-renewal** | View "Auto-Renewal Status" section |
-| **Generate agent cert** | Agent Certificates section, click "Generate" |
-| **Update agent caps** | Click edit icon next to agent, toggle capabilities |
-| **Revoke agent cert** | Click revoke icon next to agent, confirm |
+| Action                  | How                                                |
+| ----------------------- | -------------------------------------------------- |
+| **View all certs**      | Certificates page in panel                         |
+| **Force renew LE cert** | Click "Renew" next to the certificate              |
+| **Rotate mTLS cert**    | Click "Rotate Client Certificate"                  |
+| **Download new .p12**   | Click "Download" after rotation                    |
+| **Check auto-renewal**  | View "Auto-Renewal Status" section                 |
+| **Generate agent cert** | Agent Certificates section, click "Generate"       |
+| **Update agent caps**   | Click edit icon next to agent, toggle capabilities |
+| **Revoke agent cert**   | Click revoke icon next to agent, confirm           |
 
-| Warning Sign | Action |
-|-------------|--------|
+| Warning Sign             | Action                                  |
+| ------------------------ | --------------------------------------- |
 | Yellow badge (< 30 days) | Monitor — auto-renewal should handle it |
-| Red badge (expired) | Force-renew immediately |
-| Auto-renewal inactive | Check certbot timer with Services page |
-| mTLS < 90 days | Plan rotation, download new cert |
+| Red badge (expired)      | Force-renew immediately                 |
+| Auto-renewal inactive    | Check certbot timer with Services page  |
+| mTLS < 90 days           | Plan rotation, download new cert        |

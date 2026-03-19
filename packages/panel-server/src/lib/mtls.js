@@ -10,7 +10,9 @@ let registryLock = Promise.resolve();
 function withRegistryLock(fn) {
   const prev = registryLock;
   let resolve;
-  registryLock = new Promise((r) => { resolve = r; });
+  registryLock = new Promise((r) => {
+    resolve = r;
+  });
   return prev.then(fn).finally(resolve);
 }
 
@@ -23,7 +25,12 @@ function withRegistryLock(fn) {
 export async function readCertExpiry(certPath) {
   try {
     const { stdout } = await execa('sudo', [
-      'openssl', 'x509', '-in', certPath, '-enddate', '-noout',
+      'openssl',
+      'x509',
+      '-in',
+      certPath,
+      '-enddate',
+      '-noout',
     ]);
     const match = stdout.match(/notAfter=(.+)/);
     if (!match) return null;
@@ -31,9 +38,7 @@ export async function readCertExpiry(certPath) {
     const expiryDate = new Date(match[1]);
     if (isNaN(expiryDate.getTime())) return null;
 
-    const daysUntilExpiry = Math.floor(
-      (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-    );
+    const daysUntilExpiry = Math.floor((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
     return {
       expiresAt: expiryDate.toISOString(),
@@ -100,10 +105,9 @@ export async function rotateClientCert(logger) {
     try {
       await execa('sudo', ['test', '-r', `${PKI_DIR}/ca.key`]);
     } catch {
-      throw Object.assign(
-        new Error('CA key not found — cannot sign new certificate'),
-        { statusCode: 500 },
-      );
+      throw Object.assign(new Error('CA key not found — cannot sign new certificate'), {
+        statusCode: 500,
+      });
     }
   }
 
@@ -122,38 +126,64 @@ export async function rotateClientCert(logger) {
     // 2. Create CSR
     logger.info('Creating certificate signing request');
     await execa('sudo', [
-      'openssl', 'req', '-new',
-      '-key', newKeyPath,
-      '-out', csrPath,
-      '-subj', '/CN=Portlama Client/O=Portlama',
+      'openssl',
+      'req',
+      '-new',
+      '-key',
+      newKeyPath,
+      '-out',
+      csrPath,
+      '-subj',
+      '/CN=Portlama Client/O=Portlama',
     ]);
 
     // 3. Sign with CA (2-year validity)
     logger.info('Signing certificate with CA');
     await execa('sudo', [
-      'openssl', 'x509', '-req',
-      '-in', csrPath,
-      '-CA', `${PKI_DIR}/ca.crt`,
-      '-CAkey', `${PKI_DIR}/ca.key`,
+      'openssl',
+      'x509',
+      '-req',
+      '-in',
+      csrPath,
+      '-CA',
+      `${PKI_DIR}/ca.crt`,
+      '-CAkey',
+      `${PKI_DIR}/ca.key`,
       '-CAcreateserial',
-      '-out', newCertPath,
-      '-days', '730',
+      '-out',
+      newCertPath,
+      '-days',
+      '730',
       '-sha256',
     ]);
 
     // 4. Create PKCS12 bundle
     logger.info('Creating PKCS12 bundle');
-    await execa('sudo', [
-      'openssl', 'pkcs12', '-export',
-      '-keypbe', 'PBE-SHA1-3DES',
-      '-certpbe', 'PBE-SHA1-3DES',
-      '-macalg', 'sha1',
-      '-out', newP12Path,
-      '-inkey', newKeyPath,
-      '-in', newCertPath,
-      '-certfile', `${PKI_DIR}/ca.crt`,
-      '-passout', 'stdin',
-    ], { input: p12Password });
+    await execa(
+      'sudo',
+      [
+        'openssl',
+        'pkcs12',
+        '-export',
+        '-keypbe',
+        'PBE-SHA1-3DES',
+        '-certpbe',
+        'PBE-SHA1-3DES',
+        '-macalg',
+        'sha1',
+        '-out',
+        newP12Path,
+        '-inkey',
+        newKeyPath,
+        '-in',
+        newCertPath,
+        '-certfile',
+        `${PKI_DIR}/ca.crt`,
+        '-passout',
+        'stdin',
+      ],
+      { input: p12Password },
+    );
 
     // 5. Back up current files
     logger.info('Backing up current certificates');
@@ -174,9 +204,15 @@ export async function rotateClientCert(logger) {
     await execa('sudo', ['chmod', '600', `${PKI_DIR}/client.key`]);
     await execa('sudo', ['chmod', '644', `${PKI_DIR}/client.crt`]);
     await execa('sudo', ['chmod', '600', `${PKI_DIR}/client.p12`]);
-    await execa('sudo', ['chown', 'portlama:portlama',
-      `${PKI_DIR}/client.key`, `${PKI_DIR}/client.crt`, `${PKI_DIR}/client.p12`,
-      `${PKI_DIR}/client.key.bak`, `${PKI_DIR}/client.crt.bak`, `${PKI_DIR}/client.p12.bak`,
+    await execa('sudo', [
+      'chown',
+      'portlama:portlama',
+      `${PKI_DIR}/client.key`,
+      `${PKI_DIR}/client.crt`,
+      `${PKI_DIR}/client.p12`,
+      `${PKI_DIR}/client.key.bak`,
+      `${PKI_DIR}/client.crt.bak`,
+      `${PKI_DIR}/client.p12.bak`,
     ]);
 
     // 9. Read the new expiry
@@ -186,7 +222,8 @@ export async function rotateClientCert(logger) {
       ok: true,
       p12Password,
       expiresAt: expiry?.expiresAt || new Date(Date.now() + 730 * 86400000).toISOString(),
-      warning: 'Your current browser certificate is now invalid. Download and import the new certificate before closing this page.',
+      warning:
+        'Your current browser certificate is now invalid. Download and import the new certificate before closing this page.',
     };
   } catch (err) {
     // If any step fails, clean up .new files and preserve existing certs
@@ -194,10 +231,9 @@ export async function rotateClientCert(logger) {
     await execa('sudo', ['rm', '-f', newKeyPath, csrPath, newCertPath, newP12Path]).catch(() => {});
 
     if (err.statusCode) throw err;
-    throw Object.assign(
-      new Error(`mTLS rotation failed: ${err.stderr || err.message}`),
-      { statusCode: 500 },
-    );
+    throw Object.assign(new Error(`mTLS rotation failed: ${err.stderr || err.message}`), {
+      statusCode: 500,
+    });
   }
 }
 
@@ -296,137 +332,163 @@ export function getAgentP12Path(label) {
  */
 export async function generateAgentCert(label, logger, capabilities, allowedSites) {
   return withRegistryLock(async () => {
-  // Check registry for duplicate (non-revoked) label
-  const registry = await loadAgentRegistry();
-  const existing = registry.agents.find(
-    (a) => a.label === label && !a.revoked,
-  );
-  if (existing) {
-    throw Object.assign(
-      new Error(`Agent certificate with label "${label}" already exists`),
-      { statusCode: 409 },
-    );
-  }
+    // Check registry for duplicate (non-revoked) label
+    const registry = await loadAgentRegistry();
+    const existing = registry.agents.find((a) => a.label === label && !a.revoked);
+    if (existing) {
+      throw Object.assign(new Error(`Agent certificate with label "${label}" already exists`), {
+        statusCode: 409,
+      });
+    }
 
-  // Verify CA key exists
-  try {
-    await access(`${PKI_DIR}/ca.key`, constants.R_OK);
-  } catch {
+    // Verify CA key exists
     try {
-      await execa('sudo', ['test', '-r', `${PKI_DIR}/ca.key`]);
+      await access(`${PKI_DIR}/ca.key`, constants.R_OK);
     } catch {
+      try {
+        await execa('sudo', ['test', '-r', `${PKI_DIR}/ca.key`]);
+      } catch {
+        throw Object.assign(new Error('CA key not found — cannot sign new certificate'), {
+          statusCode: 500,
+        });
+      }
+    }
+
+    const agentDir = `${AGENTS_DIR}/${label}`;
+    const keyPath = `${agentDir}/client.key`;
+    const csrPath = `${agentDir}/client.csr`;
+    const certPath = `${agentDir}/client.crt`;
+    const p12Path = `${agentDir}/client.p12`;
+
+    const p12Password = crypto.randomBytes(16).toString('hex');
+
+    try {
+      // 1. Create agents base directory (root-owned initially) and hand to portlama
+      logger.info({ label }, 'Creating agent certificate directory');
+      await execa('sudo', ['mkdir', '-p', AGENTS_DIR]);
+      await execa('sudo', ['chown', 'portlama:portlama', AGENTS_DIR]);
+
+      // Create the per-agent subdirectory (portlama now owns AGENTS_DIR)
+      await execa('mkdir', ['-p', agentDir]);
+
+      // 2. Generate 4096-bit RSA key (sudo for openssl, output to portlama-owned dir)
+      logger.info({ label }, 'Generating agent private key');
+      await execa('sudo', ['openssl', 'genrsa', '-out', keyPath, '4096']);
+      await execa('sudo', ['chown', '-R', 'portlama:portlama', agentDir]);
+
+      // 3. Create CSR with agent-scoped CN
+      logger.info({ label }, 'Creating certificate signing request');
+      await execa('sudo', [
+        'openssl',
+        'req',
+        '-new',
+        '-key',
+        keyPath,
+        '-out',
+        csrPath,
+        '-subj',
+        `/CN=agent:${label}/O=Portlama`,
+      ]);
+
+      // 4. Sign with CA (2-year validity)
+      logger.info({ label }, 'Signing certificate with CA');
+      await execa('sudo', [
+        'openssl',
+        'x509',
+        '-req',
+        '-in',
+        csrPath,
+        '-CA',
+        `${PKI_DIR}/ca.crt`,
+        '-CAkey',
+        `${PKI_DIR}/ca.key`,
+        '-CAcreateserial',
+        '-out',
+        certPath,
+        '-days',
+        '730',
+        '-sha256',
+      ]);
+
+      // 5. Create PKCS12 bundle (legacy flags for macOS compatibility)
+      logger.info({ label }, 'Creating PKCS12 bundle');
+      await execa(
+        'sudo',
+        [
+          'openssl',
+          'pkcs12',
+          '-export',
+          '-keypbe',
+          'PBE-SHA1-3DES',
+          '-certpbe',
+          'PBE-SHA1-3DES',
+          '-macalg',
+          'sha1',
+          '-out',
+          p12Path,
+          '-inkey',
+          keyPath,
+          '-in',
+          certPath,
+          '-certfile',
+          `${PKI_DIR}/ca.crt`,
+          '-passout',
+          'stdin',
+        ],
+        { input: p12Password },
+      );
+
+      // 6. Ensure all generated files are owned by portlama
+      await execa('sudo', ['chown', '-R', 'portlama:portlama', agentDir]);
+
+      // 7. Read the serial number from the signed certificate
+      const { stdout: serialOut } = await execa('openssl', [
+        'x509',
+        '-in',
+        certPath,
+        '-serial',
+        '-noout',
+      ]);
+      const serialMatch = serialOut.match(/serial=([A-Fa-f0-9]+)/);
+      const serial = serialMatch ? serialMatch[1] : '';
+
+      // 8. Read expiry via existing readCertExpiry
+      const expiry = await readCertExpiry(certPath);
+      const expiresAt = expiry?.expiresAt || new Date(Date.now() + 730 * 86400000).toISOString();
+
+      // 9. Clean up CSR
+      await execa('rm', ['-f', csrPath]);
+
+      // 10. Set file permissions (portlama owns these, no sudo needed)
+      await execa('chmod', ['600', keyPath]);
+      await execa('chmod', ['644', certPath]);
+      await execa('chmod', ['600', p12Path]);
+
+      // 11. Add to registry atomically (portlama owns AGENTS_DIR, no sudo needed)
+      const freshRegistry = await loadAgentRegistry();
+      freshRegistry.agents.push({
+        label,
+        serial,
+        capabilities: capabilities || ['tunnels:read'],
+        allowedSites: allowedSites || [],
+        createdAt: new Date().toISOString(),
+        expiresAt,
+        revoked: false,
+      });
+      await saveAgentRegistry(freshRegistry);
+
+      return { label, p12Password, serial, expiresAt };
+    } catch (err) {
+      // Clean up on failure
+      logger.error({ err, label }, 'Agent certificate generation failed, cleaning up');
+      await execa('rm', ['-rf', agentDir]).catch(() => {});
+
+      if (err.statusCode) throw err;
       throw Object.assign(
-        new Error('CA key not found — cannot sign new certificate'),
+        new Error(`Agent certificate generation failed: ${err.stderr || err.message}`),
         { statusCode: 500 },
       );
     }
-  }
-
-  const agentDir = `${AGENTS_DIR}/${label}`;
-  const keyPath = `${agentDir}/client.key`;
-  const csrPath = `${agentDir}/client.csr`;
-  const certPath = `${agentDir}/client.crt`;
-  const p12Path = `${agentDir}/client.p12`;
-
-  const p12Password = crypto.randomBytes(16).toString('hex');
-
-  try {
-    // 1. Create agents base directory (root-owned initially) and hand to portlama
-    logger.info({ label }, 'Creating agent certificate directory');
-    await execa('sudo', ['mkdir', '-p', AGENTS_DIR]);
-    await execa('sudo', ['chown', 'portlama:portlama', AGENTS_DIR]);
-
-    // Create the per-agent subdirectory (portlama now owns AGENTS_DIR)
-    await execa('mkdir', ['-p', agentDir]);
-
-    // 2. Generate 4096-bit RSA key (sudo for openssl, output to portlama-owned dir)
-    logger.info({ label }, 'Generating agent private key');
-    await execa('sudo', ['openssl', 'genrsa', '-out', keyPath, '4096']);
-    await execa('sudo', ['chown', '-R', 'portlama:portlama', agentDir]);
-
-    // 3. Create CSR with agent-scoped CN
-    logger.info({ label }, 'Creating certificate signing request');
-    await execa('sudo', [
-      'openssl', 'req', '-new',
-      '-key', keyPath,
-      '-out', csrPath,
-      '-subj', `/CN=agent:${label}/O=Portlama`,
-    ]);
-
-    // 4. Sign with CA (2-year validity)
-    logger.info({ label }, 'Signing certificate with CA');
-    await execa('sudo', [
-      'openssl', 'x509', '-req',
-      '-in', csrPath,
-      '-CA', `${PKI_DIR}/ca.crt`,
-      '-CAkey', `${PKI_DIR}/ca.key`,
-      '-CAcreateserial',
-      '-out', certPath,
-      '-days', '730',
-      '-sha256',
-    ]);
-
-    // 5. Create PKCS12 bundle (legacy flags for macOS compatibility)
-    logger.info({ label }, 'Creating PKCS12 bundle');
-    await execa('sudo', [
-      'openssl', 'pkcs12', '-export',
-      '-keypbe', 'PBE-SHA1-3DES',
-      '-certpbe', 'PBE-SHA1-3DES',
-      '-macalg', 'sha1',
-      '-out', p12Path,
-      '-inkey', keyPath,
-      '-in', certPath,
-      '-certfile', `${PKI_DIR}/ca.crt`,
-      '-passout', 'stdin',
-    ], { input: p12Password });
-
-    // 6. Ensure all generated files are owned by portlama
-    await execa('sudo', ['chown', '-R', 'portlama:portlama', agentDir]);
-
-    // 7. Read the serial number from the signed certificate
-    const { stdout: serialOut } = await execa('openssl', [
-      'x509', '-in', certPath, '-serial', '-noout',
-    ]);
-    const serialMatch = serialOut.match(/serial=([A-Fa-f0-9]+)/);
-    const serial = serialMatch ? serialMatch[1] : '';
-
-    // 8. Read expiry via existing readCertExpiry
-    const expiry = await readCertExpiry(certPath);
-    const expiresAt = expiry?.expiresAt || new Date(Date.now() + 730 * 86400000).toISOString();
-
-    // 9. Clean up CSR
-    await execa('rm', ['-f', csrPath]);
-
-    // 10. Set file permissions (portlama owns these, no sudo needed)
-    await execa('chmod', ['600', keyPath]);
-    await execa('chmod', ['644', certPath]);
-    await execa('chmod', ['600', p12Path]);
-
-    // 11. Add to registry atomically (portlama owns AGENTS_DIR, no sudo needed)
-    const freshRegistry = await loadAgentRegistry();
-    freshRegistry.agents.push({
-      label,
-      serial,
-      capabilities: capabilities || ['tunnels:read'],
-      allowedSites: allowedSites || [],
-      createdAt: new Date().toISOString(),
-      expiresAt,
-      revoked: false,
-    });
-    await saveAgentRegistry(freshRegistry);
-
-    return { label, p12Password, serial, expiresAt };
-  } catch (err) {
-    // Clean up on failure
-    logger.error({ err, label }, 'Agent certificate generation failed, cleaning up');
-    await execa('rm', ['-rf', agentDir]).catch(() => {});
-
-    if (err.statusCode) throw err;
-    throw Object.assign(
-      new Error(`Agent certificate generation failed: ${err.stderr || err.message}`),
-      { statusCode: 500 },
-    );
-  }
   });
 }
 
@@ -480,19 +542,13 @@ export async function updateAgentCapabilities(label, capabilities) {
     const agent = registry.agents.find((a) => a.label === label && !a.revoked);
 
     if (!agent) {
-      throw Object.assign(
-        new Error(`Agent certificate "${label}" not found`),
-        { statusCode: 404 },
-      );
+      throw Object.assign(new Error(`Agent certificate "${label}" not found`), { statusCode: 404 });
     }
 
     // Validate all capabilities
     for (const cap of capabilities) {
       if (!VALID_CAPABILITIES.includes(cap)) {
-        throw Object.assign(
-          new Error(`Invalid capability: ${cap}`),
-          { statusCode: 400 },
-        );
+        throw Object.assign(new Error(`Invalid capability: ${cap}`), { statusCode: 400 });
       }
     }
 
@@ -557,10 +613,7 @@ export async function revokeAgentCert(label, logger) {
     const agent = registry.agents.find((a) => a.label === label);
 
     if (!agent || agent.revoked) {
-      throw Object.assign(
-        new Error(`Agent certificate "${label}" not found`),
-        { statusCode: 404 },
-      );
+      throw Object.assign(new Error(`Agent certificate "${label}" not found`), { statusCode: 404 });
     }
 
     // 1. Add serial to revocation list

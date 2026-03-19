@@ -1,11 +1,6 @@
 import { execa } from 'execa';
 
-export const ALLOWED_SERVICES = [
-  'nginx',
-  'chisel',
-  'authelia',
-  'portlama-panel',
-];
+export const ALLOWED_SERVICES = ['nginx', 'chisel', 'authelia', 'portlama-panel'];
 
 const ALLOWED_ACTIONS = ['start', 'stop', 'restart', 'reload'];
 

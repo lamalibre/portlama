@@ -27,9 +27,7 @@ async function start() {
   // --- Plugins ---
   const ipOrigin = `https://${config.ip}:9292`;
   await server.register(cors, {
-    origin: config.domain
-      ? [ipOrigin, `https://panel.${config.domain}`]
-      : ipOrigin,
+    origin: config.domain ? [ipOrigin, `https://panel.${config.domain}`] : ipOrigin,
   });
   await server.register(multipart, {
     limits: {

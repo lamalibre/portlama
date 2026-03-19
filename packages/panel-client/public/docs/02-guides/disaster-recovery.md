@@ -41,9 +41,9 @@ If there are no results or the wrong IP, the issue is at the DNS level.
 
 3. **Fix the DNS records.** Log in to your domain registrar or DNS provider and verify:
 
-| Type | Name | Value |
-|------|------|-------|
-| **A** | `example.com` | Your server IP |
+| Type  | Name            | Value          |
+| ----- | --------------- | -------------- |
+| **A** | `example.com`   | Your server IP |
 | **A** | `*.example.com` | Your server IP |
 
 4. **Wait for propagation.** DNS changes typically take 5-30 minutes. Use [dnschecker.org](https://dnschecker.org) to monitor propagation.
@@ -107,12 +107,12 @@ If another service crashed (Chisel, Authelia, nginx), the panel is still accessi
 
 2. **Go to the Services page.** The dashboard shows the health status of all services:
 
-| Service | Systemd Unit | Purpose |
-|---------|-------------|---------|
-| nginx | `nginx` | Reverse proxy, TLS termination |
-| Chisel | `chisel` | Tunnel server |
-| Authelia | `authelia` | TOTP two-factor authentication |
-| Panel | `portlama-panel` | Admin panel backend |
+| Service  | Systemd Unit     | Purpose                        |
+| -------- | ---------------- | ------------------------------ |
+| nginx    | `nginx`          | Reverse proxy, TLS termination |
+| Chisel   | `chisel`         | Tunnel server                  |
+| Authelia | `authelia`       | TOTP two-factor authentication |
+| Panel    | `portlama-panel` | Admin panel backend            |
 
 3. **Check the service status.** A crashed service shows as "inactive" or "failed" with a red status badge.
 
@@ -126,12 +126,12 @@ sudo systemctl restart <service-name>
 
 **Common causes and fixes:**
 
-| Symptom | Likely Cause | Fix |
-|---------|-------------|-----|
-| Chisel crashes repeatedly | Port conflict or config error | Check `journalctl -u chisel -n 50` via SSH |
-| Authelia won't start | Corrupt `users.yml` | Check file syntax, restore from backup if needed |
-| nginx fails to reload | Invalid vhost config | Run `nginx -t` via SSH to find the bad config |
-| Panel crashes on start | Missing `panel.json` or corrupt config | Verify file exists and is valid JSON |
+| Symptom                   | Likely Cause                           | Fix                                              |
+| ------------------------- | -------------------------------------- | ------------------------------------------------ |
+| Chisel crashes repeatedly | Port conflict or config error          | Check `journalctl -u chisel -n 50` via SSH       |
+| Authelia won't start      | Corrupt `users.yml`                    | Check file syntax, restore from backup if needed |
+| nginx fails to reload     | Invalid vhost config                   | Run `nginx -t` via SSH to find the bad config    |
+| Panel crashes on start    | Missing `panel.json` or corrupt config | Verify file exists and is valid JSON             |
 
 ### Scenario 4: Memory Issues (OOM Kills)
 
@@ -346,43 +346,43 @@ When multiple things are broken, fix in this order:
 
 ### Configuration File Locations
 
-| File | Purpose | Format |
-|------|---------|--------|
-| `/etc/portlama/panel.json` | Panel configuration, onboarding state | JSON |
-| `/etc/portlama/tunnels.json` | Tunnel records | JSON array |
-| `/etc/portlama/sites.json` | Static site records | JSON array |
-| `/etc/authelia/users.yml` | Authelia user database | YAML |
-| `/etc/authelia/configuration.yml` | Authelia config | YAML |
-| `/etc/nginx/sites-available/portlama-*` | nginx vhosts | nginx config |
-| `/etc/portlama/pki/` | All certificates and keys | PEM/P12 |
+| File                                    | Purpose                               | Format       |
+| --------------------------------------- | ------------------------------------- | ------------ |
+| `/etc/portlama/panel.json`              | Panel configuration, onboarding state | JSON         |
+| `/etc/portlama/tunnels.json`            | Tunnel records                        | JSON array   |
+| `/etc/portlama/sites.json`              | Static site records                   | JSON array   |
+| `/etc/authelia/users.yml`               | Authelia user database                | YAML         |
+| `/etc/authelia/configuration.yml`       | Authelia config                       | YAML         |
+| `/etc/nginx/sites-available/portlama-*` | nginx vhosts                          | nginx config |
+| `/etc/portlama/pki/`                    | All certificates and keys             | PEM/P12      |
 
 ## Quick Reference
 
-| Scenario | First Step | SSH Needed? |
-|----------|-----------|-------------|
-| Domain lost | Access via `https://<ip>:9292` | No |
-| LE cert expired | Renew from Certificates page | No |
-| Service crashed | Restart from Services page | No |
-| Memory issues | Check Dashboard, restart services | Maybe |
-| mTLS cert expired | Generate new cert via SSH | Yes |
-| Panel unreachable | SSH in, check systemd status | Yes |
+| Scenario          | First Step                        | SSH Needed? |
+| ----------------- | --------------------------------- | ----------- |
+| Domain lost       | Access via `https://<ip>:9292`    | No          |
+| LE cert expired   | Renew from Certificates page      | No          |
+| Service crashed   | Restart from Services page        | No          |
+| Memory issues     | Check Dashboard, restart services | Maybe       |
+| mTLS cert expired | Generate new cert via SSH         | Yes         |
+| Panel unreachable | SSH in, check systemd status      | Yes         |
 
-| Emergency Command | What It Does |
-|-------------------|-------------|
-| `systemctl restart portlama-panel` | Restart the panel server |
-| `systemctl restart nginx` | Restart the reverse proxy |
-| `systemctl restart chisel` | Restart the tunnel server |
-| `systemctl restart authelia` | Restart the auth service |
-| `nginx -t` | Test nginx config without restarting |
-| `journalctl -u portlama-panel -n 50` | View recent panel logs |
-| `free -h` | Check memory usage |
-| `df -h` | Check disk space |
-| `cat /etc/portlama/panel.json` | View panel configuration |
+| Emergency Command                    | What It Does                         |
+| ------------------------------------ | ------------------------------------ |
+| `systemctl restart portlama-panel`   | Restart the panel server             |
+| `systemctl restart nginx`            | Restart the reverse proxy            |
+| `systemctl restart chisel`           | Restart the tunnel server            |
+| `systemctl restart authelia`         | Restart the auth service             |
+| `nginx -t`                           | Test nginx config without restarting |
+| `journalctl -u portlama-panel -n 50` | View recent panel logs               |
+| `free -h`                            | Check memory usage                   |
+| `df -h`                              | Check disk space                     |
+| `cat /etc/portlama/panel.json`       | View panel configuration             |
 
-| Design Principle | Implementation |
-|-----------------|----------------|
-| IP fallback | `https://<ip>:9292` with self-signed TLS (10-year validity) |
-| Auto-restart | `Restart=always` in all systemd units |
-| Atomic writes | Write to `.tmp`, then `rename()` |
-| Memory safety | bcrypt (not argon2id), 1 GB swap |
-| No database | JSON/YAML flat files — human-readable, easy to repair |
+| Design Principle | Implementation                                              |
+| ---------------- | ----------------------------------------------------------- |
+| IP fallback      | `https://<ip>:9292` with self-signed TLS (10-year validity) |
+| Auto-restart     | `Restart=always` in all systemd units                       |
+| Atomic writes    | Write to `.tmp`, then `rename()`                            |
+| Memory safety    | bcrypt (not argon2id), 1 GB swap                            |
+| No database      | JSON/YAML flat files — human-readable, easy to repair       |

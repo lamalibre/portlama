@@ -54,9 +54,7 @@ export function nodeTasks(ctx, task) {
         try {
           await execa('bash', [setupScript]);
         } catch (error) {
-          throw new Error(
-            `NodeSource setup script failed.\n${error.stderr || error.message}`,
-          );
+          throw new Error(`NodeSource setup script failed.\n${error.stderr || error.message}`);
         }
 
         await unlink(setupScript).catch(() => {});

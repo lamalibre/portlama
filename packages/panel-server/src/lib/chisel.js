@@ -48,8 +48,10 @@ export async function installChisel() {
   let releaseInfo;
   try {
     const { stdout } = await execa('curl', [
-      '-s', '-L',
-      '-H', 'Accept: application/vnd.github+json',
+      '-s',
+      '-L',
+      '-H',
+      'Accept: application/vnd.github+json',
       GITHUB_API,
     ]);
     releaseInfo = JSON.parse(stdout);
@@ -249,7 +251,9 @@ export async function getChiselStatus() {
   if (active) {
     try {
       const { stdout } = await execa('systemctl', [
-        'show', CHISEL_SERVICE, '--property=ActiveEnterTimestamp',
+        'show',
+        CHISEL_SERVICE,
+        '--property=ActiveEnterTimestamp',
       ]);
       const match = stdout.match(/ActiveEnterTimestamp=(.+)/);
       if (match && match[1].trim()) {
@@ -355,7 +359,5 @@ WantedBy=multi-user.target
     journalOutput = 'Could not read journal logs';
   }
 
-  throw new Error(
-    `Chisel service is not active after restart. Journal output:\n${journalOutput}`,
-  );
+  throw new Error(`Chisel service is not active after restart. Journal output:\n${journalOutput}`);
 }

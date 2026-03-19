@@ -170,9 +170,7 @@ function AddTunnelForm({ domain, onClose }) {
               .{domain}
             </span>
           </div>
-          {errors.subdomain && (
-            <p className="text-red-400 text-xs mt-1">{errors.subdomain}</p>
-          )}
+          {errors.subdomain && <p className="text-red-400 text-xs mt-1">{errors.subdomain}</p>}
         </div>
 
         {/* Port */}
@@ -191,9 +189,7 @@ function AddTunnelForm({ domain, onClose }) {
             max={65535}
             className="w-40 rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 font-mono placeholder:text-zinc-600 focus:outline-none focus:border-cyan-400 disabled:opacity-50"
           />
-          {errors.port && (
-            <p className="text-red-400 text-xs mt-1">{errors.port}</p>
-          )}
+          {errors.port && <p className="text-red-400 text-xs mt-1">{errors.port}</p>}
         </div>
 
         {/* Description */}
@@ -261,8 +257,8 @@ function DeleteConfirmation({ tunnel, onConfirm, onCancel, isPending }) {
         <h3 className="text-lg font-semibold text-white mb-2">Delete Tunnel</h3>
         <p className="text-zinc-400 text-sm mb-6">
           Are you sure you want to delete{' '}
-          <span className="text-cyan-400 font-mono">{tunnel.fqdn}</span>? This will
-          remove the nginx configuration and TLS certificate mapping.
+          <span className="text-cyan-400 font-mono">{tunnel.fqdn}</span>? This will remove the nginx
+          configuration and TLS certificate mapping.
         </p>
         <div className="flex items-center justify-end gap-3">
           <button
@@ -329,13 +325,18 @@ function TunnelTable({ tunnels, onDelete, onToggle }) {
           {tunnels.map((tunnel) => {
             const enabled = tunnel.enabled !== false;
             return (
-              <tr key={tunnel.id} className={`border-b border-zinc-700 ${enabled ? 'bg-zinc-800/50' : 'bg-zinc-800/20 opacity-60'}`}>
+              <tr
+                key={tunnel.id}
+                className={`border-b border-zinc-700 ${enabled ? 'bg-zinc-800/50' : 'bg-zinc-800/20 opacity-60'}`}
+              >
                 <td className="py-3 px-4">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                    enabled
-                      ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                      : 'text-zinc-500 bg-zinc-800 border-zinc-700'
-                  }`}>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full border ${
+                      enabled
+                        ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                        : 'text-zinc-500 bg-zinc-800 border-zinc-700'
+                    }`}
+                  >
                     {enabled ? 'active' : 'disabled'}
                   </span>
                 </td>
@@ -352,8 +353,12 @@ function TunnelTable({ tunnels, onDelete, onToggle }) {
                   </a>
                 </td>
                 <td className="py-3 px-4 text-sm text-zinc-200 font-mono">{tunnel.port}</td>
-                <td className="py-3 px-4 text-sm text-zinc-400">{tunnel.description || '\u2014'}</td>
-                <td className="py-3 px-4 text-sm text-zinc-500">{relativeTime(tunnel.createdAt)}</td>
+                <td className="py-3 px-4 text-sm text-zinc-400">
+                  {tunnel.description || '\u2014'}
+                </td>
+                <td className="py-3 px-4 text-sm text-zinc-500">
+                  {relativeTime(tunnel.createdAt)}
+                </td>
                 <td className="py-3 px-4 text-right">
                   <div className="inline-flex items-center gap-2">
                     <button
@@ -394,14 +399,19 @@ function TunnelCards({ tunnels, onDelete, onToggle }) {
       {tunnels.map((tunnel) => {
         const enabled = tunnel.enabled !== false;
         return (
-          <div key={tunnel.id} className={`border border-zinc-700 rounded-lg p-4 ${enabled ? 'bg-zinc-800/50' : 'bg-zinc-800/20 opacity-60'}`}>
+          <div
+            key={tunnel.id}
+            className={`border border-zinc-700 rounded-lg p-4 ${enabled ? 'bg-zinc-800/50' : 'bg-zinc-800/20 opacity-60'}`}
+          >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                  enabled
-                    ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                    : 'text-zinc-500 bg-zinc-800 border-zinc-700'
-                }`}>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full border ${
+                    enabled
+                      ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                      : 'text-zinc-500 bg-zinc-800 border-zinc-700'
+                  }`}
+                >
                   {enabled ? 'active' : 'disabled'}
                 </span>
                 <span className="text-sm font-semibold text-zinc-200 font-mono">
@@ -435,7 +445,9 @@ function TunnelCards({ tunnels, onDelete, onToggle }) {
               <ExternalLink size={12} />
             </a>
             <div className="flex items-center gap-4 text-xs text-zinc-500 mt-2">
-              <span>Port: <span className="text-zinc-300 font-mono">{tunnel.port}</span></span>
+              <span>
+                Port: <span className="text-zinc-300 font-mono">{tunnel.port}</span>
+              </span>
               <span>{relativeTime(tunnel.createdAt)}</span>
             </div>
             {tunnel.description && (
@@ -472,12 +484,25 @@ function MacConfigSection({ hasTunnels }) {
   }, []);
 
   const instructions = [
-    { step: 'Install Chisel:', code: 'brew install chisel', note: 'or download from https://github.com/jpillora/chisel/releases' },
-    { step: 'Save the downloaded file to:', code: '~/Library/LaunchAgents/com.portlama.chisel.plist' },
-    { step: 'Load the agent:', code: 'launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist' },
+    {
+      step: 'Install Chisel:',
+      code: 'brew install chisel',
+      note: 'or download from https://github.com/jpillora/chisel/releases',
+    },
+    {
+      step: 'Save the downloaded file to:',
+      code: '~/Library/LaunchAgents/com.portlama.chisel.plist',
+    },
+    {
+      step: 'Load the agent:',
+      code: 'launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist',
+    },
     { step: 'Check status:', code: 'launchctl list | grep chisel' },
     { step: 'View logs:', code: 'tail -f /usr/local/var/log/chisel.log' },
-    { step: 'To update after adding/removing tunnels:', note: 'Download a new plist, unload the old one, load the new one.' },
+    {
+      step: 'To update after adding/removing tunnels:',
+      note: 'Download a new plist, unload the old one, load the new one.',
+    },
   ];
 
   return (
@@ -496,7 +521,9 @@ function MacConfigSection({ hasTunnels }) {
       </button>
 
       {!hasTunnels && (
-        <p className="text-xs text-zinc-500 mt-2">Add at least one tunnel to download the config.</p>
+        <p className="text-xs text-zinc-500 mt-2">
+          Add at least one tunnel to download the config.
+        </p>
       )}
 
       {/* Collapsible instructions */}
@@ -573,12 +600,9 @@ export default function Tunnels() {
     },
   });
 
-  const handleDelete = useCallback(
-    (tunnel) => {
-      setDeleteTarget(tunnel);
-    },
-    [],
-  );
+  const handleDelete = useCallback((tunnel) => {
+    setDeleteTarget(tunnel);
+  }, []);
 
   const handleToggle = useCallback(
     (tunnel) => {
@@ -601,9 +625,7 @@ export default function Tunnels() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Tunnels</h1>
-          <p className="text-zinc-500 text-sm mt-1">
-            Manage reverse tunnel configurations
-          </p>
+          <p className="text-zinc-500 text-sm mt-1">Manage reverse tunnel configurations</p>
         </div>
         {!showForm && (
           <button
@@ -618,9 +640,7 @@ export default function Tunnels() {
       </div>
 
       {/* Add Tunnel Form */}
-      {showForm && domain && (
-        <AddTunnelForm domain={domain} onClose={() => setShowForm(false)} />
-      )}
+      {showForm && domain && <AddTunnelForm domain={domain} onClose={() => setShowForm(false)} />}
 
       {/* Tunnel List */}
       {tunnelsQuery.isLoading ? (

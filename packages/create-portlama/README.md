@@ -30,13 +30,13 @@ configured through the browser-based onboarding wizard after installation.
 
 ## Requirements
 
-| Requirement       | Details              |
-| ----------------- | -------------------- |
-| OS                | Ubuntu 24.04 LTS     |
-| Access            | root                 |
-| Node.js           | >= 20.0.0            |
-| RAM               | 512 MB minimum       |
-| Recommended       | DigitalOcean $4 droplet |
+| Requirement | Details                 |
+| ----------- | ----------------------- |
+| OS          | Ubuntu 24.04 LTS        |
+| Access      | root                    |
+| Node.js     | >= 20.0.0               |
+| RAM         | 512 MB minimum          |
+| Recommended | DigitalOcean $4 droplet |
 
 ## Further Reading
 

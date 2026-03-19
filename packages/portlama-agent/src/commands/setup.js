@@ -58,10 +58,7 @@ export async function runSetup() {
   console.log(chalk.dim('    Panel → Certificates → Agent Certificates → Generate'));
   console.log('');
 
-  const panelUrl = await prompt(
-    'Panel URL (e.g. https://1.2.3.4:9292)',
-    existingConfig?.panelUrl,
-  );
+  const panelUrl = await prompt('Panel URL (e.g. https://1.2.3.4:9292)', existingConfig?.panelUrl);
   if (!panelUrl) {
     throw new Error('Panel URL is required.');
   }
@@ -179,9 +176,7 @@ export async function runSetup() {
             if (loaded) {
               task.output = 'Agent loaded (process starting...)';
             } else {
-              throw new Error(
-                'Agent failed to load. Check logs with: portlama-agent logs',
-              );
+              throw new Error('Agent failed to load. Check logs with: portlama-agent logs');
             }
           }
         },
@@ -230,30 +225,66 @@ function printSetupSummary(ctx) {
 
   console.log('');
   console.log(c('  ╔══════════════════════════════════════════════════════════╗'));
-  console.log(c('  ║') + `  ${g.bold('Portlama Agent installed successfully!')}` + ' '.repeat(17) + c('║'));
+  console.log(
+    c('  ║') + `  ${g.bold('Portlama Agent installed successfully!')}` + ' '.repeat(17) + c('║'),
+  );
   console.log(c('  ╠══════════════════════════════════════════════════════════╣'));
 
   if (ctx.domain) {
-    console.log(c('  ║') + `  ${b('Domain:')}  ${c(ctx.domain)}` + ' '.repeat(Math.max(0, 46 - ctx.domain.length)) + c('║'));
+    console.log(
+      c('  ║') +
+        `  ${b('Domain:')}  ${c(ctx.domain)}` +
+        ' '.repeat(Math.max(0, 46 - ctx.domain.length)) +
+        c('║'),
+    );
   }
 
-  console.log(c('  ║') + `  ${b('Chisel:')}  ${ctx.chiselVersion}` + ' '.repeat(Math.max(0, 46 - (ctx.chiselVersion || '').length)) + c('║'));
-  console.log(c('  ║') + `  ${b('Tunnels:')} ${ctx.tunnels.length} configured` + ' '.repeat(33) + c('║'));
+  console.log(
+    c('  ║') +
+      `  ${b('Chisel:')}  ${ctx.chiselVersion}` +
+      ' '.repeat(Math.max(0, 46 - (ctx.chiselVersion || '').length)) +
+      c('║'),
+  );
+  console.log(
+    c('  ║') + `  ${b('Tunnels:')} ${ctx.tunnels.length} configured` + ' '.repeat(33) + c('║'),
+  );
   console.log(c('  ║') + ' '.repeat(58) + c('║'));
 
   if (ctx.tunnels.length > 0) {
     for (const t of ctx.tunnels) {
       const line = `${t.subdomain} → localhost:${t.port}`;
-      console.log(c('  ║') + `    ${d('•')} ${line}` + ' '.repeat(Math.max(0, 54 - line.length)) + c('║'));
+      console.log(
+        c('  ║') + `    ${d('•')} ${line}` + ' '.repeat(Math.max(0, 54 - line.length)) + c('║'),
+      );
     }
     console.log(c('  ║') + ' '.repeat(58) + c('║'));
   }
 
   console.log(c('  ║') + `  ${b('Commands:')}` + ' '.repeat(47) + c('║'));
-  console.log(c('  ║') + `    ${d('portlama-agent status')}    ${d('— check agent health')}` + ' '.repeat(11) + c('║'));
-  console.log(c('  ║') + `    ${d('portlama-agent logs')}      ${d('— stream chisel logs')}` + ' '.repeat(11) + c('║'));
-  console.log(c('  ║') + `    ${d('portlama-agent update')}    ${d('— refresh tunnel config')}` + ' '.repeat(8) + c('║'));
-  console.log(c('  ║') + `    ${d('portlama-agent uninstall')} ${d('— remove everything')}` + ' '.repeat(12) + c('║'));
+  console.log(
+    c('  ║') +
+      `    ${d('portlama-agent status')}    ${d('— check agent health')}` +
+      ' '.repeat(11) +
+      c('║'),
+  );
+  console.log(
+    c('  ║') +
+      `    ${d('portlama-agent logs')}      ${d('— stream chisel logs')}` +
+      ' '.repeat(11) +
+      c('║'),
+  );
+  console.log(
+    c('  ║') +
+      `    ${d('portlama-agent update')}    ${d('— refresh tunnel config')}` +
+      ' '.repeat(8) +
+      c('║'),
+  );
+  console.log(
+    c('  ║') +
+      `    ${d('portlama-agent uninstall')} ${d('— remove everything')}` +
+      ' '.repeat(12) +
+      c('║'),
+  );
   console.log(c('  ║') + ' '.repeat(58) + c('║'));
   console.log(c('  ╚══════════════════════════════════════════════════════════╝'));
   console.log('');

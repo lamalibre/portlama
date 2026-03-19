@@ -26,7 +26,7 @@ async function scanDirectory(dir, base = '') {
     const fullPath = path.join(dir, entry.name);
     const relPath = base ? path.join(base, entry.name) : entry.name;
     if (entry.isDirectory()) {
-      results.push(...await scanDirectory(fullPath, relPath));
+      results.push(...(await scanDirectory(fullPath, relPath)));
     } else if (entry.isFile()) {
       const s = await stat(fullPath);
       results.push({ relativePath: relPath, absolutePath: fullPath, size: s.size });
@@ -112,7 +112,9 @@ export async function runDeploy(args) {
       const ext = path.extname(f.relativePath) || '(no extension)';
       console.error(`    ${chalk.yellow(ext)}  ${f.relativePath}`);
     }
-    console.error(`\n  ${chalk.dim('Only static web assets are allowed. Remove these files and retry.')}\n`);
+    console.error(
+      `\n  ${chalk.dim('Only static web assets are allowed. Remove these files and retry.')}\n`,
+    );
     process.exit(1);
   }
 
@@ -160,12 +162,20 @@ export async function runDeploy(args) {
         title: 'Clearing remote files',
         task: async (_ctx, task) => {
           const { files: remoteFiles } = await fetchSiteFiles(
-            config.panelUrl, config.p12Path, config.p12Password, siteId, '.',
+            config.panelUrl,
+            config.p12Path,
+            config.p12Password,
+            siteId,
+            '.',
           );
           for (const f of remoteFiles) {
             task.output = `Removing ${f.name}`;
             await deleteSiteFile(
-              config.panelUrl, config.p12Path, config.p12Password, siteId, f.name,
+              config.panelUrl,
+              config.p12Path,
+              config.p12Password,
+              siteId,
+              f.name,
             );
           }
         },
@@ -190,8 +200,11 @@ export async function runDeploy(args) {
               const batch = groupFiles.slice(i, i + 10);
               const uploadDir = dir === '.' ? '.' : dir;
               await uploadSiteFiles(
-                config.panelUrl, config.p12Path, config.p12Password,
-                siteId, uploadDir,
+                config.panelUrl,
+                config.p12Path,
+                config.p12Password,
+                siteId,
+                uploadDir,
                 batch.map((f) => f.absolutePath),
               );
               uploaded += batch.length;
@@ -208,7 +221,11 @@ export async function runDeploy(args) {
           let remoteCount = 0;
           const countRemote = async (dirPath) => {
             const { files: entries } = await fetchSiteFiles(
-              config.panelUrl, config.p12Path, config.p12Password, siteId, dirPath,
+              config.panelUrl,
+              config.p12Path,
+              config.p12Password,
+              siteId,
+              dirPath,
             );
             for (const entry of entries) {
               if (entry.type === 'directory') {
@@ -223,7 +240,9 @@ export async function runDeploy(args) {
           const localCount = files.length;
           if (remoteCount !== localCount) {
             task.output = `Warning: remote has ${remoteCount} files but ${localCount} were uploaded`;
-            throw new Error(`Verification failed: expected ${localCount} files on remote but found ${remoteCount}`);
+            throw new Error(
+              `Verification failed: expected ${localCount} files on remote but found ${remoteCount}`,
+            );
           }
           task.output = `${remoteCount} files verified`;
         },
@@ -246,6 +265,8 @@ export async function runDeploy(args) {
   // Print summary
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   console.log('');
-  console.log(`  ${chalk.green('✓')} Deployed ${chalk.bold(String(files.length))} files (${formatBytes(totalSize)}) to ${chalk.cyan(`https://${siteFqdn}/`)}`);
+  console.log(
+    `  ${chalk.green('✓')} Deployed ${chalk.bold(String(files.length))} files (${formatBytes(totalSize)}) to ${chalk.cyan(`https://${siteFqdn}/`)}`,
+  );
   console.log('');
 }

@@ -28,7 +28,7 @@ services:
       # cgroup mount for systemd
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     ports:
-      - "9292:9292"
+      - '9292:9292'
     environment:
       - NODE_ENV=development
       - SKIP_DNS_TESTS=1
@@ -38,7 +38,7 @@ services:
       - /run/lock
     stop_grace_period: 3s
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://127.0.0.1:9292/api/health"]
+      test: ['CMD', 'curl', '-sf', 'http://127.0.0.1:9292/api/health']
       interval: 10s
       timeout: 5s
       retries: 12

@@ -18,54 +18,54 @@ Portlama's state is spread across four directories. All of them matter.
 
 This is the most important directory. It contains:
 
-| File | Purpose |
-|------|---------|
-| `panel.json` | Server configuration (IP, domain, email, onboarding status) |
-| `tunnels.json` | Tunnel definitions (subdomain, port, enabled state) |
-| `sites.json` | Static site definitions |
-| `invitations.json` | Pending user invitations |
-| `pki/revoked.json` | Revoked certificate tracking |
-| `pki/ca.key` | Certificate Authority private key |
-| `pki/ca.crt` | Certificate Authority certificate |
-| `pki/client.key` | Client certificate private key |
-| `pki/client.crt` | Client certificate |
-| `pki/client.p12` | PKCS12 bundle (imported into browsers) |
-| `pki/.p12-password` | Password for the PKCS12 bundle |
-| `pki/self-signed.pem` | Self-signed TLS cert for IP:9292 access |
-| `pki/self-signed-key.pem` | Self-signed TLS key for IP:9292 access |
+| File                      | Purpose                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| `panel.json`              | Server configuration (IP, domain, email, onboarding status) |
+| `tunnels.json`            | Tunnel definitions (subdomain, port, enabled state)         |
+| `sites.json`              | Static site definitions                                     |
+| `invitations.json`        | Pending user invitations                                    |
+| `pki/revoked.json`        | Revoked certificate tracking                                |
+| `pki/ca.key`              | Certificate Authority private key                           |
+| `pki/ca.crt`              | Certificate Authority certificate                           |
+| `pki/client.key`          | Client certificate private key                              |
+| `pki/client.crt`          | Client certificate                                          |
+| `pki/client.p12`          | PKCS12 bundle (imported into browsers)                      |
+| `pki/.p12-password`       | Password for the PKCS12 bundle                              |
+| `pki/self-signed.pem`     | Self-signed TLS cert for IP:9292 access                     |
+| `pki/self-signed-key.pem` | Self-signed TLS key for IP:9292 access                      |
 
 **If you lose the PKI files**, every browser that imported the client certificate will need a new one. This is the single most important directory to back up.
 
 #### `/etc/authelia/` — User Database and Authentication Config
 
-| File | Purpose |
-|------|---------|
-| `configuration.yml` | Authelia server configuration |
-| `users.yml` | User accounts (usernames, bcrypt password hashes, groups) |
-| `.secrets.json` | JWT secret, session secret, storage encryption key |
-| `db.sqlite3` | Authelia session/state database |
+| File                | Purpose                                                   |
+| ------------------- | --------------------------------------------------------- |
+| `configuration.yml` | Authelia server configuration                             |
+| `users.yml`         | User accounts (usernames, bcrypt password hashes, groups) |
+| `.secrets.json`     | JWT secret, session secret, storage encryption key        |
+| `db.sqlite3`        | Authelia session/state database                           |
 
 **If you lose the users database**, all user accounts and TOTP secrets are gone. Users will need to be recreated and re-enroll their authenticator apps.
 
 #### `/etc/letsencrypt/` — TLS Certificates
 
-| Path | Purpose |
-|------|---------|
+| Path                   | Purpose                                  |
+| ---------------------- | ---------------------------------------- |
 | `live/*/fullchain.pem` | Active certificate chain for each domain |
-| `live/*/privkey.pem` | Private key for each domain |
-| `renewal/*.conf` | Auto-renewal configuration per domain |
-| `accounts/` | Let's Encrypt account credentials |
+| `live/*/privkey.pem`   | Private key for each domain              |
+| `renewal/*.conf`       | Auto-renewal configuration per domain    |
+| `accounts/`            | Let's Encrypt account credentials        |
 
 **If you lose Let's Encrypt certificates**, you can re-issue them (free, no limit for different domains), but it takes a few minutes per domain and is subject to rate limits (50 certificates per registered domain per week).
 
 #### `/etc/nginx/` — Reverse Proxy Configuration
 
-| Path | Purpose |
-|------|---------|
-| `sites-available/portlama-*` | Portlama vhost configurations |
-| `sites-enabled/portlama-*` | Symlinks to enabled vhosts |
-| `snippets/portlama-mtls.conf` | mTLS configuration snippet |
-| `nginx.conf` | Main nginx configuration (usually unmodified) |
+| Path                          | Purpose                                       |
+| ----------------------------- | --------------------------------------------- |
+| `sites-available/portlama-*`  | Portlama vhost configurations                 |
+| `sites-enabled/portlama-*`    | Symlinks to enabled vhosts                    |
+| `snippets/portlama-mtls.conf` | mTLS configuration snippet                    |
+| `nginx.conf`                  | Main nginx configuration (usually unmodified) |
 
 **If you lose nginx configs**, the panel can regenerate vhosts for tunnels and sites, but you will need to re-run the provisioning or manually recreate the base vhosts (panel, auth, tunnel).
 
@@ -283,13 +283,13 @@ The existing client certificate (`.p12` file) will still work because the CA key
 
 All Portlama state is stored as flat files with atomic writes:
 
-| File | Format | Write Pattern |
-|------|--------|---------------|
-| `/etc/portlama/panel.json` | JSON | Write `.tmp` then `rename()` |
-| `/etc/portlama/tunnels.json` | JSON | Write `.tmp`, `fsync()`, then `rename()` |
-| `/etc/portlama/sites.json` | JSON | Write `.tmp`, `fsync()`, then `rename()` |
-| `/etc/portlama/invitations.json` | JSON | Write `.tmp`, `fsync()`, then `rename()` |
-| `/etc/authelia/users.yml` | YAML | Write via `sudo mv` from temp file |
+| File                             | Format | Write Pattern                            |
+| -------------------------------- | ------ | ---------------------------------------- |
+| `/etc/portlama/panel.json`       | JSON   | Write `.tmp` then `rename()`             |
+| `/etc/portlama/tunnels.json`     | JSON   | Write `.tmp`, `fsync()`, then `rename()` |
+| `/etc/portlama/sites.json`       | JSON   | Write `.tmp`, `fsync()`, then `rename()` |
+| `/etc/portlama/invitations.json` | JSON   | Write `.tmp`, `fsync()`, then `rename()` |
+| `/etc/authelia/users.yml`        | YAML   | Write via `sudo mv` from temp file       |
 
 The atomic write pattern (write to temporary file, sync, rename) ensures that a crash during a write does not corrupt the primary file. The `rename()` system call is atomic on POSIX filesystems.
 
@@ -302,22 +302,22 @@ The atomic write pattern (write to temporary file, sync, rename) ensures that a 
 
 ## Quick Reference
 
-| Directory | Contains | Criticality |
-|-----------|----------|-------------|
-| `/etc/portlama/` | Config, state, PKI | Critical — irreplaceable PKI keys |
-| `/etc/authelia/` | User database, auth config | High — user accounts and secrets |
-| `/etc/letsencrypt/` | TLS certificates | Medium — can be re-issued |
-| `/etc/nginx/sites-available/` | Vhost configs | Low — can be regenerated |
+| Directory                     | Contains                   | Criticality                       |
+| ----------------------------- | -------------------------- | --------------------------------- |
+| `/etc/portlama/`              | Config, state, PKI         | Critical — irreplaceable PKI keys |
+| `/etc/authelia/`              | User database, auth config | High — user accounts and secrets  |
+| `/etc/letsencrypt/`           | TLS certificates           | Medium — can be re-issued         |
+| `/etc/nginx/sites-available/` | Vhost configs              | Low — can be regenerated          |
 
-| Backup Command | What It Does |
-|---------------|-------------|
-| `tar czf backup.tar.gz /etc/portlama/ /etc/authelia/ /etc/letsencrypt/` | Full config backup |
-| `scp root@IP:/root/backup.tar.gz ~/backups/` | Download backup |
-| `tar xzf backup.tar.gz -C /` | Restore from backup |
+| Backup Command                                                          | What It Does        |
+| ----------------------------------------------------------------------- | ------------------- |
+| `tar czf backup.tar.gz /etc/portlama/ /etc/authelia/ /etc/letsencrypt/` | Full config backup  |
+| `scp root@IP:/root/backup.tar.gz ~/backups/`                            | Download backup     |
+| `tar xzf backup.tar.gz -C /`                                            | Restore from backup |
 
-| Post-Restore Step | Command |
-|-------------------|---------|
-| Fix PKI permissions | `sudo chmod 700 /etc/portlama/pki/ && sudo chmod 600 /etc/portlama/pki/ca.key` |
-| Validate nginx | `sudo nginx -t` |
-| Restart all services | `sudo systemctl restart nginx authelia chisel portlama-panel` |
-| Verify health | `curl -s http://127.0.0.1:3100/api/health` |
+| Post-Restore Step    | Command                                                                        |
+| -------------------- | ------------------------------------------------------------------------------ |
+| Fix PKI permissions  | `sudo chmod 700 /etc/portlama/pki/ && sudo chmod 600 /etc/portlama/pki/ca.key` |
+| Validate nginx       | `sudo nginx -t`                                                                |
+| Restart all services | `sudo systemctl restart nginx authelia chisel portlama-panel`                  |
+| Verify health        | `curl -s http://127.0.0.1:3100/api/health`                                     |

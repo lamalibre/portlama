@@ -54,10 +54,7 @@ export function nginxTasks(ctx, task) {
         const mtlsSnippet = `ssl_client_certificate ${pkiDir}/ca.crt;
 ssl_verify_client on;
 `;
-        await writeFile(
-          '/etc/nginx/snippets/portlama-mtls.conf',
-          mtlsSnippet,
-        );
+        await writeFile('/etc/nginx/snippets/portlama-mtls.conf', mtlsSnippet);
 
         subtask.output = 'mTLS snippet written to /etc/nginx/snippets/portlama-mtls.conf';
       },
@@ -130,10 +127,7 @@ server {
     }
 }
 `;
-        await writeFile(
-          '/etc/nginx/sites-available/portlama-panel-ip',
-          vhostConfig,
-        );
+        await writeFile('/etc/nginx/sites-available/portlama-panel-ip', vhostConfig);
 
         subtask.output = 'Vhost written to /etc/nginx/sites-available/portlama-panel-ip';
       },
@@ -187,10 +181,7 @@ server {
         await execa('systemctl', ['enable', 'nginx']);
         await execa('systemctl', ['restart', 'nginx']);
 
-        const { stdout: status } = await execa('systemctl', [
-          'is-active',
-          'nginx',
-        ]);
+        const { stdout: status } = await execa('systemctl', ['is-active', 'nginx']);
         if (status.trim() !== 'active') {
           throw new Error(`nginx failed to start. Status: ${status.trim()}`);
         }

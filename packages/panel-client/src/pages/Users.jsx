@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
-import { UserPlus, Pencil, KeyRound, Trash2, X, Eye, EyeOff, Copy, Check, Mail, Link, Clock, XCircle } from 'lucide-react';
+import {
+  UserPlus,
+  Pencil,
+  KeyRound,
+  Trash2,
+  X,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  Mail,
+  Link,
+  Clock,
+  XCircle,
+} from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 
 // --- API helpers ---
@@ -195,7 +209,9 @@ function UserFormModal({ user, onClose, onSuccess }) {
         return;
       }
       if (!/^[a-z0-9_-]+$/.test(form.username)) {
-        setError('Username must contain only lowercase alphanumeric characters, underscores, and hyphens');
+        setError(
+          'Username must contain only lowercase alphanumeric characters, underscores, and hyphens',
+        );
         return;
       }
       if (form.username.length < 2) {
@@ -256,9 +272,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 className="mb-4 text-lg font-bold text-white">
-        {isEdit ? 'Edit User' : 'Add User'}
-      </h2>
+      <h2 className="mb-4 text-lg font-bold text-white">{isEdit ? 'Edit User' : 'Add User'}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm text-zinc-400">Username</label>
@@ -323,9 +337,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-400">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
         <div className="flex gap-3 pt-2">
           <button
@@ -380,7 +392,9 @@ function InviteUserModal({ onClose, onSuccess }) {
       return;
     }
     if (!/^[a-z0-9_-]+$/.test(form.username)) {
-      setError('Username must contain only lowercase alphanumeric characters, underscores, and hyphens');
+      setError(
+        'Username must contain only lowercase alphanumeric characters, underscores, and hyphens',
+      );
       return;
     }
     if (form.username.length < 2) {
@@ -434,7 +448,9 @@ function InviteUserModal({ onClose, onSuccess }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-zinc-400">Groups (comma-separated, optional)</label>
+          <label className="mb-1 block text-sm text-zinc-400">
+            Groups (comma-separated, optional)
+          </label>
           <input
             type="text"
             value={form.groups}
@@ -444,9 +460,7 @@ function InviteUserModal({ onClose, onSuccess }) {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-400">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
         <div className="flex gap-3 pt-2">
           <button
@@ -503,7 +517,8 @@ function InviteLinkModal({ inviteUrl, token, onClose }) {
       </div>
       {!inviteUrl && (
         <p className="mb-4 text-xs text-yellow-400">
-          Domain is not configured. The invitation token has been created but cannot generate a full URL.
+          Domain is not configured. The invitation token has been created but cannot generate a full
+          URL.
         </p>
       )}
       <button
@@ -519,7 +534,15 @@ function InviteLinkModal({ inviteUrl, token, onClose }) {
 
 // --- Confirm Dialog ---
 
-function ConfirmDialog({ title, message, confirmLabel, destructive, onConfirm, onCancel, isPending }) {
+function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  destructive,
+  onConfirm,
+  onCancel,
+  isPending,
+}) {
   return (
     <Modal onClose={onCancel}>
       <h2 className="mb-2 text-lg font-bold text-white">{title}</h2>
@@ -537,9 +560,7 @@ function ConfirmDialog({ title, message, confirmLabel, destructive, onConfirm, o
           onClick={onConfirm}
           disabled={isPending}
           className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
-            destructive
-              ? 'bg-red-600 hover:bg-red-500'
-              : 'bg-cyan-600 hover:bg-cyan-500'
+            destructive ? 'bg-red-600 hover:bg-red-500' : 'bg-cyan-600 hover:bg-cyan-500'
           }`}
         >
           {isPending ? 'Please wait...' : confirmLabel}
@@ -646,7 +667,9 @@ export default function Users() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Users</h1>
-          <p className="text-zinc-500 text-sm mt-1">Manage Authelia users and two-factor authentication.</p>
+          <p className="text-zinc-500 text-sm mt-1">
+            Manage Authelia users and two-factor authentication.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -684,11 +707,21 @@ export default function Users() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-zinc-700">
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">Username</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">Display Name</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden sm:table-cell">Email</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden md:table-cell">Groups</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 text-right">Actions</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">
+                  Username
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">
+                  Display Name
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden sm:table-cell">
+                  Email
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden md:table-cell">
+                  Groups
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -696,7 +729,9 @@ export default function Users() {
                 <tr key={u.username} className="border-b border-zinc-700 last:border-b-0">
                   <td className="px-4 py-3 font-mono text-sm text-cyan-400">{u.username}</td>
                   <td className="px-4 py-3 text-sm text-zinc-300">{u.displayname}</td>
-                  <td className="px-4 py-3 text-sm text-zinc-400 hidden sm:table-cell">{u.email}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-400 hidden sm:table-cell">
+                    {u.email}
+                  </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {(u.groups || []).map((g) => (
@@ -765,18 +800,28 @@ export default function Users() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-zinc-700">
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">Username</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden sm:table-cell">Email</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">
+                  Username
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden sm:table-cell">
+                  Email
+                </th>
                 <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400">Status</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden md:table-cell">Expires</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 text-right">Actions</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 hidden md:table-cell">
+                  Expires
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase text-zinc-400 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {invitations.map((inv) => (
                 <tr key={inv.id} className="border-b border-zinc-700 last:border-b-0">
                   <td className="px-4 py-3 font-mono text-sm text-cyan-400">{inv.username}</td>
-                  <td className="px-4 py-3 text-sm text-zinc-400 hidden sm:table-cell">{inv.email}</td>
+                  <td className="px-4 py-3 text-sm text-zinc-400 hidden sm:table-cell">
+                    {inv.email}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full border ${
@@ -847,19 +892,11 @@ export default function Users() {
 
       {/* Add User Modal */}
       {showAddModal && (
-        <UserFormModal
-          onClose={() => setShowAddModal(false)}
-          onSuccess={handleUserCreated}
-        />
+        <UserFormModal onClose={() => setShowAddModal(false)} onSuccess={handleUserCreated} />
       )}
 
       {/* Edit User Modal */}
-      {editUser && (
-        <UserFormModal
-          user={editUser}
-          onClose={() => setEditUser(null)}
-        />
-      )}
+      {editUser && <UserFormModal user={editUser} onClose={() => setEditUser(null)} />}
 
       {/* Delete Confirmation */}
       {deleteTarget && (
@@ -887,9 +924,7 @@ export default function Users() {
       )}
 
       {/* TOTP Enrollment QR Code */}
-      {totpUri && (
-        <TotpModal totpUri={totpUri} onClose={closeTotpModal} />
-      )}
+      {totpUri && <TotpModal totpUri={totpUri} onClose={closeTotpModal} />}
     </div>
   );
 }

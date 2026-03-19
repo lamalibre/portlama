@@ -18,12 +18,12 @@ For the IP-based admin panel (`https://<ip>:9292`), there is no domain to verify
 
 ### Certificate types in Portlama
 
-| Type | Where used | Issued by | Validity | Auto-renew |
-|------|-----------|-----------|----------|------------|
-| Let's Encrypt | Domain-based vhosts (`*.example.com`) | Let's Encrypt CA | 90 days | Yes (systemd timer) |
-| Self-signed TLS | IP-based panel (`https://IP:9292`) | Portlama installer | 10 years | No (long validity) |
-| mTLS CA | nginx client cert verification | Portlama installer | 10 years | No (long validity) |
-| mTLS client | Browser authentication | Portlama CA | 2 years | Manual rotation |
+| Type            | Where used                            | Issued by          | Validity | Auto-renew          |
+| --------------- | ------------------------------------- | ------------------ | -------- | ------------------- |
+| Let's Encrypt   | Domain-based vhosts (`*.example.com`) | Let's Encrypt CA   | 90 days  | Yes (systemd timer) |
+| Self-signed TLS | IP-based panel (`https://IP:9292`)    | Portlama installer | 10 years | No (long validity)  |
+| mTLS CA         | nginx client cert verification        | Portlama installer | 10 years | No (long validity)  |
+| mTLS client     | Browser authentication                | Portlama CA        | 2 years  | Manual rotation     |
 
 ### When certificates are issued
 
@@ -66,12 +66,12 @@ Your admin client certificate expires after 2 years. The Certificates page shows
 
 ### What happens when certificates expire
 
-| Certificate | If it expires | Impact | Recovery |
-|-------------|--------------|--------|----------|
-| Let's Encrypt | Browsers show security warning | Visitors see "not secure" for that domain | Renew via panel or `certbot renew` |
-| Self-signed TLS | Browser warning changes | Minimal — browsers already show a warning for self-signed certs | Re-run installer |
-| mTLS CA | Client certs can no longer be verified | Admin panel becomes inaccessible | Re-provision PKI (requires SSH) |
-| mTLS client | nginx rejects the certificate | Admin panel inaccessible from that browser | Rotate from panel (if another device still works) |
+| Certificate     | If it expires                          | Impact                                                          | Recovery                                          |
+| --------------- | -------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
+| Let's Encrypt   | Browsers show security warning         | Visitors see "not secure" for that domain                       | Renew via panel or `certbot renew`                |
+| Self-signed TLS | Browser warning changes                | Minimal — browsers already show a warning for self-signed certs | Re-run installer                                  |
+| mTLS CA         | Client certs can no longer be verified | Admin panel becomes inaccessible                                | Re-provision PKI (requires SSH)                   |
+| mTLS client     | nginx rejects the certificate          | Admin panel inaccessible from that browser                      | Rotate from panel (if another device still works) |
 
 The most critical scenario is the mTLS CA expiring, but it has a 10-year validity, making this a distant concern.
 
@@ -87,9 +87,13 @@ Portlama uses certbot with the nginx plugin for certificate issuance. The implem
 export async function issueCert(fqdn, email) {
   try {
     await execa('sudo', [
-      'certbot', 'certonly', '--nginx',
-      '-d', fqdn,
-      '--email', email,
+      'certbot',
+      'certonly',
+      '--nginx',
+      '-d',
+      fqdn,
+      '--email',
+      email,
       '--agree-tos',
       '--non-interactive',
     ]);
@@ -206,13 +210,16 @@ export async function isCertValid(fqdn) {
 
   try {
     // Check if cert is valid for at least 24 more hours
-    await execa('sudo', [
-      'openssl', 'x509', '-checkend', '86400', '-noout', '-in', certPath,
-    ]);
+    await execa('sudo', ['openssl', 'x509', '-checkend', '86400', '-noout', '-in', certPath]);
 
     // Get expiry date
     const { stdout } = await execa('sudo', [
-      'openssl', 'x509', '-enddate', '-noout', '-in', certPath,
+      'openssl',
+      'x509',
+      '-enddate',
+      '-noout',
+      '-in',
+      certPath,
     ]);
     const match = stdout.match(/notAfter=(.+)/);
     const expiryDate = match ? new Date(match[1]).toISOString() : null;
@@ -244,7 +251,7 @@ export async function listCerts() {
   if (stdout.includes('No certificates found')) return [];
 
   const blocks = stdout.split('Certificate Name:').slice(1);
-  return blocks.map(block => {
+  return blocks.map((block) => {
     // Parse: name, domains, expiry, cert path, key path, validity
     // ...
     return { name, domains, expiryDate, daysRemaining, certPath, keyPath, isValid };
@@ -327,13 +334,16 @@ The panel server reads mTLS certificate expiry dates using OpenSSL:
 ```javascript
 export async function readCertExpiry(certPath) {
   const { stdout } = await execa('sudo', [
-    'openssl', 'x509', '-in', certPath, '-enddate', '-noout',
+    'openssl',
+    'x509',
+    '-in',
+    certPath,
+    '-enddate',
+    '-noout',
   ]);
   const match = stdout.match(/notAfter=(.+)/);
   const expiryDate = new Date(match[1]);
-  const daysUntilExpiry = Math.floor(
-    (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-  );
+  const daysUntilExpiry = Math.floor((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   return { expiresAt: expiryDate.toISOString(), daysUntilExpiry };
 }
 ```
@@ -342,24 +352,24 @@ Certificates with 30 or fewer days remaining are flagged as `expiringSoon` in th
 
 ### Source files
 
-| File | Purpose |
-|------|---------|
-| `packages/panel-server/src/lib/certbot.js` | Let's Encrypt issuance, renewal, listing |
-| `packages/panel-server/src/lib/mtls.js` | mTLS cert expiry, rotation, download |
-| `packages/panel-server/src/routes/management/certs.js` | Certificate management API |
-| `packages/create-portlama/src/tasks/nginx.js` | Self-signed cert generation |
-| `packages/create-portlama/src/tasks/mtls.js` | mTLS CA and client cert generation |
+| File                                                   | Purpose                                  |
+| ------------------------------------------------------ | ---------------------------------------- |
+| `packages/panel-server/src/lib/certbot.js`             | Let's Encrypt issuance, renewal, listing |
+| `packages/panel-server/src/lib/mtls.js`                | mTLS cert expiry, rotation, download     |
+| `packages/panel-server/src/routes/management/certs.js` | Certificate management API               |
+| `packages/create-portlama/src/tasks/nginx.js`          | Self-signed cert generation              |
+| `packages/create-portlama/src/tasks/mtls.js`           | mTLS CA and client cert generation       |
 
 ## Quick Reference
 
 ### Certificate types
 
-| Type | Location | Issued by | Validity | Key size |
-|------|----------|-----------|----------|----------|
-| Let's Encrypt | `/etc/letsencrypt/live/<fqdn>/` | Let's Encrypt CA | 90 days | 2048-bit RSA |
-| Self-signed TLS | `/etc/portlama/pki/self-signed.pem` | Self | 10 years | 2048-bit RSA |
-| mTLS CA | `/etc/portlama/pki/ca.crt` | Self | 10 years | 4096-bit RSA |
-| mTLS client | `/etc/portlama/pki/client.crt` | Portlama CA | 2 years | 4096-bit RSA |
+| Type            | Location                            | Issued by        | Validity | Key size     |
+| --------------- | ----------------------------------- | ---------------- | -------- | ------------ |
+| Let's Encrypt   | `/etc/letsencrypt/live/<fqdn>/`     | Let's Encrypt CA | 90 days  | 2048-bit RSA |
+| Self-signed TLS | `/etc/portlama/pki/self-signed.pem` | Self             | 10 years | 2048-bit RSA |
+| mTLS CA         | `/etc/portlama/pki/ca.crt`          | Self             | 10 years | 4096-bit RSA |
+| mTLS client     | `/etc/portlama/pki/client.crt`      | Portlama CA      | 2 years  | 4096-bit RSA |
 
 ### certbot commands
 
@@ -399,21 +409,21 @@ openssl verify -CAfile /etc/letsencrypt/live/panel.example.com/chain.pem \
 
 ### API endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/certs` | List all certificates (Let's Encrypt + mTLS) |
-| POST | `/api/certs/:domain/renew` | Force renewal of a specific certificate |
-| POST | `/api/certs/mtls/rotate` | Rotate the mTLS client certificate |
-| GET | `/api/certs/mtls/download` | Download the current `.p12` bundle |
+| Method | Path                       | Description                                  |
+| ------ | -------------------------- | -------------------------------------------- |
+| GET    | `/api/certs`               | List all certificates (Let's Encrypt + mTLS) |
+| POST   | `/api/certs/:domain/renew` | Force renewal of a specific certificate      |
+| POST   | `/api/certs/mtls/rotate`   | Rotate the mTLS client certificate           |
+| GET    | `/api/certs/mtls/download` | Download the current `.p12` bundle           |
 
 ### Let's Encrypt rate limits
 
-| Limit | Value | Notes |
-|-------|-------|-------|
-| Certificates per registered domain | 50/week | Covers all subdomains of `example.com` |
-| Duplicate certificates | 5/week | Same set of domains |
-| Failed validations | 5/hour | Per account per hostname |
-| Certificate renewals | Exempt from 50/week | Renewals do not count against the limit |
+| Limit                              | Value               | Notes                                   |
+| ---------------------------------- | ------------------- | --------------------------------------- |
+| Certificates per registered domain | 50/week             | Covers all subdomains of `example.com`  |
+| Duplicate certificates             | 5/week              | Same set of domains                     |
+| Failed validations                 | 5/hour              | Per account per hostname                |
+| Certificate renewals               | Exempt from 50/week | Renewals do not count against the limit |
 
 ### Related documentation
 

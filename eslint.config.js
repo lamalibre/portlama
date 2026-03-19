@@ -22,7 +22,11 @@ export default [
 
   // 3. Node.js config for server-side packages
   {
-    files: ['packages/create-portlama/**/*.js', 'packages/panel-server/**/*.js', 'packages/portlama-agent/**/*.js'],
+    files: [
+      'packages/create-portlama/**/*.js',
+      'packages/panel-server/**/*.js',
+      'packages/portlama-agent/**/*.js',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,

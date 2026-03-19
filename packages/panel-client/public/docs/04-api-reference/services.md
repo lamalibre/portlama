@@ -15,6 +15,7 @@ All service endpoints require a valid mTLS client certificate and a completed on
 If onboarding is not complete, all endpoints return `503 Service Unavailable`.
 
 In addition to admin certificates, agent certificates with the appropriate capabilities can access these endpoints:
+
 - `services:read` — grants access to `GET /api/services` (list statuses)
 - `services:write` — grants access to `POST /api/services/:name/:action` (control services)
 
@@ -22,12 +23,12 @@ In addition to admin certificates, agent certificates with the appropriate capab
 
 Only these services can be managed through the API:
 
-| Service Name | Description |
-|-------------|-------------|
-| `nginx` | Reverse proxy, TLS termination, mTLS enforcement |
-| `chisel` | WebSocket tunnel server |
-| `authelia` | TOTP two-factor authentication |
-| `portlama-panel` | The panel server itself (Fastify) |
+| Service Name     | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| `nginx`          | Reverse proxy, TLS termination, mTLS enforcement |
+| `chisel`         | WebSocket tunnel server                          |
+| `authelia`       | TOTP two-factor authentication                   |
+| `portlama-panel` | The panel server itself (Fastify)                |
 
 Requests for any other service name are rejected with a 400 error. This whitelist prevents arbitrary systemd service manipulation.
 
@@ -80,10 +81,10 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | `string` | systemd service name |
-| `status` | `string` | One of: `active`, `inactive`, `failed`, `unknown` |
+| Field    | Type             | Description                                                          |
+| -------- | ---------------- | -------------------------------------------------------------------- |
+| `name`   | `string`         | systemd service name                                                 |
+| `status` | `string`         | One of: `active`, `inactive`, `failed`, `unknown`                    |
 | `uptime` | `string \| null` | Human-readable uptime (e.g., `"2d 5h 30m"`), or `null` if not active |
 
 The uptime is calculated from the `ActiveEnterTimestamp` reported by systemd and formatted as a human-readable duration. If the timestamp cannot be read, uptime is `null` even for active services.
@@ -96,10 +97,10 @@ Executes a systemctl action on a managed service. The command runs with a 30-sec
 
 **URL parameters:**
 
-| Parameter | Type | Validation | Description |
-|-----------|------|------------|-------------|
-| `:name` | `string` | Must be in the service whitelist | Service to control |
-| `:action` | `string` | One of: `start`, `stop`, `restart`, `reload` | Action to execute |
+| Parameter | Type     | Validation                                   | Description        |
+| --------- | -------- | -------------------------------------------- | ------------------ |
+| `:name`   | `string` | Must be in the service whitelist             | Service to control |
+| `:action` | `string` | One of: `start`, `stop`, `restart`, `reload` | Action to execute  |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -119,22 +120,22 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Unknown service"}` | Service name not in whitelist |
-| 400 | `{"error":"Invalid action"}` | Action not one of start/stop/restart/reload |
-| 400 | `{"error":"Cannot stop the panel service from the UI — it would terminate this session"}` | Attempting to stop `portlama-panel` |
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Zod validation of params failed |
-| 500 | `{"error":"Failed to restart nginx","details":"..."}` | systemctl command failed |
+| Status | Body                                                                                      | When                                        |
+| ------ | ----------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 400    | `{"error":"Unknown service"}`                                                             | Service name not in whitelist               |
+| 400    | `{"error":"Invalid action"}`                                                              | Action not one of start/stop/restart/reload |
+| 400    | `{"error":"Cannot stop the panel service from the UI — it would terminate this session"}` | Attempting to stop `portlama-panel`         |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}`                                | Zod validation of params failed             |
+| 500    | `{"error":"Failed to restart nginx","details":"..."}`                                     | systemctl command failed                    |
 
 ### Available Actions
 
-| Action | systemctl Command | Notes |
-|--------|-------------------|-------|
-| `start` | `sudo systemctl start <name>` | Start a stopped service |
-| `stop` | `sudo systemctl stop <name>` | Stop a running service (blocked for `portlama-panel`) |
-| `restart` | `sudo systemctl restart <name>` | Stop then start a service |
-| `reload` | `sudo systemctl reload <name>` | Reload configuration without full restart (supported by nginx and authelia) |
+| Action    | systemctl Command               | Notes                                                                       |
+| --------- | ------------------------------- | --------------------------------------------------------------------------- |
+| `start`   | `sudo systemctl start <name>`   | Start a stopped service                                                     |
+| `stop`    | `sudo systemctl stop <name>`    | Stop a running service (blocked for `portlama-panel`)                       |
+| `restart` | `sudo systemctl restart <name>` | Stop then start a service                                                   |
+| `reload`  | `sudo systemctl reload <name>`  | Reload configuration without full restart (supported by nginx and authelia) |
 
 ---
 
@@ -144,9 +145,9 @@ WebSocket endpoint that streams live logs from journalctl for a specific service
 
 **URL parameters:**
 
-| Parameter | Type | Validation | Description |
-|-----------|------|------------|-------------|
-| `:name` | `string` | Must be in the service whitelist | Service to tail logs for |
+| Parameter | Type     | Validation                       | Description              |
+| --------- | -------- | -------------------------------- | ------------------------ |
+| `:name`   | `string` | Must be in the service whitelist | Service to tail logs for |
 
 If the service name is not in the whitelist, the WebSocket is closed immediately with code 1008 ("Policy Violation") and the reason "Unknown service".
 
@@ -176,10 +177,10 @@ Each message is a JSON object with a timestamp and message:
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `timestamp` | `string` | ISO timestamp from journalctl `--output=short-iso` format |
-| `message` | `string` | The rest of the log line (hostname, process, PID, and message) |
+| Field       | Type     | Description                                                    |
+| ----------- | -------- | -------------------------------------------------------------- |
+| `timestamp` | `string` | ISO timestamp from journalctl `--output=short-iso` format      |
+| `message`   | `string` | The rest of the log line (hostname, process, PID, and message) |
 
 If the timestamp cannot be parsed from the log line, `timestamp` is an empty string and `message` contains the entire raw line.
 
@@ -201,10 +202,10 @@ If the timestamp cannot be parsed from the log line, `timestamp` is an empty str
 
 **Close codes:**
 
-| Code | Reason | When |
-|------|--------|------|
-| 1000 | Log stream ended | journalctl process exited normally |
-| 1008 | Unknown service | Service name not in whitelist |
+| Code | Reason                     | When                                   |
+| ---- | -------------------------- | -------------------------------------- |
+| 1000 | Log stream ended           | journalctl process exited normally     |
+| 1008 | Unknown service            | Service name not in whitelist          |
 | 1011 | Failed to spawn journalctl | Could not start the journalctl process |
 
 **Implementation details:**
@@ -217,11 +218,11 @@ If the timestamp cannot be parsed from the log line, `timestamp` is an empty str
 
 ## Quick Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/services` | List all service statuses and uptimes |
-| POST | `/api/services/:name/:action` | Execute start/stop/restart/reload |
-| WS | `/api/services/:name/logs` | Stream live logs via WebSocket |
+| Method | Path                          | Description                           |
+| ------ | ----------------------------- | ------------------------------------- |
+| GET    | `/api/services`               | List all service statuses and uptimes |
+| POST   | `/api/services/:name/:action` | Execute start/stop/restart/reload     |
+| WS     | `/api/services/:name/logs`    | Stream live logs via WebSocket        |
 
 ### Service Status Object Shape
 
@@ -235,12 +236,12 @@ If the timestamp cannot be parsed from the log line, `timestamp` is an empty str
 
 ### Allowed Combinations
 
-| Service | start | stop | restart | reload |
-|---------|-------|------|---------|--------|
-| `nginx` | Yes | Yes | Yes | Yes |
-| `chisel` | Yes | Yes | Yes | Yes |
-| `authelia` | Yes | Yes | Yes | Yes |
-| `portlama-panel` | Yes | **No** | Yes | Yes |
+| Service          | start | stop   | restart | reload |
+| ---------------- | ----- | ------ | ------- | ------ |
+| `nginx`          | Yes   | Yes    | Yes     | Yes    |
+| `chisel`         | Yes   | Yes    | Yes     | Yes    |
+| `authelia`       | Yes   | Yes    | Yes     | Yes    |
+| `portlama-panel` | Yes   | **No** | Yes     | Yes    |
 
 ### curl Cheat Sheet
 

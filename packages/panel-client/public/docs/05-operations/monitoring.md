@@ -18,12 +18,12 @@ The **Dashboard** page is the first thing you see after logging into the managem
 
 The CPU percentage tells you how much processing power is being used at this moment.
 
-| Range | Meaning | Action |
-|-------|---------|--------|
-| 0-30% | Normal idle | None needed |
-| 30-60% | Moderate load | Normal under traffic |
-| 60-85% | High load | Investigate if sustained |
-| 85-100% | Critical | Check for runaway processes |
+| Range   | Meaning       | Action                      |
+| ------- | ------------- | --------------------------- |
+| 0-30%   | Normal idle   | None needed                 |
+| 30-60%  | Moderate load | Normal under traffic        |
+| 60-85%  | High load     | Investigate if sustained    |
+| 85-100% | Critical      | Check for runaway processes |
 
 On a single-vCPU $4 droplet, expect idle CPU around 2-5%. Brief spikes to 50-60% during certificate issuance or package updates are normal.
 
@@ -33,26 +33,26 @@ Memory usage shows how much of the 512MB (or your droplet's total) is in use.
 
 **Expected baseline usage:**
 
-| Component | Typical RAM |
-|-----------|-------------|
-| OS (kernel, systemd) | ~120 MB |
-| nginx | ~15 MB |
-| Authelia | ~25 MB |
-| Chisel | ~20 MB |
-| Panel (Node.js) | ~30 MB |
-| Fail2ban | ~35 MB |
-| **Total baseline** | **~245 MB** |
+| Component            | Typical RAM |
+| -------------------- | ----------- |
+| OS (kernel, systemd) | ~120 MB     |
+| nginx                | ~15 MB      |
+| Authelia             | ~25 MB      |
+| Chisel               | ~20 MB      |
+| Panel (Node.js)      | ~30 MB      |
+| Fail2ban             | ~35 MB      |
+| **Total baseline**   | **~245 MB** |
 
 This leaves roughly 265 MB of headroom on a 512 MB droplet, plus a 1 GB swap file as a safety net.
 
 **Warning thresholds:**
 
-| Used % | Status | Notes |
-|--------|--------|-------|
-| < 70% | Normal | Healthy headroom |
-| 70-85% | Elevated | Monitor trend |
-| 85-95% | Warning | Check for memory leaks |
-| > 95% | Critical | Risk of OOM kills, check swap usage |
+| Used % | Status   | Notes                               |
+| ------ | -------- | ----------------------------------- |
+| < 70%  | Normal   | Healthy headroom                    |
+| 70-85% | Elevated | Monitor trend                       |
+| 85-95% | Warning  | Check for memory leaks              |
+| > 95%  | Critical | Risk of OOM kills, check swap usage |
 
 If you see memory climbing steadily over days without returning to baseline, one of the services may have a memory leak. Restart the suspect service from the Services page and watch whether usage stabilizes.
 
@@ -69,12 +69,12 @@ Disk usage reflects the root filesystem. On a fresh 25 GB droplet, Portlama and 
 
 **Warning thresholds:**
 
-| Used % | Status | Action |
-|--------|--------|--------|
-| < 70% | Normal | None |
-| 70-85% | Watch | Review log rotation |
-| 85-95% | Warning | Clean old logs, remove unused sites |
-| > 95% | Critical | Free space immediately to avoid service failures |
+| Used % | Status   | Action                                           |
+| ------ | -------- | ------------------------------------------------ |
+| < 70%  | Normal   | None                                             |
+| 70-85% | Watch    | Review log rotation                              |
+| 85-95% | Warning  | Clean old logs, remove unused sites              |
+| > 95%  | Critical | Free space immediately to avoid service failures |
 
 To check what is using disk space, SSH in and run:
 
@@ -90,21 +90,21 @@ System uptime shows how long the server has been running since its last reboot. 
 
 The dashboard shows the status of each managed service:
 
-| Service | Systemd Unit | Role |
-|---------|-------------|------|
-| nginx | `nginx` | Reverse proxy, TLS termination, mTLS enforcement |
-| Chisel | `chisel` | WebSocket tunnel server |
-| Authelia | `authelia` | TOTP two-factor authentication |
-| Panel | `portlama-panel` | Management API and UI |
+| Service  | Systemd Unit     | Role                                             |
+| -------- | ---------------- | ------------------------------------------------ |
+| nginx    | `nginx`          | Reverse proxy, TLS termination, mTLS enforcement |
+| Chisel   | `chisel`         | WebSocket tunnel server                          |
+| Authelia | `authelia`       | TOTP two-factor authentication                   |
+| Panel    | `portlama-panel` | Management API and UI                            |
 
 Each service displays one of these statuses:
 
-| Status | Indicator | Meaning |
-|--------|-----------|---------|
-| `active` | Green | Running normally |
-| `inactive` | Gray | Stopped (not started or manually stopped) |
-| `failed` | Red | Crashed or failed to start |
-| `unknown` | Gray | Service not installed or systemd cannot determine state |
+| Status     | Indicator | Meaning                                                 |
+| ---------- | --------- | ------------------------------------------------------- |
+| `active`   | Green     | Running normally                                        |
+| `inactive` | Gray      | Stopped (not started or manually stopped)               |
+| `failed`   | Red       | Crashed or failed to start                              |
+| `unknown`  | Gray      | Service not installed or systemd cannot determine state |
 
 Along with the status, each active service shows its **uptime** — how long it has been running since it was last started or restarted. If you see a service that recently restarted on its own (uptime much shorter than system uptime), check its logs for crash details.
 
@@ -239,7 +239,10 @@ WS /api/services/:name/logs
 The server spawns `journalctl -u <service> -f -n 100 --output=short-iso` as a child process and pipes parsed lines to the WebSocket as JSON:
 
 ```json
-{ "timestamp": "2026-03-13T10:30:45+0000", "message": "droplet portlama-panel[1234]: Server listening on 127.0.0.1:3100" }
+{
+  "timestamp": "2026-03-13T10:30:45+0000",
+  "message": "droplet portlama-panel[1234]: Server listening on 127.0.0.1:3100"
+}
 ```
 
 The server tracks all active `journalctl` processes and terminates them on WebSocket close, WebSocket error, or server shutdown to prevent orphaned processes.
@@ -258,25 +261,25 @@ Alternatively, monitor the public-facing tunneled apps directly — if users can
 
 ## Quick Reference
 
-| Metric | Normal Range | Warning | Critical |
-|--------|-------------|---------|----------|
-| CPU | 0-30% | 60-85% sustained | >85% sustained |
-| Memory | <70% of total | 85-95% | >95% |
-| Disk | <70% of total | 85-95% | >95% |
-| Service status | `active` | `inactive` | `failed` |
+| Metric         | Normal Range  | Warning          | Critical       |
+| -------------- | ------------- | ---------------- | -------------- |
+| CPU            | 0-30%         | 60-85% sustained | >85% sustained |
+| Memory         | <70% of total | 85-95%           | >95%           |
+| Disk           | <70% of total | 85-95%           | >95%           |
+| Service status | `active`      | `inactive`       | `failed`       |
 
-| API Endpoint | Method | Purpose |
-|-------------|--------|---------|
-| `/api/system/stats` | GET | CPU, RAM, disk, uptime |
-| `/api/services` | GET | All service statuses |
-| `/api/services/:name/:action` | POST | Start/stop/restart/reload |
-| `/api/services/:name/logs` | WS | Live log stream |
-| `/api/health` | GET | Health check |
+| API Endpoint                  | Method | Purpose                   |
+| ----------------------------- | ------ | ------------------------- |
+| `/api/system/stats`           | GET    | CPU, RAM, disk, uptime    |
+| `/api/services`               | GET    | All service statuses      |
+| `/api/services/:name/:action` | POST   | Start/stop/restart/reload |
+| `/api/services/:name/logs`    | WS     | Live log stream           |
+| `/api/health`                 | GET    | Health check              |
 
-| Log Command (SSH) | Purpose |
-|-------------------|---------|
-| `journalctl -u nginx -f` | Follow nginx logs |
-| `journalctl -u chisel -f` | Follow Chisel logs |
-| `journalctl -u authelia -f` | Follow Authelia logs |
-| `journalctl -u portlama-panel -f` | Follow panel logs |
+| Log Command (SSH)                          | Purpose                 |
+| ------------------------------------------ | ----------------------- |
+| `journalctl -u nginx -f`                   | Follow nginx logs       |
+| `journalctl -u chisel -f`                  | Follow Chisel logs      |
+| `journalctl -u authelia -f`                | Follow Authelia logs    |
+| `journalctl -u portlama-panel -f`          | Follow panel logs       |
 | `journalctl -u nginx --since "1 hour ago"` | Last hour of nginx logs |

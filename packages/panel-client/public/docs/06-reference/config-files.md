@@ -4,16 +4,16 @@
 
 ## File Overview
 
-| File | Format | Owner | Mode | Purpose |
-|------|--------|-------|------|---------|
-| `/etc/portlama/panel.json` | JSON | portlama:portlama | 0640 | Panel server configuration |
-| `/etc/portlama/tunnels.json` | JSON | portlama:portlama | 0600 | Tunnel definitions |
-| `/etc/portlama/sites.json` | JSON | portlama:portlama | 0600 | Static site definitions |
-| `/etc/authelia/configuration.yml` | YAML | root:root | 0600 | Authelia server configuration |
-| `/etc/authelia/users.yml` | YAML | root:root | 0600 | User database |
-| `/etc/authelia/.secrets.json` | JSON | root:root | 0600 | Authelia secrets |
-| `/etc/nginx/sites-available/portlama-*` | nginx conf | root:root | 0644 | Vhost configurations |
-| `/etc/nginx/snippets/portlama-mtls.conf` | nginx conf | root:root | 0644 | mTLS snippet |
+| File                                     | Format     | Owner             | Mode | Purpose                       |
+| ---------------------------------------- | ---------- | ----------------- | ---- | ----------------------------- |
+| `/etc/portlama/panel.json`               | JSON       | portlama:portlama | 0640 | Panel server configuration    |
+| `/etc/portlama/tunnels.json`             | JSON       | portlama:portlama | 0600 | Tunnel definitions            |
+| `/etc/portlama/sites.json`               | JSON       | portlama:portlama | 0600 | Static site definitions       |
+| `/etc/authelia/configuration.yml`        | YAML       | root:root         | 0600 | Authelia server configuration |
+| `/etc/authelia/users.yml`                | YAML       | root:root         | 0600 | User database                 |
+| `/etc/authelia/.secrets.json`            | JSON       | root:root         | 0600 | Authelia secrets              |
+| `/etc/nginx/sites-available/portlama-*`  | nginx conf | root:root         | 0644 | Vhost configurations          |
+| `/etc/nginx/snippets/portlama-mtls.conf` | nginx conf | root:root         | 0644 | mTLS snippet                  |
 
 ---
 
@@ -23,25 +23,25 @@ The primary configuration file for the panel server. Created by the installer, u
 
 **Schema:**
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `ip` | string | Yes | — | Server public IP address |
-| `domain` | string \| null | Yes | `null` | Base domain (set during onboarding) |
-| `email` | string \| null | Yes | `null` | Admin email for Let's Encrypt (set during onboarding) |
-| `dataDir` | string | Yes | `/etc/portlama` | Path to data/state directory |
-| `staticDir` | string | No | — | Path to panel-client dist directory |
-| `maxSiteSize` | number | No | `524288000` | Max static site upload size in bytes (500 MB) |
-| `onboarding.status` | enum | Yes | `FRESH` | Current onboarding state |
+| Field               | Type           | Required | Default         | Description                                           |
+| ------------------- | -------------- | -------- | --------------- | ----------------------------------------------------- |
+| `ip`                | string         | Yes      | —               | Server public IP address                              |
+| `domain`            | string \| null | Yes      | `null`          | Base domain (set during onboarding)                   |
+| `email`             | string \| null | Yes      | `null`          | Admin email for Let's Encrypt (set during onboarding) |
+| `dataDir`           | string         | Yes      | `/etc/portlama` | Path to data/state directory                          |
+| `staticDir`         | string         | No       | —               | Path to panel-client dist directory                   |
+| `maxSiteSize`       | number         | No       | `524288000`     | Max static site upload size in bytes (500 MB)         |
+| `onboarding.status` | enum           | Yes      | `FRESH`         | Current onboarding state                              |
 
 **Onboarding status values:**
 
-| Value | Meaning |
-|-------|---------|
-| `FRESH` | No onboarding started — shows onboarding wizard |
-| `DOMAIN_SET` | Domain and email entered, awaiting DNS verification |
-| `DNS_READY` | DNS verified, ready to provision |
-| `PROVISIONING` | Stack provisioning in progress |
-| `COMPLETED` | Onboarding complete — shows management UI |
+| Value          | Meaning                                             |
+| -------------- | --------------------------------------------------- |
+| `FRESH`        | No onboarding started — shows onboarding wizard     |
+| `DOMAIN_SET`   | Domain and email entered, awaiting DNS verification |
+| `DNS_READY`    | DNS verified, ready to provision                    |
+| `PROVISIONING` | Stack provisioning in progress                      |
+| `COMPLETED`    | Onboarding complete — shows management UI           |
 
 **Example (fresh install):**
 
@@ -94,15 +94,15 @@ Stores the array of configured tunnels. Created automatically when the first tun
 
 **Schema:** Array of tunnel objects.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | UUID |
-| `subdomain` | string | Subdomain name (e.g., `myapp`) |
-| `fqdn` | string | Full domain (e.g., `myapp.example.com`) |
-| `port` | number | Local port on the tunnel client machine |
+| Field         | Type           | Description                               |
+| ------------- | -------------- | ----------------------------------------- |
+| `id`          | string         | UUID                                      |
+| `subdomain`   | string         | Subdomain name (e.g., `myapp`)            |
+| `fqdn`        | string         | Full domain (e.g., `myapp.example.com`)   |
+| `port`        | number         | Local port on the tunnel client machine   |
 | `description` | string \| null | Optional description (max 200 characters) |
-| `enabled` | boolean | Whether the tunnel is active |
-| `createdAt` | string | ISO 8601 timestamp |
+| `enabled`     | boolean        | Whether the tunnel is active              |
+| `createdAt`   | string         | ISO 8601 timestamp                        |
 
 **Example:**
 
@@ -141,14 +141,14 @@ Stores the array of static sites hosted through Portlama.
 
 **Schema:** Array of site objects.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | UUID |
-| `fqdn` | string | Full domain (e.g., `blog.example.com`) |
-| `spaMode` | boolean | If true, `try_files` falls back to `/index.html` |
-| `autheliaProtected` | boolean | If true, requires Authelia authentication |
-| `rootPath` | string | Document root (e.g., `/var/www/portlama/<id>/`) |
-| `createdAt` | string | ISO 8601 timestamp |
+| Field               | Type    | Description                                      |
+| ------------------- | ------- | ------------------------------------------------ |
+| `id`                | string  | UUID                                             |
+| `fqdn`              | string  | Full domain (e.g., `blog.example.com`)           |
+| `spaMode`           | boolean | If true, `try_files` falls back to `/index.html` |
+| `autheliaProtected` | boolean | If true, requires Authelia authentication        |
+| `rootPath`          | string  | Document root (e.g., `/var/www/portlama/<id>/`)  |
+| `createdAt`         | string  | ISO 8601 timestamp                               |
 
 **Example:**
 
@@ -221,12 +221,12 @@ totp:
 
 **Critical settings:**
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `server.host` | `127.0.0.1` | Never bind to `0.0.0.0` — nginx handles public access |
-| `password.algorithm` | `bcrypt` | Argon2id uses ~93 MB per hash, causes OOM on 512 MB droplets |
-| `bcrypt.cost` | `12` | Balance between security and performance |
-| `session.domain` | Your domain | Must match the domain in `panel.json` |
+| Setting              | Value       | Why                                                          |
+| -------------------- | ----------- | ------------------------------------------------------------ |
+| `server.host`        | `127.0.0.1` | Never bind to `0.0.0.0` — nginx handles public access        |
+| `password.algorithm` | `bcrypt`    | Argon2id uses ~93 MB per hash, causes OOM on 512 MB droplets |
+| `bcrypt.cost`        | `12`        | Balance between security and performance                     |
+| `session.domain`     | Your domain | Must match the domain in `panel.json`                        |
 
 **Do not edit this file directly** unless you understand Authelia configuration. Changes require a service restart: `sudo systemctl restart authelia`.
 
@@ -374,36 +374,36 @@ This enforces client certificate verification at the TLS level. Connections with
 
 ## File Permissions Table
 
-| Path | Owner | Mode | Notes |
-|------|-------|------|-------|
-| `/etc/portlama/` | portlama:portlama | 0755 | State directory |
-| `/etc/portlama/panel.json` | portlama:portlama | 0640 | Panel config |
-| `/etc/portlama/tunnels.json` | portlama:portlama | 0600 | Tunnel state |
-| `/etc/portlama/sites.json` | portlama:portlama | 0600 | Site state |
-| `/etc/portlama/pki/` | portlama:portlama | 0700 | PKI directory |
-| `/etc/portlama/pki/ca.key` | root:root | 0600 | CA private key |
-| `/etc/portlama/pki/ca.crt` | root:root | 0644 | CA certificate |
-| `/etc/portlama/pki/client.key` | root:root | 0600 | Client private key |
-| `/etc/portlama/pki/client.crt` | root:root | 0644 | Client certificate |
-| `/etc/portlama/pki/client.p12` | root:root | 0600 | PKCS12 bundle |
-| `/etc/portlama/pki/.p12-password` | root:root | 0600 | PKCS12 password |
-| `/etc/portlama/pki/self-signed.pem` | root:root | 0644 | Self-signed TLS cert |
-| `/etc/portlama/pki/self-signed-key.pem` | root:root | 0600 | Self-signed TLS key |
-| `/etc/authelia/configuration.yml` | root:root | 0600 | Auth config |
-| `/etc/authelia/users.yml` | root:root | 0600 | User database |
-| `/etc/authelia/.secrets.json` | root:root | 0600 | Auth secrets |
-| `/etc/authelia/db.sqlite3` | root:root | 0600 | Auth session DB |
-| `/opt/portlama/` | portlama:portlama | 0755 | Install directory |
-| `/var/www/portlama/` | www-data:www-data | 0755 | Static site files |
-| `/etc/sudoers.d/portlama` | root:root | 0440 | Sudo rules |
+| Path                                    | Owner             | Mode | Notes                |
+| --------------------------------------- | ----------------- | ---- | -------------------- |
+| `/etc/portlama/`                        | portlama:portlama | 0755 | State directory      |
+| `/etc/portlama/panel.json`              | portlama:portlama | 0640 | Panel config         |
+| `/etc/portlama/tunnels.json`            | portlama:portlama | 0600 | Tunnel state         |
+| `/etc/portlama/sites.json`              | portlama:portlama | 0600 | Site state           |
+| `/etc/portlama/pki/`                    | portlama:portlama | 0700 | PKI directory        |
+| `/etc/portlama/pki/ca.key`              | root:root         | 0600 | CA private key       |
+| `/etc/portlama/pki/ca.crt`              | root:root         | 0644 | CA certificate       |
+| `/etc/portlama/pki/client.key`          | root:root         | 0600 | Client private key   |
+| `/etc/portlama/pki/client.crt`          | root:root         | 0644 | Client certificate   |
+| `/etc/portlama/pki/client.p12`          | root:root         | 0600 | PKCS12 bundle        |
+| `/etc/portlama/pki/.p12-password`       | root:root         | 0600 | PKCS12 password      |
+| `/etc/portlama/pki/self-signed.pem`     | root:root         | 0644 | Self-signed TLS cert |
+| `/etc/portlama/pki/self-signed-key.pem` | root:root         | 0600 | Self-signed TLS key  |
+| `/etc/authelia/configuration.yml`       | root:root         | 0600 | Auth config          |
+| `/etc/authelia/users.yml`               | root:root         | 0600 | User database        |
+| `/etc/authelia/.secrets.json`           | root:root         | 0600 | Auth secrets         |
+| `/etc/authelia/db.sqlite3`              | root:root         | 0600 | Auth session DB      |
+| `/opt/portlama/`                        | portlama:portlama | 0755 | Install directory    |
+| `/var/www/portlama/`                    | www-data:www-data | 0755 | Static site files    |
+| `/etc/sudoers.d/portlama`               | root:root         | 0440 | Sudo rules           |
 
 ## Quick Reference
 
-| Config File | Read By | Modified By | Restart Needed? |
-|-------------|---------|-------------|-----------------|
-| `panel.json` | panel-server | panel-server (atomic write) | No (hot reload) |
-| `tunnels.json` | panel-server | panel-server (atomic write + fsync) | No |
-| `sites.json` | panel-server | panel-server (atomic write + fsync) | No |
-| `configuration.yml` | authelia | onboarding provisioning | Yes (`systemctl restart authelia`) |
-| `users.yml` | authelia | panel-server (via sudo) | Yes (`systemctl restart authelia`) |
-| `portlama-*` vhosts | nginx | panel-server (via sudo) | Yes (`nginx -t && systemctl reload nginx`) |
+| Config File         | Read By      | Modified By                         | Restart Needed?                            |
+| ------------------- | ------------ | ----------------------------------- | ------------------------------------------ |
+| `panel.json`        | panel-server | panel-server (atomic write)         | No (hot reload)                            |
+| `tunnels.json`      | panel-server | panel-server (atomic write + fsync) | No                                         |
+| `sites.json`        | panel-server | panel-server (atomic write + fsync) | No                                         |
+| `configuration.yml` | authelia     | onboarding provisioning             | Yes (`systemctl restart authelia`)         |
+| `users.yml`         | authelia     | panel-server (via sudo)             | Yes (`systemctl restart authelia`)         |
+| `portlama-*` vhosts | nginx        | panel-server (via sudo)             | Yes (`nginx -t && systemctl reload nginx`) |

@@ -14,25 +14,51 @@ const SITES_ROOT = '/var/www/portlama';
  */
 export const ALLOWED_EXTENSIONS = new Set([
   // HTML
-  '.html', '.htm',
+  '.html',
+  '.htm',
   // Styles
   '.css',
   // Scripts
-  '.js', '.mjs',
+  '.js',
+  '.mjs',
   // Images
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.avif', '.bmp',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+  '.webp',
+  '.avif',
+  '.bmp',
   // Fonts
-  '.woff', '.woff2', '.ttf', '.eot', '.otf',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
+  '.otf',
   // Media
-  '.mp4', '.webm', '.ogg', '.mp3', '.wav', '.flac',
+  '.mp4',
+  '.webm',
+  '.ogg',
+  '.mp3',
+  '.wav',
+  '.flac',
   // Documents
-  '.pdf', '.txt', '.md',
+  '.pdf',
+  '.txt',
+  '.md',
   // Data
-  '.json', '.xml', '.csv', '.geojson', '.topojson',
+  '.json',
+  '.xml',
+  '.csv',
+  '.geojson',
+  '.topojson',
   // Maps
   '.map',
   // Web config
-  '.webmanifest', '.manifest',
+  '.webmanifest',
+  '.manifest',
   // WebAssembly
   '.wasm',
 ]);
@@ -179,29 +205,39 @@ export async function listFiles(siteId, relativePath = '.') {
   try {
     // Use sudo find with maxdepth 1 to list immediate children
     const { stdout } = await execa('sudo', [
-      'find', targetDir, '-maxdepth', '1', '-mindepth', '1',
-      '-printf', '%f\\t%y\\t%s\\t%T@\\n',
+      'find',
+      targetDir,
+      '-maxdepth',
+      '1',
+      '-mindepth',
+      '1',
+      '-printf',
+      '%f\\t%y\\t%s\\t%T@\\n',
     ]);
 
     if (!stdout.trim()) {
       return [];
     }
 
-    return stdout.trim().split('\n').map((line) => {
-      const [name, type, size, mtime] = line.split('\t');
-      const entryRelPath = cleanPath === '.' ? name : path.join(cleanPath, name);
-      return {
-        name,
-        type: type === 'd' ? 'directory' : 'file',
-        size: parseInt(size, 10),
-        modifiedAt: new Date(parseFloat(mtime) * 1000).toISOString(),
-        relativePath: entryRelPath,
-      };
-    }).sort((a, b) => {
-      // Directories first, then alphabetical
-      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+    return stdout
+      .trim()
+      .split('\n')
+      .map((line) => {
+        const [name, type, size, mtime] = line.split('\t');
+        const entryRelPath = cleanPath === '.' ? name : path.join(cleanPath, name);
+        return {
+          name,
+          type: type === 'd' ? 'directory' : 'file',
+          size: parseInt(size, 10),
+          modifiedAt: new Date(parseFloat(mtime) * 1000).toISOString(),
+          relativePath: entryRelPath,
+        };
+      })
+      .sort((a, b) => {
+        // Directories first, then alphabetical
+        if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
   } catch (err) {
     if (err.stderr?.includes('No such file or directory')) {
       throw new Error(`Directory not found: ${cleanPath}`);
@@ -246,7 +282,11 @@ export async function saveUploadedFile(siteId, relativePath, fileStream) {
     await execa('sudo', ['chown', '-R', 'www-data:www-data', siteRoot]);
   } catch (err) {
     // Clean up temp file on failure
-    try { await unlink(tmpFile); } catch { /* ignore */ }
+    try {
+      await unlink(tmpFile);
+    } catch {
+      /* ignore */
+    }
     throw new Error(`Failed to save file: ${err.message}`);
   }
 }

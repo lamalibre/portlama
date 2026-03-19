@@ -27,16 +27,12 @@ export default async function logsRoutes(fastify, _opts) {
       let stdoutPaused = false;
 
       try {
-        child = execa(
-          'journalctl',
-          ['-u', name, '-f', '-n', '100', '--output=short-iso'],
-          {
-            reject: false,
-            buffer: false,
-            stdout: 'pipe',
-            stderr: 'pipe',
-          },
-        );
+        child = execa('journalctl', ['-u', name, '-f', '-n', '100', '--output=short-iso'], {
+          reject: false,
+          buffer: false,
+          stdout: 'pipe',
+          stderr: 'pipe',
+        });
       } catch (err) {
         request.log.error({ err }, 'Failed to spawn journalctl');
         socket.send(
@@ -199,9 +195,7 @@ export default async function logsRoutes(fastify, _opts) {
  */
 function parseLine(line) {
   // ISO timestamp is at the beginning, match until first space after the ISO pattern
-  const isoMatch = line.match(
-    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*)\s+(.*)$/,
-  );
+  const isoMatch = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*)\s+(.*)$/);
   if (isoMatch) {
     return {
       timestamp: isoMatch[1],

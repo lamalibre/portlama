@@ -63,7 +63,7 @@ export function useOnboardingStatus() {
   });
 
   return {
-    status: data?.status,           // "FRESH" | "DOMAIN_SET" | "DNS_READY" | "PROVISIONING" | "COMPLETED"
+    status: data?.status, // "FRESH" | "DOMAIN_SET" | "DNS_READY" | "PROVISIONING" | "COMPLETED"
     domain: data?.domain ?? null,
     ip: data?.ip ?? null,
     isLoading,
@@ -103,15 +103,15 @@ The shell renders the appropriate step component and shows a progress indicator 
 
 React Router handles navigation within the `Layout` component (sidebar + content area):
 
-| Path | Component | Description |
-|------|-----------|-------------|
-| `/` | `Dashboard` | System stats (CPU, RAM, disk, uptime) + service health indicators |
-| `/tunnels` | `Tunnels` | Tunnel CRUD table + create form + Mac plist download |
-| `/sites` | `Sites` | Static site CRUD + file browser + upload |
-| `/users` | `Users` | Authelia user table + create/edit/delete + TOTP enrollment |
-| `/certificates` | `Certificates` | Let's Encrypt + mTLS cert listing + renewal + rotation |
-| `/services` | `Services` | Service status cards + start/stop/restart buttons + live log viewer |
-| `/docs/*` | `DocsPage` | Markdown documentation viewer with sidebar navigation |
+| Path            | Component      | Description                                                         |
+| --------------- | -------------- | ------------------------------------------------------------------- |
+| `/`             | `Dashboard`    | System stats (CPU, RAM, disk, uptime) + service health indicators   |
+| `/tunnels`      | `Tunnels`      | Tunnel CRUD table + create form + Mac plist download                |
+| `/sites`        | `Sites`        | Static site CRUD + file browser + upload                            |
+| `/users`        | `Users`        | Authelia user table + create/edit/delete + TOTP enrollment          |
+| `/certificates` | `Certificates` | Let's Encrypt + mTLS cert listing + renewal + rotation              |
+| `/services`     | `Services`     | Service status cards + start/stop/restart buttons + live log viewer |
+| `/docs/*`       | `DocsPage`     | Markdown documentation viewer with sidebar navigation               |
 
 ## Data Fetching Patterns
 
@@ -123,11 +123,12 @@ All data fetching uses `@tanstack/react-query`. No `useEffect + fetch` patterns 
 const { data, isLoading } = useQuery({
   queryKey: ['tunnels'],
   queryFn: () => fetch('/api/tunnels').then((r) => r.json()),
-  refetchInterval: 10_000,  // Poll every 10 seconds for live data
+  refetchInterval: 10_000, // Poll every 10 seconds for live data
 });
 ```
 
 Key conventions:
+
 - `queryKey` is a descriptive array (e.g., `['tunnels']`, `['services']`, `['system', 'stats']`)
 - `queryFn` uses the native `fetch` API (no axios or custom wrapper)
 - `refetchInterval` is used for data that changes independently of user actions (service status, system stats)
@@ -152,6 +153,7 @@ const mutation = useMutation({
 ```
 
 Key conventions:
+
 - Mutations always invalidate the relevant query on success (triggers an immediate refetch)
 - Error handling extracts the `error` field from the JSON response body
 - The `QueryClient` is configured with `retry: 1` globally
@@ -161,11 +163,13 @@ Key conventions:
 WebSocket hooks are used for two features:
 
 **Provisioning stream** (`useProvisioningStream`):
+
 - Connects to `/api/onboarding/provision/stream` during the provisioning step
 - Receives progress events with task status, messages, and completion data
 - Keeps the last 500 messages to prevent unbounded memory growth
 
 **Live log streaming** (in `Services` page):
+
 - Connects to `/api/services/:name/logs` when a log viewer is opened
 - Receives `journalctl -f` output in real-time
 - Disconnects when the log viewer is closed
@@ -189,23 +193,24 @@ The panel uses a dark terminal aesthetic inspired by VS Code's dark theme. All s
 
 ### Color Tokens
 
-| Token | Tailwind Class | Usage |
-|-------|---------------|-------|
-| Page background | `bg-zinc-950` | Full page |
-| Card/surface background | `bg-zinc-900` | Cards, panels, sidebar |
-| Card borders | `border-zinc-800` | All card and section borders |
-| Primary text | `text-zinc-100` | Headings |
-| Secondary text | `text-zinc-400` | Labels, descriptions, body text |
-| Muted text | `text-zinc-600` | Hints, timestamps, version numbers |
-| Accent | `text-cyan-400` / `bg-cyan-600` | Links, primary buttons, active nav, brand |
-| Success | `text-green-400` | Active, connected, healthy |
-| Warning | `text-yellow-400` | Expiring, restarting |
-| Error | `text-red-400` | Failed, disconnected, stopped |
-| Font | `font-mono` | All body text — terminal feel |
+| Token                   | Tailwind Class                  | Usage                                     |
+| ----------------------- | ------------------------------- | ----------------------------------------- |
+| Page background         | `bg-zinc-950`                   | Full page                                 |
+| Card/surface background | `bg-zinc-900`                   | Cards, panels, sidebar                    |
+| Card borders            | `border-zinc-800`               | All card and section borders              |
+| Primary text            | `text-zinc-100`                 | Headings                                  |
+| Secondary text          | `text-zinc-400`                 | Labels, descriptions, body text           |
+| Muted text              | `text-zinc-600`                 | Hints, timestamps, version numbers        |
+| Accent                  | `text-cyan-400` / `bg-cyan-600` | Links, primary buttons, active nav, brand |
+| Success                 | `text-green-400`                | Active, connected, healthy                |
+| Warning                 | `text-yellow-400`               | Expiring, restarting                      |
+| Error                   | `text-red-400`                  | Failed, disconnected, stopped             |
+| Font                    | `font-mono`                     | All body text — terminal feel             |
 
 ### Component Patterns
 
 **Cards:**
+
 ```jsx
 <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5">
   <h2 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
@@ -217,17 +222,21 @@ The panel uses a dark terminal aesthetic inspired by VS Code's dark theme. All s
 ```
 
 **Status badges:**
+
 ```jsx
-<span className={`text-xs px-2 py-0.5 rounded-full border ${
-  isActive
-    ? 'text-green-400 bg-green-500/10 border-green-500/20'
-    : 'text-zinc-500 bg-zinc-800 border-zinc-700'
-}`}>
+<span
+  className={`text-xs px-2 py-0.5 rounded-full border ${
+    isActive
+      ? 'text-green-400 bg-green-500/10 border-green-500/20'
+      : 'text-zinc-500 bg-zinc-800 border-zinc-700'
+  }`}
+>
   {isActive ? 'active' : 'inactive'}
 </span>
 ```
 
 **Page wrapper:**
+
 ```jsx
 <div className="p-6 max-w-4xl mx-auto">
   <div className="mb-6">
@@ -242,16 +251,16 @@ The panel uses a dark terminal aesthetic inspired by VS Code's dark theme. All s
 
 All icons come from the `lucide-react` package. Common icons used:
 
-| Icon | Usage |
-|------|-------|
-| `LayoutDashboard` | Dashboard nav |
-| `Globe` | Tunnels nav |
-| `FileText` | Static Sites nav |
-| `Users` | Users nav |
-| `ShieldCheck` | Certificates nav |
-| `Server` | Services nav |
-| `BookOpen` | Documentation nav |
-| `Menu` / `X` | Mobile sidebar toggle |
+| Icon              | Usage                 |
+| ----------------- | --------------------- |
+| `LayoutDashboard` | Dashboard nav         |
+| `Globe`           | Tunnels nav           |
+| `FileText`        | Static Sites nav      |
+| `Users`           | Users nav             |
+| `ShieldCheck`     | Certificates nav      |
+| `Server`          | Services nav          |
+| `BookOpen`        | Documentation nav     |
+| `Menu` / `X`      | Mobile sidebar toggle |
 
 ## Layout Component
 
@@ -273,6 +282,7 @@ export default function Layout() {
 ### Sidebar
 
 The sidebar is a responsive component:
+
 - **Desktop** (lg+): Fixed 256px-wide sidebar, always visible
 - **Mobile** (below lg): Hidden by default, revealed via hamburger menu button with an overlay
 
@@ -332,24 +342,24 @@ The built `dist/` directory is served by the panel-server via `@fastify/static`.
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `packages/panel-client/src/App.jsx` | Root component, mode detection, routing |
-| `packages/panel-client/src/main.jsx` | React root mount |
-| `packages/panel-client/src/hooks/useOnboardingStatus.js` | Onboarding state query hook |
-| `packages/panel-client/src/hooks/useProvisioningStream.js` | WebSocket hook for provisioning progress |
-| `packages/panel-client/src/components/layout/Layout.jsx` | Sidebar + content outlet |
-| `packages/panel-client/src/components/layout/Sidebar.jsx` | Navigation sidebar (responsive) |
-| `packages/panel-client/src/components/Toast.jsx` | Notification toast system |
-| `packages/panel-client/src/pages/onboarding/OnboardingShell.jsx` | Onboarding wizard container |
-| `packages/panel-client/src/pages/management/Dashboard.jsx` | System stats + service health |
-| `packages/panel-client/src/pages/management/Tunnels.jsx` | Tunnel CRUD + plist download |
-| `packages/panel-client/src/pages/management/Sites.jsx` | Static site management + file browser |
-| `packages/panel-client/src/pages/management/Services.jsx` | Service control + live logs |
-| `packages/panel-client/src/pages/management/Certificates.jsx` | Certificate management |
-| `packages/panel-client/src/pages/Users.jsx` | Authelia user management |
-| `packages/panel-client/src/pages/docs/DocsPage.jsx` | Documentation viewer |
-| `packages/panel-client/src/components/FileBrowser.jsx` | File tree for static sites |
+| File                                                             | Role                                     |
+| ---------------------------------------------------------------- | ---------------------------------------- |
+| `packages/panel-client/src/App.jsx`                              | Root component, mode detection, routing  |
+| `packages/panel-client/src/main.jsx`                             | React root mount                         |
+| `packages/panel-client/src/hooks/useOnboardingStatus.js`         | Onboarding state query hook              |
+| `packages/panel-client/src/hooks/useProvisioningStream.js`       | WebSocket hook for provisioning progress |
+| `packages/panel-client/src/components/layout/Layout.jsx`         | Sidebar + content outlet                 |
+| `packages/panel-client/src/components/layout/Sidebar.jsx`        | Navigation sidebar (responsive)          |
+| `packages/panel-client/src/components/Toast.jsx`                 | Notification toast system                |
+| `packages/panel-client/src/pages/onboarding/OnboardingShell.jsx` | Onboarding wizard container              |
+| `packages/panel-client/src/pages/management/Dashboard.jsx`       | System stats + service health            |
+| `packages/panel-client/src/pages/management/Tunnels.jsx`         | Tunnel CRUD + plist download             |
+| `packages/panel-client/src/pages/management/Sites.jsx`           | Static site management + file browser    |
+| `packages/panel-client/src/pages/management/Services.jsx`        | Service control + live logs              |
+| `packages/panel-client/src/pages/management/Certificates.jsx`    | Certificate management                   |
+| `packages/panel-client/src/pages/Users.jsx`                      | Authelia user management                 |
+| `packages/panel-client/src/pages/docs/DocsPage.jsx`              | Documentation viewer                     |
+| `packages/panel-client/src/components/FileBrowser.jsx`           | File tree for static sites               |
 
 ## Design Decisions
 

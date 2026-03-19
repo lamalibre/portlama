@@ -110,13 +110,13 @@ The entire round trip is encrypted end-to-end. The tunnel itself runs inside a s
 
 The admin panel at `https://<ip>:9292` uses a completely different authentication mechanism than your tunneled apps:
 
-| | Admin Panel | Tunneled Apps |
-|---|---|---|
-| **URL** | `https://<ip>:9292` | `https://app.example.com` |
-| **Auth method** | mTLS client certificate | Username + TOTP 2FA |
-| **Who accesses it** | You (the admin) | Your users |
-| **Login required** | No — certificate is the login | Yes — Authelia login page |
-| **Works without domain** | Yes (IP access always works) | No (needs DNS + domain) |
+|                          | Admin Panel                   | Tunneled Apps             |
+| ------------------------ | ----------------------------- | ------------------------- |
+| **URL**                  | `https://<ip>:9292`           | `https://app.example.com` |
+| **Auth method**          | mTLS client certificate       | Username + TOTP 2FA       |
+| **Who accesses it**      | You (the admin)               | Your users                |
+| **Login required**       | No — certificate is the login | Yes — Authelia login page |
+| **Works without domain** | Yes (IP access always works)  | No (needs DNS + domain)   |
 
 This split is deliberate. The admin panel works by IP address so you can always reach it, even if your domain's DNS breaks or your Let's Encrypt certificate expires. It uses client certificates so there is no login form to brute-force.
 
@@ -173,15 +173,15 @@ Here is every piece of software running on the droplet after onboarding:
 
 Every component is chosen to fit within 512MB:
 
-| Component | RAM Usage | Purpose |
-|-----------|-----------|---------|
-| Ubuntu OS baseline | ~120MB | Kernel, systemd, base services |
-| nginx | ~15MB | Reverse proxy, TLS termination |
-| Authelia | ~25MB | TOTP 2FA authentication |
-| Chisel Server | ~20MB | WebSocket tunnel relay |
-| Panel Server | ~30MB | Fastify REST API |
-| fail2ban | ~35MB | Brute-force protection |
-| **Total** | **~245MB** | **Headroom: ~265MB** |
+| Component          | RAM Usage  | Purpose                        |
+| ------------------ | ---------- | ------------------------------ |
+| Ubuntu OS baseline | ~120MB     | Kernel, systemd, base services |
+| nginx              | ~15MB      | Reverse proxy, TLS termination |
+| Authelia           | ~25MB      | TOTP 2FA authentication        |
+| Chisel Server      | ~20MB      | WebSocket tunnel relay         |
+| Panel Server       | ~30MB      | Fastify REST API               |
+| fail2ban           | ~35MB      | Brute-force protection         |
+| **Total**          | **~245MB** | **Headroom: ~265MB**           |
 
 A 1GB swap file provides a safety net. Authelia uses bcrypt (not argon2id) specifically because argon2id uses ~93MB per password hash and would cause out-of-memory kills on a 512MB droplet.
 
@@ -320,20 +320,20 @@ Layer 7: Least-privilege sudoers
 
 ### Key File Locations on the Droplet
 
-| Path | Purpose |
-|------|---------|
-| `/etc/portlama/panel.json` | Main configuration (IP, domain, onboarding status) |
-| `/etc/portlama/tunnels.json` | Tunnel definitions |
-| `/etc/portlama/pki/` | CA cert/key, client cert/key, self-signed cert |
-| `/etc/portlama/pki/client.p12` | PKCS12 bundle for browser import |
-| `/opt/portlama/panel-server/` | Fastify backend (Node.js) |
-| `/opt/portlama/panel-client/dist/` | Built React SPA (static files) |
-| `/var/www/portlama/` | Static site files served through tunnels |
-| `/etc/nginx/sites-available/portlama-*` | nginx vhost configurations |
-| `/etc/nginx/snippets/portlama-mtls.conf` | mTLS client certificate requirement |
-| `/etc/systemd/system/portlama-panel.service` | Panel server systemd unit |
-| `/etc/sudoers.d/portlama` | Least-privilege sudo rules |
-| `/etc/fail2ban/jail.d/portlama.conf` | fail2ban jail configuration |
+| Path                                         | Purpose                                            |
+| -------------------------------------------- | -------------------------------------------------- |
+| `/etc/portlama/panel.json`                   | Main configuration (IP, domain, onboarding status) |
+| `/etc/portlama/tunnels.json`                 | Tunnel definitions                                 |
+| `/etc/portlama/pki/`                         | CA cert/key, client cert/key, self-signed cert     |
+| `/etc/portlama/pki/client.p12`               | PKCS12 bundle for browser import                   |
+| `/opt/portlama/panel-server/`                | Fastify backend (Node.js)                          |
+| `/opt/portlama/panel-client/dist/`           | Built React SPA (static files)                     |
+| `/var/www/portlama/`                         | Static site files served through tunnels           |
+| `/etc/nginx/sites-available/portlama-*`      | nginx vhost configurations                         |
+| `/etc/nginx/snippets/portlama-mtls.conf`     | mTLS client certificate requirement                |
+| `/etc/systemd/system/portlama-panel.service` | Panel server systemd unit                          |
+| `/etc/sudoers.d/portlama`                    | Least-privilege sudo rules                         |
+| `/etc/fail2ban/jail.d/portlama.conf`         | fail2ban jail configuration                        |
 
 ### State Machine
 
@@ -352,39 +352,39 @@ FRESH ──────→ DOMAIN_SET ──────→ DNS_READY ───
 
 ### Technology Choices Explained
 
-| Choice | Why | Alternatives Considered |
-|--------|-----|------------------------|
-| Chisel for tunnels | Single Go binary, WebSocket-over-HTTPS (bypasses DPI), ~20MB RAM | frp (heavier), bore (less mature), SSH tunnels (fragile) |
-| Authelia for 2FA | Single Go binary, TOTP support, ~25MB RAM, file-based user store | Keycloak (too heavy), custom auth (security risk) |
-| nginx for reverse proxy | Battle-tested, mTLS support, forward auth, low RAM | Caddy (no mTLS vhost control), Traefik (higher RAM) |
-| Fastify for API | Fast, schema-first validation, native WebSocket, ESM | Express (slower, less structured), Hono (less ecosystem) |
-| JSON files for state | Simple, no database process, atomic writes | SQLite (adds dependency), PostgreSQL (way too heavy) |
-| bcrypt for passwords | Low memory (~4KB per hash) | argon2id (~93MB per hash, causes OOM on 512MB) |
-| Client certificates for admin | Zero-login, unforgeable, works at TLS layer | Session cookies (brute-forceable), API keys (leakable) |
+| Choice                        | Why                                                              | Alternatives Considered                                  |
+| ----------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
+| Chisel for tunnels            | Single Go binary, WebSocket-over-HTTPS (bypasses DPI), ~20MB RAM | frp (heavier), bore (less mature), SSH tunnels (fragile) |
+| Authelia for 2FA              | Single Go binary, TOTP support, ~25MB RAM, file-based user store | Keycloak (too heavy), custom auth (security risk)        |
+| nginx for reverse proxy       | Battle-tested, mTLS support, forward auth, low RAM               | Caddy (no mTLS vhost control), Traefik (higher RAM)      |
+| Fastify for API               | Fast, schema-first validation, native WebSocket, ESM             | Express (slower, less structured), Hono (less ecosystem) |
+| JSON files for state          | Simple, no database process, atomic writes                       | SQLite (adds dependency), PostgreSQL (way too heavy)     |
+| bcrypt for passwords          | Low memory (~4KB per hash)                                       | argon2id (~93MB per hash, causes OOM on 512MB)           |
+| Client certificates for admin | Zero-login, unforgeable, works at TLS layer                      | Session cookies (brute-forceable), API keys (leakable)   |
 
 ## Quick Reference
 
 ### Ports
 
-| Port | Service | Access |
-|------|---------|--------|
-| 22 | SSH | Public (key-only, fail2ban protected) |
-| 443 | nginx (tunnel vhosts) | Public (Let's Encrypt TLS + Authelia 2FA) |
-| 9292 | nginx (admin panel) | Public (self-signed TLS + mTLS client cert) |
-| 3100 | Panel Server (Fastify) | Localhost only |
-| 9090 | Chisel Server | Localhost only |
-| 9091 | Authelia | Localhost only |
+| Port | Service                | Access                                      |
+| ---- | ---------------------- | ------------------------------------------- |
+| 22   | SSH                    | Public (key-only, fail2ban protected)       |
+| 443  | nginx (tunnel vhosts)  | Public (Let's Encrypt TLS + Authelia 2FA)   |
+| 9292 | nginx (admin panel)    | Public (self-signed TLS + mTLS client cert) |
+| 3100 | Panel Server (Fastify) | Localhost only                              |
+| 9090 | Chisel Server          | Localhost only                              |
+| 9091 | Authelia               | Localhost only                              |
 
 ### Services
 
-| systemd Unit | Binary | Purpose |
-|---|---|---|
-| `portlama-panel` | `node src/index.js` | REST API + static file server |
-| `nginx` | `/usr/sbin/nginx` | Reverse proxy, TLS, mTLS |
-| `chisel` | `/usr/local/bin/chisel` | WebSocket tunnel server |
-| `authelia` | `/usr/local/bin/authelia` | TOTP 2FA authentication |
-| `fail2ban` | `/usr/bin/fail2ban-server` | Brute-force protection |
-| `certbot.timer` | `/usr/bin/certbot` | Auto-renewing Let's Encrypt certs |
+| systemd Unit     | Binary                     | Purpose                           |
+| ---------------- | -------------------------- | --------------------------------- |
+| `portlama-panel` | `node src/index.js`        | REST API + static file server     |
+| `nginx`          | `/usr/sbin/nginx`          | Reverse proxy, TLS, mTLS          |
+| `chisel`         | `/usr/local/bin/chisel`    | WebSocket tunnel server           |
+| `authelia`       | `/usr/local/bin/authelia`  | TOTP 2FA authentication           |
+| `fail2ban`       | `/usr/bin/fail2ban-server` | Brute-force protection            |
+| `certbot.timer`  | `/usr/bin/certbot`         | Auto-renewing Let's Encrypt certs |
 
 ### Data Flow Summary
 

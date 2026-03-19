@@ -14,9 +14,9 @@ All onboarding endpoints require a valid mTLS client certificate, the same as ev
 
 ## Availability
 
-| Endpoint | Available When |
-|----------|---------------|
-| `GET /api/onboarding/status` | Always (no guard) |
+| Endpoint                       | Available When        |
+| ------------------------------ | --------------------- |
+| `GET /api/onboarding/status`   | Always (no guard)     |
 | All other onboarding endpoints | `status != COMPLETED` |
 
 After onboarding completes, all endpoints except `/status` return:
@@ -78,11 +78,11 @@ curl -s -K ~/.curl-portlama \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | `string` | One of: `FRESH`, `DOMAIN_SET`, `DNS_READY`, `PROVISIONING`, `COMPLETED` |
-| `domain` | `string \| null` | The configured domain, or `null` if not yet set |
-| `ip` | `string` | The droplet's public IP address |
+| Field    | Type             | Description                                                             |
+| -------- | ---------------- | ----------------------------------------------------------------------- |
+| `status` | `string`         | One of: `FRESH`, `DOMAIN_SET`, `DNS_READY`, `PROVISIONING`, `COMPLETED` |
+| `domain` | `string \| null` | The configured domain, or `null` if not yet set                         |
+| `ip`     | `string`         | The droplet's public IP address                                         |
 
 After domain is set:
 
@@ -109,12 +109,13 @@ Sets the domain name and Let's Encrypt contact email. This is the first step in 
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `domain` | `string` | FQDN regex, min 1 char | Fully qualified domain name |
-| `email` | `string` | Valid email format | Contact email for Let's Encrypt registration |
+| Field    | Type     | Validation             | Description                                  |
+| -------- | -------- | ---------------------- | -------------------------------------------- |
+| `domain` | `string` | FQDN regex, min 1 char | Fully qualified domain name                  |
+| `email`  | `string` | Valid email format     | Contact email for Let's Encrypt registration |
 
 The domain is validated against this pattern:
+
 ```
 ^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$
 ```
@@ -139,11 +140,11 @@ curl -s -K ~/.curl-portlama \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid domain format or missing email |
-| 409 | `{"error":"Cannot change domain in current state","onboardingStatus":"DNS_READY"}` | Onboarding has progressed past `DOMAIN_SET` |
-| 410 | `{"error":"Onboarding already completed"}` | Onboarding is finished |
+| Status | Body                                                                               | When                                        |
+| ------ | ---------------------------------------------------------------------------------- | ------------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}`                         | Invalid domain format or missing email      |
+| 409    | `{"error":"Cannot change domain in current state","onboardingStatus":"DNS_READY"}` | Onboarding has progressed past `DOMAIN_SET` |
+| 410    | `{"error":"Onboarding already completed"}`                                         | Onboarding is finished                      |
 
 **State transition:** `FRESH` or `DOMAIN_SET` → `DOMAIN_SET`
 
@@ -207,22 +208,22 @@ curl -s -K ~/.curl-portlama \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ok` | `boolean` | `true` if the base domain resolves to the expected IP |
-| `domain` | `string` | The domain being verified |
-| `resolvedIps` | `string[]` | IP addresses the base domain resolves to |
-| `expectedIp` | `string` | The droplet's public IP |
-| `wildcardOk` | `boolean` | `true` if wildcard DNS is configured |
-| `wildcardResolvedIps` | `string[]` | IP addresses the wildcard resolves to |
-| `message` | `string` | Human-readable diagnostic message |
+| Field                 | Type       | Description                                           |
+| --------------------- | ---------- | ----------------------------------------------------- |
+| `ok`                  | `boolean`  | `true` if the base domain resolves to the expected IP |
+| `domain`              | `string`   | The domain being verified                             |
+| `resolvedIps`         | `string[]` | IP addresses the base domain resolves to              |
+| `expectedIp`          | `string`   | The droplet's public IP                               |
+| `wildcardOk`          | `boolean`  | `true` if wildcard DNS is configured                  |
+| `wildcardResolvedIps` | `string[]` | IP addresses the wildcard resolves to                 |
+| `message`             | `string`   | Human-readable diagnostic message                     |
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 409 | `{"error":"Domain must be set before DNS verification","onboardingStatus":"FRESH"}` | Domain has not been set yet |
-| 410 | `{"error":"Onboarding already completed"}` | Onboarding is finished |
+| Status | Body                                                                                | When                        |
+| ------ | ----------------------------------------------------------------------------------- | --------------------------- |
+| 409    | `{"error":"Domain must be set before DNS verification","onboardingStatus":"FRESH"}` | Domain has not been set yet |
+| 410    | `{"error":"Onboarding already completed"}`                                          | Onboarding is finished      |
 
 **State transition:** `DOMAIN_SET` or `DNS_READY` → `DNS_READY` (only when `ok` is `true`)
 
@@ -259,11 +260,11 @@ curl -s -K ~/.curl-portlama \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 409 | `{"error":"DNS must be verified before provisioning"}` | State is `FRESH` or `DOMAIN_SET` |
-| 409 | `{"error":"Provisioning already in progress"}` | Provisioning is currently running |
-| 410 | `{"error":"Onboarding already completed"}` | Onboarding is finished |
+| Status | Body                                                   | When                              |
+| ------ | ------------------------------------------------------ | --------------------------------- |
+| 409    | `{"error":"DNS must be verified before provisioning"}` | State is `FRESH` or `DOMAIN_SET`  |
+| 409    | `{"error":"Provisioning already in progress"}`         | Provisioning is currently running |
+| 410    | `{"error":"Onboarding already completed"}`             | Onboarding is finished            |
 
 **State transition:** `DNS_READY` → `PROVISIONING` → `COMPLETED` (on success)
 
@@ -271,14 +272,14 @@ curl -s -K ~/.curl-portlama \
 
 The provisioning sequence runs these tasks in order:
 
-| Task ID | Title | What It Does |
-|---------|-------|--------------|
-| `install-chisel` | Installing Chisel | Downloads binary, writes systemd service, starts service |
-| `install-authelia` | Installing Authelia | Downloads binary, writes config, creates admin user, starts service |
-| `issue-certs` | Issuing TLS certificates | Issues Let's Encrypt cert for `panel.<domain>`, sets up auto-renewal |
-| `configure-nginx` | Configuring nginx | Writes panel/auth/tunnel vhosts, enables sites, tests and reloads |
-| `verify-services` | Verifying services | Checks all services are running (Chisel, Authelia, nginx, panel) |
-| `finalize` | Finalizing setup | Updates config to `COMPLETED` state |
+| Task ID            | Title                    | What It Does                                                         |
+| ------------------ | ------------------------ | -------------------------------------------------------------------- |
+| `install-chisel`   | Installing Chisel        | Downloads binary, writes systemd service, starts service             |
+| `install-authelia` | Installing Authelia      | Downloads binary, writes config, creates admin user, starts service  |
+| `issue-certs`      | Issuing TLS certificates | Issues Let's Encrypt cert for `panel.<domain>`, sets up auto-renewal |
+| `configure-nginx`  | Configuring nginx        | Writes panel/auth/tunnel vhosts, enables sites, tests and reloads    |
+| `verify-services`  | Verifying services       | Checks all services are running (Chisel, Authelia, nginx, panel)     |
+| `finalize`         | Finalizing setup         | Updates config to `COMPLETED` state                                  |
 
 ---
 
@@ -304,12 +305,48 @@ When a client connects, the server sends the full current state so late-joining 
   "type": "state",
   "isRunning": true,
   "tasks": [
-    { "id": "install-chisel", "title": "Installing Chisel", "status": "done", "message": "Chisel installed and running", "log": null },
-    { "id": "install-authelia", "title": "Installing Authelia", "status": "running", "message": "Creating admin user...", "log": "Installed Authelia v4.38.0" },
-    { "id": "issue-certs", "title": "Issuing TLS certificates", "status": "pending", "message": null, "log": null },
-    { "id": "configure-nginx", "title": "Configuring nginx", "status": "pending", "message": null, "log": null },
-    { "id": "verify-services", "title": "Verifying services", "status": "pending", "message": null, "log": null },
-    { "id": "finalize", "title": "Finalizing setup", "status": "pending", "message": null, "log": null }
+    {
+      "id": "install-chisel",
+      "title": "Installing Chisel",
+      "status": "done",
+      "message": "Chisel installed and running",
+      "log": null
+    },
+    {
+      "id": "install-authelia",
+      "title": "Installing Authelia",
+      "status": "running",
+      "message": "Creating admin user...",
+      "log": "Installed Authelia v4.38.0"
+    },
+    {
+      "id": "issue-certs",
+      "title": "Issuing TLS certificates",
+      "status": "pending",
+      "message": null,
+      "log": null
+    },
+    {
+      "id": "configure-nginx",
+      "title": "Configuring nginx",
+      "status": "pending",
+      "message": null,
+      "log": null
+    },
+    {
+      "id": "verify-services",
+      "title": "Verifying services",
+      "status": "pending",
+      "message": null,
+      "log": null
+    },
+    {
+      "id": "finalize",
+      "title": "Finalizing setup",
+      "status": "pending",
+      "message": null,
+      "log": null
+    }
   ],
   "error": null,
   "result": null
@@ -329,14 +366,14 @@ When a client connects, the server sends the full current state so late-joining 
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `task` | `string` | Task identifier |
-| `title` | `string` | Human-readable task title |
-| `status` | `string` | One of: `pending`, `running`, `done`, `error` |
-| `message` | `string \| null` | Current step description within the task |
-| `log` | `string \| null` | Additional log output (version numbers, skipped notices) |
-| `progress` | `object` | `{ current, total }` — overall progress counter |
+| Field      | Type             | Description                                              |
+| ---------- | ---------------- | -------------------------------------------------------- |
+| `task`     | `string`         | Task identifier                                          |
+| `title`    | `string`         | Human-readable task title                                |
+| `status`   | `string`         | One of: `pending`, `running`, `done`, `error`            |
+| `message`  | `string \| null` | Current step description within the task                 |
+| `log`      | `string \| null` | Additional log output (version numbers, skipped notices) |
+| `progress` | `object`         | `{ current, total }` — overall progress counter          |
 
 **Completion message:**
 
@@ -373,13 +410,13 @@ If a task fails, all subsequent tasks remain in `pending` status and provisionin
 
 ## Quick Reference
 
-| Method | Path | State Required | Returns |
-|--------|------|----------------|---------|
-| GET | `/api/onboarding/status` | Any | Current state, domain, IP |
-| POST | `/api/onboarding/domain` | `FRESH` or `DOMAIN_SET` | Confirmation |
-| POST | `/api/onboarding/verify-dns` | `DOMAIN_SET` or `DNS_READY` | DNS resolution results |
-| POST | `/api/onboarding/provision` | `DNS_READY` | 202 Accepted |
-| WS | `/api/onboarding/provision/stream` | Any (read-only) | Real-time progress |
+| Method | Path                               | State Required              | Returns                   |
+| ------ | ---------------------------------- | --------------------------- | ------------------------- |
+| GET    | `/api/onboarding/status`           | Any                         | Current state, domain, IP |
+| POST   | `/api/onboarding/domain`           | `FRESH` or `DOMAIN_SET`     | Confirmation              |
+| POST   | `/api/onboarding/verify-dns`       | `DOMAIN_SET` or `DNS_READY` | DNS resolution results    |
+| POST   | `/api/onboarding/provision`        | `DNS_READY`                 | 202 Accepted              |
+| WS     | `/api/onboarding/provision/stream` | Any (read-only)             | Real-time progress        |
 
 ### State Machine
 

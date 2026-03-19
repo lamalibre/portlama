@@ -24,17 +24,17 @@ To use Portlama with a domain, you need:
 
 During the onboarding wizard, Portlama tells you exactly which DNS records to create. You need A records pointing several subdomains to your VPS IP:
 
-| Type | Name | Value | Purpose |
-|------|------|-------|---------|
-| A | `panel.example.com` | `203.0.113.42` | Admin panel (domain access) |
-| A | `auth.example.com` | `203.0.113.42` | Authelia login portal |
-| A | `tunnel.example.com` | `203.0.113.42` | Chisel WebSocket endpoint |
+| Type | Name                 | Value          | Purpose                     |
+| ---- | -------------------- | -------------- | --------------------------- |
+| A    | `panel.example.com`  | `203.0.113.42` | Admin panel (domain access) |
+| A    | `auth.example.com`   | `203.0.113.42` | Authelia login portal       |
+| A    | `tunnel.example.com` | `203.0.113.42` | Chisel WebSocket endpoint   |
 
 When you create tunnels later, you add one more A record per app:
 
-| Type | Name | Value | Purpose |
-|------|------|-------|---------|
-| A | `myapp.example.com` | `203.0.113.42` | Your tunneled web app |
+| Type | Name                | Value          | Purpose               |
+| ---- | ------------------- | -------------- | --------------------- |
+| A    | `myapp.example.com` | `203.0.113.42` | Your tunneled web app |
 
 All records point to the same IP address. nginx on the VPS looks at the domain name in the request and routes it to the correct internal service.
 
@@ -84,15 +84,15 @@ Some DNS providers (Cloudflare, DigitalOcean DNS, Route 53) offer APIs that coul
 
 If you manage many subdomains, creating individual A records for each one is tedious. An alternative is to create a single wildcard A record:
 
-| Type | Name | Value |
-|------|------|-------|
-| A | `*.example.com` | `203.0.113.42` |
+| Type | Name            | Value          |
+| ---- | --------------- | -------------- |
+| A    | `*.example.com` | `203.0.113.42` |
 
 This routes all subdomains to your VPS. nginx then handles routing based on the `server_name` directive in each vhost.
 
-The trade-off: a wildcard A record means *any* subdomain resolves to your VPS, including ones you have not configured. Requests to unconfigured subdomains get nginx's default behavior (usually a connection refused or a wrong vhost response). This is a minor concern for most setups.
+The trade-off: a wildcard A record means _any_ subdomain resolves to your VPS, including ones you have not configured. Requests to unconfigured subdomains get nginx's default behavior (usually a connection refused or a wrong vhost response). This is a minor concern for most setups.
 
-Wildcard A records work with individual Let's Encrypt certificates (HTTP-01 challenge). Wildcard *TLS certificates* require DNS-01 challenges, which Portlama does not currently automate.
+Wildcard A records work with individual Let's Encrypt certificates (HTTP-01 challenge). Wildcard _TLS certificates_ require DNS-01 challenges, which Portlama does not currently automate.
 
 ## For Developers
 
@@ -130,15 +130,15 @@ When creating a tunnel, the subdomain must follow DNS naming rules:
 
 Reserved subdomains that cannot be used for tunnels or static sites:
 
-| Subdomain | Reason |
-|-----------|--------|
-| `panel` | Admin panel |
-| `auth` | Authelia portal |
-| `tunnel` | Chisel WebSocket endpoint |
-| `www` | Conventionally the main site |
-| `mail` | Email subdomain |
-| `ftp` | File transfer subdomain |
-| `api` | API subdomain |
+| Subdomain | Reason                       |
+| --------- | ---------------------------- |
+| `panel`   | Admin panel                  |
+| `auth`    | Authelia portal              |
+| `tunnel`  | Chisel WebSocket endpoint    |
+| `www`     | Conventionally the main site |
+| `mail`    | Email subdomain              |
+| `ftp`     | File transfer subdomain      |
+| `api`     | API subdomain                |
 
 ### DNS and TLS certificate issuance
 
@@ -237,56 +237,56 @@ Once set during onboarding, the domain is used throughout the system for constru
 
 ### Source files
 
-| File | Purpose |
-|------|---------|
-| `packages/panel-server/src/routes/onboarding/domain.js` | Domain + email submission endpoint |
-| `packages/panel-server/src/routes/onboarding/dns.js` | DNS verification endpoint |
-| `packages/panel-server/src/lib/certbot.js` | Certificate issuance per subdomain |
-| `packages/panel-server/src/lib/nginx.js` | Vhost creation with domain-based server_name |
-| `packages/panel-server/src/lib/state.js` | Domain storage in panel.json |
+| File                                                    | Purpose                                      |
+| ------------------------------------------------------- | -------------------------------------------- |
+| `packages/panel-server/src/routes/onboarding/domain.js` | Domain + email submission endpoint           |
+| `packages/panel-server/src/routes/onboarding/dns.js`    | DNS verification endpoint                    |
+| `packages/panel-server/src/lib/certbot.js`              | Certificate issuance per subdomain           |
+| `packages/panel-server/src/lib/nginx.js`                | Vhost creation with domain-based server_name |
+| `packages/panel-server/src/lib/state.js`                | Domain storage in panel.json                 |
 
 ## Quick Reference
 
 ### Required DNS records (onboarding)
 
-| Type | Name | Value |
-|------|------|-------|
-| A | `panel.example.com` | VPS IP |
-| A | `auth.example.com` | VPS IP |
-| A | `tunnel.example.com` | VPS IP |
+| Type | Name                 | Value  |
+| ---- | -------------------- | ------ |
+| A    | `panel.example.com`  | VPS IP |
+| A    | `auth.example.com`   | VPS IP |
+| A    | `tunnel.example.com` | VPS IP |
 
 ### Per-tunnel DNS record
 
-| Type | Name | Value |
-|------|------|-------|
-| A | `<subdomain>.example.com` | VPS IP |
+| Type | Name                      | Value  |
+| ---- | ------------------------- | ------ |
+| A    | `<subdomain>.example.com` | VPS IP |
 
 ### Optional wildcard record
 
-| Type | Name | Value |
-|------|------|-------|
-| A | `*.example.com` | VPS IP |
+| Type | Name            | Value  |
+| ---- | --------------- | ------ |
+| A    | `*.example.com` | VPS IP |
 
 ### Reserved subdomains
 
-| Subdomain | Used by |
-|-----------|---------|
-| `panel` | Admin panel |
-| `auth` | Authelia login portal |
-| `tunnel` | Chisel WebSocket endpoint |
-| `www` | Conventionally the main site |
-| `mail` | Email subdomain |
-| `ftp` | File transfer subdomain |
-| `api` | API subdomain |
+| Subdomain | Used by                      |
+| --------- | ---------------------------- |
+| `panel`   | Admin panel                  |
+| `auth`    | Authelia login portal        |
+| `tunnel`  | Chisel WebSocket endpoint    |
+| `www`     | Conventionally the main site |
+| `mail`    | Email subdomain              |
+| `ftp`     | File transfer subdomain      |
+| `api`     | API subdomain                |
 
 ### Subdomain naming rules
 
-| Rule | Example |
-|------|---------|
-| Lowercase letters, digits, hyphens | `my-app-v2` |
-| Cannot start/end with hyphen | `my-app` (not `-my-app`) |
-| Max 63 characters | Standard DNS label limit |
-| Must be unique | No duplicate subdomains |
+| Rule                               | Example                  |
+| ---------------------------------- | ------------------------ |
+| Lowercase letters, digits, hyphens | `my-app-v2`              |
+| Cannot start/end with hyphen       | `my-app` (not `-my-app`) |
+| Max 63 characters                  | Standard DNS label limit |
+| Must be unique                     | No duplicate subdomains  |
 
 ### DNS verification checklist
 
@@ -306,12 +306,12 @@ dig @8.8.8.8 +short panel.example.com
 
 ### Let's Encrypt rate limits
 
-| Limit | Value |
-|-------|-------|
-| Certificates per registered domain | 50 per week |
-| Duplicate certificates | 5 per week |
-| Failed validations | 5 per hour per account per hostname |
-| New orders | 300 per 3 hours |
+| Limit                              | Value                               |
+| ---------------------------------- | ----------------------------------- |
+| Certificates per registered domain | 50 per week                         |
+| Duplicate certificates             | 5 per week                          |
+| Failed validations                 | 5 per hour per account per hostname |
+| New orders                         | 300 per 3 hours                     |
 
 ### Related documentation
 

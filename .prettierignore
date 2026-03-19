@@ -3,3 +3,6 @@ dist/
 coverage/
 package-lock.json
 .vite/
+target/
+e2e-logs/
+*.tgz

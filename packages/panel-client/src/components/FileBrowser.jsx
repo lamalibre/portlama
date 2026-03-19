@@ -1,15 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  ChevronRight,
-  File,
-  Folder,
-  Trash2,
-  Upload,
-  Loader2,
-  Home,
-} from 'lucide-react';
+import { ArrowLeft, ChevronRight, File, Folder, Trash2, Upload, Loader2, Home } from 'lucide-react';
 import { useToast } from './Toast.jsx';
 
 // --- API functions ---
@@ -188,14 +179,11 @@ export default function FileBrowser({ site, onBack }) {
     setCurrentPath(path);
   }, []);
 
-  const handleFileClick = useCallback(
-    (file) => {
-      if (file.type === 'directory') {
-        setCurrentPath(file.relativePath);
-      }
-    },
-    [],
-  );
+  const handleFileClick = useCallback((file) => {
+    if (file.type === 'directory') {
+      setCurrentPath(file.relativePath);
+    }
+  }, []);
 
   const handleUpload = useCallback(() => {
     fileInputRef.current?.click();
@@ -297,8 +285,7 @@ export default function FileBrowser({ site, onBack }) {
                 <th className="text-left text-zinc-500 text-xs uppercase font-semibold py-2 px-4 hidden md:table-cell">
                   Modified
                 </th>
-                <th className="text-right text-zinc-500 text-xs uppercase font-semibold py-2 px-4 w-16">
-                </th>
+                <th className="text-right text-zinc-500 text-xs uppercase font-semibold py-2 px-4 w-16"></th>
               </tr>
             </thead>
             <tbody>

@@ -23,9 +23,7 @@ async function main() {
   // --- panel-server: package.json + src/ ---
   const serverSrc = join(monorepoRoot, 'packages', 'panel-server');
   if (!existsSync(serverSrc)) {
-    throw new Error(
-      `panel-server not found at ${serverSrc}. Run from the monorepo root.`,
-    );
+    throw new Error(`panel-server not found at ${serverSrc}. Run from the monorepo root.`);
   }
 
   const serverDest = join(vendorDir, 'panel-server');
@@ -40,9 +38,7 @@ async function main() {
   // --- panel-client: dist/ (pre-built assets) ---
   const clientDist = join(monorepoRoot, 'packages', 'panel-client', 'dist');
   if (!existsSync(clientDist)) {
-    throw new Error(
-      `panel-client/dist/ not found at ${clientDist}. Run "npm run build" first.`,
-    );
+    throw new Error(`panel-client/dist/ not found at ${clientDist}. Run "npm run build" first.`);
   }
 
   const clientDest = join(vendorDir, 'panel-client');

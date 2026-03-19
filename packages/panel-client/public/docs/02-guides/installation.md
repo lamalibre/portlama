@@ -23,13 +23,13 @@ Before you begin, make sure you have:
 2. Click **Create** and select **Droplets**.
 3. Choose these settings:
 
-| Setting | Value |
-|---------|-------|
-| **Region** | Choose the closest to your users |
-| **Image** | Ubuntu 24.04 (LTS) x64 |
-| **Size** | Basic, Regular, $4/mo (512 MB RAM, 1 vCPU, 10 GB SSD) |
-| **Authentication** | SSH keys (recommended) or password |
-| **Hostname** | Something memorable, e.g. `portlama-relay` |
+| Setting            | Value                                                 |
+| ------------------ | ----------------------------------------------------- |
+| **Region**         | Choose the closest to your users                      |
+| **Image**          | Ubuntu 24.04 (LTS) x64                                |
+| **Size**           | Basic, Regular, $4/mo (512 MB RAM, 1 vCPU, 10 GB SSD) |
+| **Authentication** | SSH keys (recommended) or password                    |
+| **Hostname**       | Something memorable, e.g. `portlama-relay`            |
 
 4. Click **Create Droplet**.
 5. Wait for the droplet to boot. Copy its **public IP address** from the dashboard.
@@ -303,13 +303,13 @@ main() → envTasks → confirmInstallation() → installTasks → printSummary(
 
 Each task module exports a function that returns a Listr2 subtask list:
 
-| Module | File | Purpose |
-|--------|------|---------|
-| `hardenTasks` | `src/tasks/harden.js` | Swap, UFW, fail2ban, SSH, apt packages |
-| `nodeTasks` | `src/tasks/node.js` | Node.js 20 LTS via NodeSource |
-| `mtlsTasks` | `src/tasks/mtls.js` | CA, client cert, PKCS12 bundle |
-| `nginxTasks` | `src/tasks/nginx.js` | Self-signed TLS, mTLS snippet, vhost |
-| `panelTasks` | `src/tasks/panel.js` | System user, deploy, config, systemd, sudoers |
+| Module        | File                  | Purpose                                       |
+| ------------- | --------------------- | --------------------------------------------- |
+| `hardenTasks` | `src/tasks/harden.js` | Swap, UFW, fail2ban, SSH, apt packages        |
+| `nodeTasks`   | `src/tasks/node.js`   | Node.js 20 LTS via NodeSource                 |
+| `mtlsTasks`   | `src/tasks/mtls.js`   | CA, client cert, PKCS12 bundle                |
+| `nginxTasks`  | `src/tasks/nginx.js`  | Self-signed TLS, mTLS snippet, vhost          |
+| `panelTasks`  | `src/tasks/panel.js`  | System user, deploy, config, systemd, sudoers |
 
 ### Idempotency
 
@@ -326,24 +326,24 @@ Every task includes skip guards. Running the installer a second time detects exi
 
 After installation, the server has these Portlama directories:
 
-| Path | Owner | Purpose |
-|------|-------|---------|
-| `/etc/portlama/` | `portlama:portlama` | Configuration and state files |
-| `/etc/portlama/pki/` | `root:root` (700) | CA, client cert, server cert, .p12 |
-| `/etc/portlama/panel.json` | `portlama:portlama` | Panel configuration |
-| `/opt/portlama/panel-server/` | `portlama:portlama` | Fastify backend |
-| `/opt/portlama/panel-client/` | `portlama:portlama` | React frontend (built) |
-| `/var/www/portlama/` | `www-data:www-data` | Static site files |
+| Path                          | Owner               | Purpose                            |
+| ----------------------------- | ------------------- | ---------------------------------- |
+| `/etc/portlama/`              | `portlama:portlama` | Configuration and state files      |
+| `/etc/portlama/pki/`          | `root:root` (700)   | CA, client cert, server cert, .p12 |
+| `/etc/portlama/panel.json`    | `portlama:portlama` | Panel configuration                |
+| `/opt/portlama/panel-server/` | `portlama:portlama` | Fastify backend                    |
+| `/opt/portlama/panel-client/` | `portlama:portlama` | React frontend (built)             |
+| `/var/www/portlama/`          | `www-data:www-data` | Static site files                  |
 
 ### CLI Flags
 
-| Flag | Effect |
-|------|--------|
-| `--help`, `-h` | Print help and exit |
-| `--yes`, `-y` | Skip confirmation prompt |
+| Flag            | Effect                                      |
+| --------------- | ------------------------------------------- |
+| `--help`, `-h`  | Print help and exit                         |
+| `--yes`, `-y`   | Skip confirmation prompt                    |
 | `--skip-harden` | Skip swap, UFW, fail2ban, and SSH hardening |
-| `--dev` | Allow private/non-routable IP addresses |
-| `--uninstall` | Print manual removal guide and exit |
+| `--dev`         | Allow private/non-routable IP addresses     |
+| `--uninstall`   | Print manual removal guide and exit         |
 
 ### Systemd Service
 
@@ -365,16 +365,16 @@ The service includes security hardening: `ProtectHome=true`, `PrivateTmp=true`, 
 
 ## Quick Reference
 
-| Item | Value |
-|------|-------|
-| **Install command** | `npx @lamalibre/create-portlama` |
-| **Minimum VPS** | Ubuntu 24.04, 512 MB RAM |
-| **Required ports** | 22 (SSH), 80 (HTTP/Let's Encrypt), 443 (HTTPS), 9292 (panel) |
-| **Certificate location** | `/etc/portlama/pki/client.p12` |
-| **Download command** | `scp root@<ip>:/etc/portlama/pki/client.p12 .` |
-| **Panel URL** | `https://<ip>:9292` |
-| **Config file** | `/etc/portlama/panel.json` |
-| **Service name** | `portlama-panel` |
-| **Service logs** | `journalctl -u portlama-panel -f` |
-| **Re-run safe** | Yes (idempotent) |
-| **Total install time** | ~5-10 minutes |
+| Item                     | Value                                                        |
+| ------------------------ | ------------------------------------------------------------ |
+| **Install command**      | `npx @lamalibre/create-portlama`                             |
+| **Minimum VPS**          | Ubuntu 24.04, 512 MB RAM                                     |
+| **Required ports**       | 22 (SSH), 80 (HTTP/Let's Encrypt), 443 (HTTPS), 9292 (panel) |
+| **Certificate location** | `/etc/portlama/pki/client.p12`                               |
+| **Download command**     | `scp root@<ip>:/etc/portlama/pki/client.p12 .`               |
+| **Panel URL**            | `https://<ip>:9292`                                          |
+| **Config file**          | `/etc/portlama/panel.json`                                   |
+| **Service name**         | `portlama-panel`                                             |
+| **Service logs**         | `journalctl -u portlama-panel -f`                            |
+| **Re-run safe**          | Yes (idempotent)                                             |
+| **Total install time**   | ~5-10 minutes                                                |

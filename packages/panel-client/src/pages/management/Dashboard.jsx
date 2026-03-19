@@ -32,11 +32,7 @@ function StatsCard({ icon: Icon, label, value, isLoading, isError }) {
 
 function ServiceHealthDot({ status }) {
   const colorClass =
-    status === 'active'
-      ? 'bg-green-500'
-      : status === 'failed'
-        ? 'bg-red-500'
-        : 'bg-zinc-500';
+    status === 'active' ? 'bg-green-500' : status === 'failed' ? 'bg-red-500' : 'bg-zinc-500';
 
   return <span className={`inline-block w-2 h-2 rounded-full ${colorClass}`} />;
 }
@@ -61,9 +57,7 @@ export default function Dashboard() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-zinc-500 text-sm mt-1">
-          System overview and service health
-        </p>
+        <p className="text-zinc-500 text-sm mt-1">System overview and service health</p>
       </div>
 
       {/* System Stats Cards */}
@@ -79,9 +73,7 @@ export default function Dashboard() {
           icon={Database}
           label="Memory Usage"
           value={
-            stats
-              ? `${formatBytes(stats.memory.used)} / ${formatBytes(stats.memory.total)}`
-              : '—'
+            stats ? `${formatBytes(stats.memory.used)} / ${formatBytes(stats.memory.total)}` : '—'
           }
           isLoading={statsQuery.isLoading}
           isError={statsQuery.isError}
@@ -89,11 +81,7 @@ export default function Dashboard() {
         <StatsCard
           icon={HardDrive}
           label="Disk Usage"
-          value={
-            stats
-              ? `${formatBytes(stats.disk.used)} / ${formatBytes(stats.disk.total)}`
-              : '—'
-          }
+          value={stats ? `${formatBytes(stats.disk.used)} / ${formatBytes(stats.disk.total)}` : '—'}
           isLoading={statsQuery.isLoading}
           isError={statsQuery.isError}
         />

@@ -77,9 +77,9 @@ Every error response follows a consistent contract:
 }
 ```
 
-| Field | Type | Presence | Description |
-|-------|------|----------|-------------|
-| `error` | `string` | Always | A short, human-readable error message |
+| Field     | Type     | Presence | Description                                       |
+| --------- | -------- | -------- | ------------------------------------------------- |
+| `error`   | `string` | Always   | A short, human-readable error message             |
 | `details` | `object` | Optional | Additional structured information about the error |
 
 ### Validation Errors (400)
@@ -116,14 +116,14 @@ Business logic errors return appropriate HTTP status codes with descriptive mess
 
 Common status codes:
 
-| Code | Meaning | Example |
-|------|---------|---------|
-| 400 | Bad request / validation failed | Invalid subdomain format |
-| 403 | mTLS certificate missing or invalid | No client cert presented |
-| 404 | Resource not found | Tunnel ID does not exist |
-| 409 | Conflict | Username already exists |
-| 410 | Gone | Onboarding endpoint called after completion |
-| 503 | Service unavailable | Management endpoint called before onboarding |
+| Code | Meaning                             | Example                                      |
+| ---- | ----------------------------------- | -------------------------------------------- |
+| 400  | Bad request / validation failed     | Invalid subdomain format                     |
+| 403  | mTLS certificate missing or invalid | No client cert presented                     |
+| 404  | Resource not found                  | Tunnel ID does not exist                     |
+| 409  | Conflict                            | Username already exists                      |
+| 410  | Gone                                | Onboarding endpoint called after completion  |
+| 503  | Service unavailable                 | Management endpoint called before onboarding |
 
 ### Internal Errors (500)
 
@@ -141,11 +141,11 @@ In development mode, the response includes a `details` object with the error mes
 
 The API is split into two groups with mutual exclusion enforced by middleware:
 
-| Route Group | Prefix | Available When | Otherwise Returns |
-|-------------|--------|----------------|-------------------|
-| **Onboarding** | `/api/onboarding/*` | `status != COMPLETED` | `410 Gone` |
+| Route Group    | Prefix                                           | Available When        | Otherwise Returns         |
+| -------------- | ------------------------------------------------ | --------------------- | ------------------------- |
+| **Onboarding** | `/api/onboarding/*`                              | `status != COMPLETED` | `410 Gone`                |
 | **Management** | `/api/*` (except health, onboarding, and invite) | `status == COMPLETED` | `503 Service Unavailable` |
-| **Public** | `/api/invite/*` | Always (no mTLS) | N/A |
+| **Public**     | `/api/invite/*`                                  | Always (no mTLS)      | N/A                       |
 
 The `GET /api/onboarding/status` endpoint is always accessible regardless of onboarding state. The `GET /api/health` endpoint is also always accessible — it is registered outside both guards. The `/api/invite/*` routes are registered in a separate public context with no mTLS middleware and no onboarding guard.
 
@@ -189,10 +189,10 @@ Only one origin is active at a time (determined by whether a domain is configure
 
 Two endpoints use WebSocket for real-time streaming:
 
-| Endpoint | Purpose | Protocol |
-|----------|---------|----------|
-| `WS /api/onboarding/provision/stream` | Provisioning progress | JSON messages |
-| `WS /api/services/:name/logs` | Live service log tailing | JSON messages |
+| Endpoint                              | Purpose                  | Protocol      |
+| ------------------------------------- | ------------------------ | ------------- |
+| `WS /api/onboarding/provision/stream` | Provisioning progress    | JSON messages |
+| `WS /api/services/:name/logs`         | Live service log tailing | JSON messages |
 
 WebSocket connections follow the standard upgrade handshake over the same HTTPS connection. The `wss://` protocol is used in production since all traffic goes through nginx with TLS.
 
@@ -244,77 +244,77 @@ There is no application-level rate limiting. The mTLS requirement means only aut
 
 ## Quick Reference
 
-| Item | Value |
-|------|-------|
-| **Base URL (IP)** | `https://<ip>:9292/api` |
-| **Base URL (domain)** | `https://panel.<domain>/api` |
-| **Authentication** | mTLS client certificate |
-| **Content-Type** | `application/json` (default) |
-| **Validation** | Zod schemas at route level |
-| **Error format** | `{ "error": "...", "details": {...} }` |
-| **WebSocket protocol** | `wss://` with JSON messages |
-| **Max upload size** | 50 MB per file |
-| **Internal listen address** | `127.0.0.1:3100` |
+| Item                        | Value                                  |
+| --------------------------- | -------------------------------------- |
+| **Base URL (IP)**           | `https://<ip>:9292/api`                |
+| **Base URL (domain)**       | `https://panel.<domain>/api`           |
+| **Authentication**          | mTLS client certificate                |
+| **Content-Type**            | `application/json` (default)           |
+| **Validation**              | Zod schemas at route level             |
+| **Error format**            | `{ "error": "...", "details": {...} }` |
+| **WebSocket protocol**      | `wss://` with JSON messages            |
+| **Max upload size**         | 50 MB per file                         |
+| **Internal listen address** | `127.0.0.1:3100`                       |
 
 ### Endpoint Summary
 
-| Method | Path | Group | Description |
-|--------|------|-------|-------------|
-| GET | `/api/health` | Always | Health check |
-| GET | `/api/onboarding/status` | Always | Onboarding state |
-| POST | `/api/onboarding/domain` | Onboarding | Set domain and email |
-| POST | `/api/onboarding/verify-dns` | Onboarding | Verify DNS records |
-| POST | `/api/onboarding/provision` | Onboarding | Start provisioning |
-| WS | `/api/onboarding/provision/stream` | Onboarding | Provisioning progress |
-| GET | `/api/invite/:token` | Public | Get invitation details |
-| POST | `/api/invite/:token/accept` | Public | Accept invitation |
-| GET | `/api/system/stats` | Management | System statistics |
-| GET | `/api/tunnels` | Management | List tunnels |
-| POST | `/api/tunnels` | Management | Create tunnel |
-| PATCH | `/api/tunnels/:id` | Management | Toggle tunnel enabled/disabled |
-| DELETE | `/api/tunnels/:id` | Management | Delete tunnel |
-| GET | `/api/tunnels/mac-plist` | Management | Download Mac plist |
-| GET | `/api/sites` | Management | List static sites |
-| POST | `/api/sites` | Management | Create static site |
-| DELETE | `/api/sites/:id` | Management | Delete static site |
-| PATCH | `/api/sites/:id` | Management | Update site settings |
-| POST | `/api/sites/:id/verify-dns` | Management | Verify site DNS |
-| GET | `/api/sites/:id/files` | Management | List site files |
-| POST | `/api/sites/:id/files` | Management | Upload site files |
-| DELETE | `/api/sites/:id/files` | Management | Delete site file |
-| GET | `/api/invitations` | Management | List invitations |
-| POST | `/api/invitations` | Management | Create invitation |
-| DELETE | `/api/invitations/:id` | Management | Revoke invitation |
-| GET | `/api/users` | Management | List users |
-| POST | `/api/users` | Management | Create user |
-| PUT | `/api/users/:username` | Management | Update user |
-| DELETE | `/api/users/:username` | Management | Delete user |
-| POST | `/api/users/:username/reset-totp` | Management | Reset TOTP secret |
-| GET | `/api/certs` | Management | List certificates |
-| GET | `/api/certs/auto-renew-status` | Management | Auto-renew timer status |
-| POST | `/api/certs/:domain/renew` | Management | Force-renew certificate |
-| POST | `/api/certs/mtls/rotate` | Management | Rotate mTLS cert |
-| GET | `/api/certs/mtls/download` | Management | Download client.p12 |
-| POST | `/api/certs/agent` | Management | Generate agent certificate |
-| GET | `/api/certs/agent` | Management | List agent certificates |
-| GET | `/api/certs/agent/:label/download` | Management | Download agent .p12 |
-| PATCH | `/api/certs/agent/:label/capabilities` | Management | Update agent capabilities |
-| PATCH | `/api/certs/agent/:label/allowed-sites` | Management | Update agent site access |
-| DELETE | `/api/certs/agent/:label` | Management | Revoke agent certificate |
-| GET | `/api/services` | Management | List service statuses |
-| POST | `/api/services/:name/:action` | Management | Control a service (start/stop/restart) |
-| WS | `/api/services/:name/logs` | Management | Stream service logs |
+| Method | Path                                    | Group      | Description                            |
+| ------ | --------------------------------------- | ---------- | -------------------------------------- |
+| GET    | `/api/health`                           | Always     | Health check                           |
+| GET    | `/api/onboarding/status`                | Always     | Onboarding state                       |
+| POST   | `/api/onboarding/domain`                | Onboarding | Set domain and email                   |
+| POST   | `/api/onboarding/verify-dns`            | Onboarding | Verify DNS records                     |
+| POST   | `/api/onboarding/provision`             | Onboarding | Start provisioning                     |
+| WS     | `/api/onboarding/provision/stream`      | Onboarding | Provisioning progress                  |
+| GET    | `/api/invite/:token`                    | Public     | Get invitation details                 |
+| POST   | `/api/invite/:token/accept`             | Public     | Accept invitation                      |
+| GET    | `/api/system/stats`                     | Management | System statistics                      |
+| GET    | `/api/tunnels`                          | Management | List tunnels                           |
+| POST   | `/api/tunnels`                          | Management | Create tunnel                          |
+| PATCH  | `/api/tunnels/:id`                      | Management | Toggle tunnel enabled/disabled         |
+| DELETE | `/api/tunnels/:id`                      | Management | Delete tunnel                          |
+| GET    | `/api/tunnels/mac-plist`                | Management | Download Mac plist                     |
+| GET    | `/api/sites`                            | Management | List static sites                      |
+| POST   | `/api/sites`                            | Management | Create static site                     |
+| DELETE | `/api/sites/:id`                        | Management | Delete static site                     |
+| PATCH  | `/api/sites/:id`                        | Management | Update site settings                   |
+| POST   | `/api/sites/:id/verify-dns`             | Management | Verify site DNS                        |
+| GET    | `/api/sites/:id/files`                  | Management | List site files                        |
+| POST   | `/api/sites/:id/files`                  | Management | Upload site files                      |
+| DELETE | `/api/sites/:id/files`                  | Management | Delete site file                       |
+| GET    | `/api/invitations`                      | Management | List invitations                       |
+| POST   | `/api/invitations`                      | Management | Create invitation                      |
+| DELETE | `/api/invitations/:id`                  | Management | Revoke invitation                      |
+| GET    | `/api/users`                            | Management | List users                             |
+| POST   | `/api/users`                            | Management | Create user                            |
+| PUT    | `/api/users/:username`                  | Management | Update user                            |
+| DELETE | `/api/users/:username`                  | Management | Delete user                            |
+| POST   | `/api/users/:username/reset-totp`       | Management | Reset TOTP secret                      |
+| GET    | `/api/certs`                            | Management | List certificates                      |
+| GET    | `/api/certs/auto-renew-status`          | Management | Auto-renew timer status                |
+| POST   | `/api/certs/:domain/renew`              | Management | Force-renew certificate                |
+| POST   | `/api/certs/mtls/rotate`                | Management | Rotate mTLS cert                       |
+| GET    | `/api/certs/mtls/download`              | Management | Download client.p12                    |
+| POST   | `/api/certs/agent`                      | Management | Generate agent certificate             |
+| GET    | `/api/certs/agent`                      | Management | List agent certificates                |
+| GET    | `/api/certs/agent/:label/download`      | Management | Download agent .p12                    |
+| PATCH  | `/api/certs/agent/:label/capabilities`  | Management | Update agent capabilities              |
+| PATCH  | `/api/certs/agent/:label/allowed-sites` | Management | Update agent site access               |
+| DELETE | `/api/certs/agent/:label`               | Management | Revoke agent certificate               |
+| GET    | `/api/services`                         | Management | List service statuses                  |
+| POST   | `/api/services/:name/:action`           | Management | Control a service (start/stop/restart) |
+| WS     | `/api/services/:name/logs`              | Management | Stream service logs                    |
 
 ### Agent Capabilities
 
 Agent certificates use capability-based access control. The following capabilities can be assigned:
 
-| Capability | Description |
-|------------|-------------|
-| `tunnels:read` | List tunnels, download Mac plist (always-on, cannot be removed) |
-| `tunnels:write` | Create and delete tunnels |
-| `services:read` | View service status |
-| `services:write` | Start, stop, and restart services |
-| `system:read` | View system stats (CPU, RAM, disk) |
-| `sites:read` | List sites and browse files |
-| `sites:write` | Upload and delete files on assigned sites |
+| Capability       | Description                                                     |
+| ---------------- | --------------------------------------------------------------- |
+| `tunnels:read`   | List tunnels, download Mac plist (always-on, cannot be removed) |
+| `tunnels:write`  | Create and delete tunnels                                       |
+| `services:read`  | View service status                                             |
+| `services:write` | Start, stop, and restart services                               |
+| `system:read`    | View system stats (CPU, RAM, disk)                              |
+| `sites:read`     | List sites and browse files                                     |
+| `sites:write`    | Upload and delete files on assigned sites                       |

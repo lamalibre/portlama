@@ -117,6 +117,7 @@ cat com.portlama.chisel.plist
 ```
 
 Key elements:
+
 - **Label:** `com.portlama.chisel` — the launchd service identifier
 - **ProgramArguments:** The Chisel binary, `client` mode, `--tls-skip-verify` flag, the server URL (`https://tunnel.example.com:443`), and one `R:` (reverse tunnel) line per configured tunnel
 - **KeepAlive:** The client restarts automatically if it crashes
@@ -206,12 +207,15 @@ If your agent certificate includes `sites:read` and `sites:write` capabilities, 
 **Check the tunnel server URL:** Open the plist and verify the server URL matches your domain: `https://tunnel.example.com:443`. If your domain changed, download a fresh plist from the panel.
 
 **Check DNS resolution:**
+
 ```bash
 dig tunnel.example.com
 ```
+
 The result should show your server's IP address.
 
 **Check if port 443 is reachable:**
+
 ```bash
 curl -I https://tunnel.example.com
 ```
@@ -221,17 +225,21 @@ curl -I https://tunnel.example.com
 **Symptom:** `launchctl list | grep chisel` shows no output or a non-zero exit status.
 
 **Check if Chisel is installed:**
+
 ```bash
 which chisel
 ```
+
 If not found, install it per step 1.
 
 **Check the error log:**
+
 ```bash
 cat /usr/local/var/log/chisel.error.log
 ```
 
 **Common errors:**
+
 - `exec: "/usr/local/bin/chisel": no such file or directory` — Chisel is not installed or is at a different path. Verify with `which chisel` and update the plist if needed.
 - `bind: address already in use` — Another process is using the tunnel port locally. This is unusual since Chisel uses outbound connections, but check with `lsof -i :<port>`.
 
@@ -277,6 +285,7 @@ launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist
 The plist is generated server-side by `packages/panel-server/src/lib/plist.js`. The `generatePlist()` function takes the current tunnel list and domain, and produces a complete XML plist.
 
 The `GET /api/tunnels/mac-plist` endpoint serves the plist in two formats:
+
 - Default: `application/x-plist` with `Content-Disposition: attachment` (direct download)
 - With `?format=json`: Returns the plist content as a JSON string along with installation instructions
 
@@ -294,6 +303,7 @@ The `127.0.0.1` on the server side restricts the listening address to localhost 
 ### Launchd vs. System Service
 
 The plist installs as a **user agent** (in `~/Library/LaunchAgents/`), not a system daemon. This means:
+
 - It runs under your user account
 - It starts when you log in (not at boot)
 - It has access to your user's network and filesystem
@@ -303,26 +313,26 @@ For a system-level service that runs at boot, the plist would go to `/Library/La
 
 ## Quick Reference
 
-| Action | Command |
-|--------|---------|
-| **Install Chisel** | `brew install chisel` |
-| **Install plist** | `cp com.portlama.chisel.plist ~/Library/LaunchAgents/` |
-| **Start client** | `launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist` |
-| **Stop client** | `launchctl unload ~/Library/LaunchAgents/com.portlama.chisel.plist` |
-| **Restart client** | Unload then load |
-| **Check status** | `launchctl list \| grep chisel` |
-| **View logs** | `tail -f /usr/local/var/log/chisel.log` |
-| **View errors** | `cat /usr/local/var/log/chisel.error.log` |
+| Action             | Command                                                             |
+| ------------------ | ------------------------------------------------------------------- |
+| **Install Chisel** | `brew install chisel`                                               |
+| **Install plist**  | `cp com.portlama.chisel.plist ~/Library/LaunchAgents/`              |
+| **Start client**   | `launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist`   |
+| **Stop client**    | `launchctl unload ~/Library/LaunchAgents/com.portlama.chisel.plist` |
+| **Restart client** | Unload then load                                                    |
+| **Check status**   | `launchctl list \| grep chisel`                                     |
+| **View logs**      | `tail -f /usr/local/var/log/chisel.log`                             |
+| **View errors**    | `cat /usr/local/var/log/chisel.error.log`                           |
 
-| File | Path |
-|------|------|
-| **Plist** | `~/Library/LaunchAgents/com.portlama.chisel.plist` |
-| **Chisel binary** | `/usr/local/bin/chisel` |
-| **Standard log** | `/usr/local/var/log/chisel.log` |
-| **Error log** | `/usr/local/var/log/chisel.error.log` |
+| File              | Path                                               |
+| ----------------- | -------------------------------------------------- |
+| **Plist**         | `~/Library/LaunchAgents/com.portlama.chisel.plist` |
+| **Chisel binary** | `/usr/local/bin/chisel`                            |
+| **Standard log**  | `/usr/local/var/log/chisel.log`                    |
+| **Error log**     | `/usr/local/var/log/chisel.error.log`              |
 
-| Plist Key | Value | Meaning |
-|-----------|-------|---------|
-| `Label` | `com.portlama.chisel` | Service identifier |
-| `KeepAlive` | `true` | Restart on crash |
-| `RunAtLoad` | `true` | Start on login |
+| Plist Key   | Value                 | Meaning            |
+| ----------- | --------------------- | ------------------ |
+| `Label`     | `com.portlama.chisel` | Service identifier |
+| `KeepAlive` | `true`                | Restart on crash   |
+| `RunAtLoad` | `true`                | Start on login     |

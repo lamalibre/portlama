@@ -7,7 +7,7 @@ const DomainSchema = z.object({
     .min(1)
     .regex(/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/)
     .describe('Fully qualified domain name'),
-  email: z.string().email().describe('Email for Let\'s Encrypt registration'),
+  email: z.string().email().describe("Email for Let's Encrypt registration"),
 });
 
 export default async function domainRoute(fastify, _opts) {

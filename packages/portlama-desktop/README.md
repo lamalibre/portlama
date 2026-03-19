@@ -18,13 +18,13 @@ The desktop agent provides a native GUI for managing Portlama tunnels with:
 
 ## Tech Stack
 
-| Layer    | Technology                        |
-| -------- | --------------------------------- |
-| Backend  | Tauri v2 (Rust)                   |
-| Frontend | React 18 + Vite + Tailwind        |
-| Data     | @tanstack/react-query             |
-| Icons    | lucide-react                      |
-| Shell    | @tauri-apps/plugin-shell          |
+| Layer    | Technology                 |
+| -------- | -------------------------- |
+| Backend  | Tauri v2 (Rust)            |
+| Frontend | React 18 + Vite + Tailwind |
+| Data     | @tanstack/react-query      |
+| Icons    | lucide-react               |
+| Shell    | @tauri-apps/plugin-shell   |
 
 ## Prerequisites
 

@@ -10,9 +10,7 @@ export async function detectOS() {
   try {
     content = await readFile('/etc/os-release', 'utf8');
   } catch {
-    throw new Error(
-      'Could not read /etc/os-release. Portlama requires Ubuntu 24.04.',
-    );
+    throw new Error('Could not read /etc/os-release. Portlama requires Ubuntu 24.04.');
   }
 
   const fields = {};
@@ -29,9 +27,7 @@ export async function detectOS() {
   const prettyName = fields.PRETTY_NAME || `${id} ${versionId}`;
 
   if (id !== 'ubuntu' || !versionId.startsWith('24.04')) {
-    throw new Error(
-      `Portlama requires Ubuntu 24.04. Detected: ${prettyName}`,
-    );
+    throw new Error(`Portlama requires Ubuntu 24.04. Detected: ${prettyName}`);
   }
 
   return { id, versionId, prettyName };
@@ -45,7 +41,7 @@ export async function detectOS() {
  * @returns {string} The IPv4 address.
  */
 export async function detectIP({ allowPrivate = false } = {}) {
-  const isAcceptable = (ip) => allowPrivate ? isValidIPv4(ip) : isPublicIP(ip);
+  const isAcceptable = (ip) => (allowPrivate ? isValidIPv4(ip) : isPublicIP(ip));
 
   // Try DigitalOcean metadata API first
   try {

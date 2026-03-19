@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { BookOpen, FileText, Globe, LayoutDashboard, Menu, Server, ShieldCheck, Users, X } from 'lucide-react';
+import {
+  BookOpen,
+  FileText,
+  Globe,
+  LayoutDashboard,
+  Menu,
+  Server,
+  ShieldCheck,
+  Users,
+  X,
+} from 'lucide-react';
 import SidebarLink from './SidebarLink.jsx';
 
 const navItems = [

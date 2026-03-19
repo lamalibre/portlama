@@ -36,13 +36,13 @@ This is your emergency backdoor. If everything goes wrong with domains and certi
 
 Each service gets its own virtual host (vhost) — a configuration block that tells nginx how to handle requests for a specific domain:
 
-| Domain | Internal service | Authentication | Port |
-|--------|-----------------|----------------|------|
-| `https://<ip>:9292` | Panel server (`:3100`) | mTLS client certificate | 9292 |
-| `panel.example.com` | Panel server (`:3100`) | mTLS client certificate | 443 |
-| `auth.example.com` | Authelia (`:9091`) | None (it is the auth service) | 443 |
-| `tunnel.example.com` | Chisel server (`:9090`) | None (Chisel handles its own auth) | 443 |
-| `myapp.example.com` | Chisel → your Mac (`:3000`) | Authelia TOTP 2FA | 443 |
+| Domain               | Internal service            | Authentication                     | Port |
+| -------------------- | --------------------------- | ---------------------------------- | ---- |
+| `https://<ip>:9292`  | Panel server (`:3100`)      | mTLS client certificate            | 9292 |
+| `panel.example.com`  | Panel server (`:3100`)      | mTLS client certificate            | 443  |
+| `auth.example.com`   | Authelia (`:9091`)          | None (it is the auth service)      | 443  |
+| `tunnel.example.com` | Chisel server (`:9090`)     | None (Chisel handles its own auth) | 443  |
+| `myapp.example.com`  | Chisel → your Mac (`:3000`) | Authelia TOTP 2FA                  | 443  |
 
 ### When things go wrong
 
@@ -352,19 +352,19 @@ These headers appear in three places: the panel vhost (for live log streaming), 
 
 Every vhost sets standard proxy headers so backend services know about the original request:
 
-| Header | nginx variable | Purpose |
-|--------|---------------|---------|
-| `Host` | `$host` | Original hostname from the client |
-| `X-Real-IP` | `$remote_addr` | Client's actual IP address |
-| `X-Forwarded-For` | `$proxy_add_x_forwarded_for` | Chain of proxy IPs |
-| `X-Forwarded-Proto` | `$scheme` | Original protocol (http or https) |
+| Header              | nginx variable               | Purpose                           |
+| ------------------- | ---------------------------- | --------------------------------- |
+| `Host`              | `$host`                      | Original hostname from the client |
+| `X-Real-IP`         | `$remote_addr`               | Client's actual IP address        |
+| `X-Forwarded-For`   | `$proxy_add_x_forwarded_for` | Chain of proxy IPs                |
+| `X-Forwarded-Proto` | `$scheme`                    | Original protocol (http or https) |
 
 For mTLS vhosts, three additional headers are set:
 
-| Header | nginx variable | Purpose |
-|--------|---------------|---------|
-| `X-SSL-Client-Verify` | `$ssl_client_verify` | `SUCCESS`, `FAILED`, or `NONE` |
-| `X-SSL-Client-DN` | `$ssl_client_s_dn` | Client certificate subject DN |
+| Header                | nginx variable       | Purpose                          |
+| --------------------- | -------------------- | -------------------------------- |
+| `X-SSL-Client-Verify` | `$ssl_client_verify` | `SUCCESS`, `FAILED`, or `NONE`   |
+| `X-SSL-Client-DN`     | `$ssl_client_s_dn`   | Client certificate subject DN    |
 | `X-SSL-Client-Serial` | `$ssl_client_serial` | Client certificate serial number |
 
 ### Safe write-with-rollback
@@ -388,13 +388,13 @@ export async function writeAppVhost(subdomain, domain, port, certPath) {
 
   const existed = await fileExistsSudo(availablePath);
   if (existed) {
-    await execa('sudo', ['cp', availablePath, bakPath]);  // Backup
+    await execa('sudo', ['cp', availablePath, bakPath]); // Backup
   }
 
   try {
-    await writeVhostFile(name, config);          // Write new vhost
-    await enableSite(name);                       // Symlink
-    const result = await testConfig();            // nginx -t
+    await writeVhostFile(name, config); // Write new vhost
+    await enableSite(name); // Symlink
+    const result = await testConfig(); // nginx -t
 
     if (!result.valid) {
       // Rollback
@@ -407,7 +407,7 @@ export async function writeAppVhost(subdomain, domain, port, certPath) {
       throw new Error(`Nginx config test failed: ${result.error}`);
     }
 
-    await reload();                               // Reload nginx
+    await reload(); // Reload nginx
   } catch (err) {
     // Rollback on any unexpected error
     // ...
@@ -460,40 +460,40 @@ Static sites can optionally include Authelia forward-auth protection if the `aut
 
 ### Source files
 
-| File | Purpose |
-|------|---------|
-| `packages/panel-server/src/lib/nginx.js` | Vhost write, enable/disable, test, reload, rollback |
-| `packages/create-portlama/src/tasks/nginx.js` | IP-based vhost, mTLS snippet, self-signed cert |
-| `packages/create-portlama/src/tasks/harden.js` | nginx package installation |
+| File                                           | Purpose                                             |
+| ---------------------------------------------- | --------------------------------------------------- |
+| `packages/panel-server/src/lib/nginx.js`       | Vhost write, enable/disable, test, reload, rollback |
+| `packages/create-portlama/src/tasks/nginx.js`  | IP-based vhost, mTLS snippet, self-signed cert      |
+| `packages/create-portlama/src/tasks/harden.js` | nginx package installation                          |
 
 ## Quick Reference
 
 ### Vhost files
 
-| File | Domain | Auth | Created |
-|------|--------|------|---------|
-| `portlama-panel-ip` | `_` (any) on `:9292` | mTLS | Installation |
-| `portlama-panel-domain` | `panel.example.com` | mTLS | Onboarding |
-| `portlama-auth` | `auth.example.com` | None | Onboarding |
-| `portlama-tunnel` | `tunnel.example.com` | None | Onboarding |
-| `portlama-app-<name>` | `<name>.example.com` | Authelia | Per tunnel |
-| `portlama-site-<uuid>` | Custom FQDN | Optional Authelia | Per site |
+| File                    | Domain               | Auth              | Created      |
+| ----------------------- | -------------------- | ----------------- | ------------ |
+| `portlama-panel-ip`     | `_` (any) on `:9292` | mTLS              | Installation |
+| `portlama-panel-domain` | `panel.example.com`  | mTLS              | Onboarding   |
+| `portlama-auth`         | `auth.example.com`   | None              | Onboarding   |
+| `portlama-tunnel`       | `tunnel.example.com` | None              | Onboarding   |
+| `portlama-app-<name>`   | `<name>.example.com` | Authelia          | Per tunnel   |
+| `portlama-site-<uuid>`  | Custom FQDN          | Optional Authelia | Per site     |
 
 ### Internal service ports
 
-| Service | Bind address | Port |
-|---------|-------------|------|
-| Panel server | `127.0.0.1` | 3100 |
-| Authelia | `127.0.0.1` | 9091 |
-| Chisel server | `127.0.0.1` | 9090 |
+| Service       | Bind address | Port |
+| ------------- | ------------ | ---- |
+| Panel server  | `127.0.0.1`  | 3100 |
+| Authelia      | `127.0.0.1`  | 9091 |
+| Chisel server | `127.0.0.1`  | 9090 |
 
 ### Public ports
 
-| Port | Protocol | Purpose |
-|------|----------|---------|
-| 443 | HTTPS | Domain-based vhosts (panel, auth, tunnel, apps) |
-| 9292 | HTTPS | IP-based panel access (always available) |
-| 22 | SSH | SSH access (used only during installation) |
+| Port | Protocol | Purpose                                         |
+| ---- | -------- | ----------------------------------------------- |
+| 443  | HTTPS    | Domain-based vhosts (panel, auth, tunnel, apps) |
+| 9292 | HTTPS    | IP-based panel access (always available)        |
+| 22   | SSH      | SSH access (used only during installation)      |
 
 ### nginx commands
 
@@ -519,15 +519,15 @@ ls /etc/nginx/sites-enabled/portlama-*
 
 ### Key nginx directives
 
-| Directive | Purpose |
-|-----------|---------|
-| `ssl_verify_client on` | Require client certificate (mTLS) |
-| `auth_request /internal/authelia/authz` | Delegate auth to Authelia subrequest |
-| `proxy_http_version 1.1` | Required for WebSocket upgrade |
-| `proxy_read_timeout 86400s` | Keep WebSocket connections alive (24h) |
-| `error_page 495 496` | Handle missing/invalid client cert |
-| `error_page 401 =302` | Redirect unauthenticated users to Authelia |
-| `internal` | Location accessible only via subrequests |
+| Directive                               | Purpose                                    |
+| --------------------------------------- | ------------------------------------------ |
+| `ssl_verify_client on`                  | Require client certificate (mTLS)          |
+| `auth_request /internal/authelia/authz` | Delegate auth to Authelia subrequest       |
+| `proxy_http_version 1.1`                | Required for WebSocket upgrade             |
+| `proxy_read_timeout 86400s`             | Keep WebSocket connections alive (24h)     |
+| `error_page 495 496`                    | Handle missing/invalid client cert         |
+| `error_page 401 =302`                   | Redirect unauthenticated users to Authelia |
+| `internal`                              | Location accessible only via subrequests   |
 
 ### Related documentation
 

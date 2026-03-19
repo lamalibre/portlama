@@ -7,8 +7,7 @@ export default function ErrorScreen({ onRetry }) {
         <AlertCircle className="mb-4 h-12 w-12 text-red-400" />
         <h1 className="mb-2 font-mono text-xl font-bold text-zinc-100">Unable to connect</h1>
         <p className="mb-6 max-w-md text-center text-zinc-400">
-          Could not reach the Portlama panel server. Make sure the server is running and try
-          again.
+          Could not reach the Portlama panel server. Make sure the server is running and try again.
         </p>
         <button
           type="button"

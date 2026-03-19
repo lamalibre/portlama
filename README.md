@@ -44,15 +44,15 @@ Browser (with imported client certificate):
 
 **Components:**
 
-| Component       | Technology        | Role                                      |
-| --------------- | ----------------- | ----------------------------------------- |
-| Reverse proxy   | nginx             | TLS termination, mTLS, forward auth       |
-| Tunnel server   | Chisel            | WebSocket-over-HTTPS tunnels, bypasses DPI|
-| Authentication  | Authelia           | TOTP 2FA for tunneled services            |
-| Panel backend   | Fastify (Node.js) | REST API for management operations        |
-| Panel frontend  | React + Vite      | Browser-based management UI               |
-| TLS certificates| Let's Encrypt     | Free, auto-renewing domain certificates   |
-| Panel auth      | mTLS certificates  | LXD-style zero-login for admin access     |
+| Component        | Technology        | Role                                       |
+| ---------------- | ----------------- | ------------------------------------------ |
+| Reverse proxy    | nginx             | TLS termination, mTLS, forward auth        |
+| Tunnel server    | Chisel            | WebSocket-over-HTTPS tunnels, bypasses DPI |
+| Authentication   | Authelia          | TOTP 2FA for tunneled services             |
+| Panel backend    | Fastify (Node.js) | REST API for management operations         |
+| Panel frontend   | React + Vite      | Browser-based management UI                |
+| TLS certificates | Let's Encrypt     | Free, auto-renewing domain certificates    |
+| Panel auth       | mTLS certificates | LXD-style zero-login for admin access      |
 
 ## Features
 
@@ -81,42 +81,47 @@ Browser (with imported client certificate):
 
 All configuration lives under `/etc/portlama/`:
 
-| File                        | Purpose                                      |
-| --------------------------- | -------------------------------------------- |
-| `panel.json`                | Panel server configuration (IP, domain, state)|
-| `pki/ca.crt`               | mTLS certificate authority                   |
-| `pki/ca.key`               | CA private key                               |
-| `pki/client.p12`           | Client certificate bundle for browser import |
-| `tunnels.json`             | Tunnel definitions                           |
+| File             | Purpose                                        |
+| ---------------- | ---------------------------------------------- |
+| `panel.json`     | Panel server configuration (IP, domain, state) |
+| `pki/ca.crt`     | mTLS certificate authority                     |
+| `pki/ca.key`     | CA private key                                 |
+| `pki/client.p12` | Client certificate bundle for browser import   |
+| `tunnels.json`   | Tunnel definitions                             |
 
 **Environment variables:**
 
-| Variable      | Default                          | Description                     |
-| ------------- | -------------------------------- | ------------------------------- |
-| `CONFIG_FILE` | `/etc/portlama/panel.json`    | Path to panel configuration     |
-| `NODE_ENV`    | `production`                     | Set to `development` to skip mTLS |
+| Variable      | Default                    | Description                       |
+| ------------- | -------------------------- | --------------------------------- |
+| `CONFIG_FILE` | `/etc/portlama/panel.json` | Path to panel configuration       |
+| `NODE_ENV`    | `production`               | Set to `development` to skip mTLS |
 
 ## Troubleshooting
 
 **Cannot connect to the panel after importing the certificate:**
+
 - Verify the certificate was imported correctly in your browser's certificate manager.
 - Check that you are accessing `https://<ip>:9292` (not HTTP, not a different port).
 - On macOS, you may need to restart the browser after importing the `.p12` file.
 
 **Onboarding DNS verification fails:**
+
 - DNS propagation can take up to 48 hours. Use `dig A yourdomain.com` to check if the record points to your VPS IP.
 - Ensure you created an A record (not CNAME) pointing to the VPS IP address.
 
 **Service fails to start:**
+
 - Check the service logs: in the management panel, go to Services and click the log icon.
 - Verify sufficient memory: `free -h` on the server. The stack needs at least 250 MB free.
 
 **Let's Encrypt certificate issuance fails:**
+
 - Port 80 must be open and reachable from the internet (certbot uses HTTP-01 challenge).
 - Verify DNS is pointing to the correct IP: `dig A yourdomain.com`.
 - Check certbot logs: `/var/log/letsencrypt/letsencrypt.log`.
 
 **Tunnel client cannot connect from Mac:**
+
 - Download the launchd plist from the Tunnels page in the management panel.
 - Load it with `launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist`.
 - Check client logs: `cat /tmp/chisel-portlama.log`.
@@ -129,15 +134,15 @@ Full documentation is available in the repository and also ships with the manage
 
 Browse the complete docs at [`packages/panel-client/public/docs/`](packages/panel-client/public/docs/):
 
-| Section | Contents |
-|---------|----------|
-| [Introduction](packages/panel-client/public/docs/00-introduction/) | [What is Portlama](packages/panel-client/public/docs/00-introduction/what-is-portlama.md), [How It Works](packages/panel-client/public/docs/00-introduction/how-it-works.md), [Quickstart](packages/panel-client/public/docs/00-introduction/quickstart.md) |
-| [Concepts](packages/panel-client/public/docs/01-concepts/) | [Tunneling](packages/panel-client/public/docs/01-concepts/tunneling.md), [mTLS](packages/panel-client/public/docs/01-concepts/mtls.md), [Authentication](packages/panel-client/public/docs/01-concepts/authentication.md), [Certificates](packages/panel-client/public/docs/01-concepts/certificates.md), [Security Model](packages/panel-client/public/docs/01-concepts/security-model.md), [DNS & Domains](packages/panel-client/public/docs/01-concepts/dns-and-domains.md), [nginx Reverse Proxy](packages/panel-client/public/docs/01-concepts/nginx-reverse-proxy.md) |
-| [Guides](packages/panel-client/public/docs/02-guides/) | [Installation](packages/panel-client/public/docs/02-guides/installation.md), [Onboarding](packages/panel-client/public/docs/02-guides/onboarding.md), [First Tunnel](packages/panel-client/public/docs/02-guides/first-tunnel.md), [Mac Client Setup](packages/panel-client/public/docs/02-guides/mac-client-setup.md), [Managing Users](packages/panel-client/public/docs/02-guides/managing-users.md), [Certificate Management](packages/panel-client/public/docs/02-guides/certificate-management.md), [Static Sites](packages/panel-client/public/docs/02-guides/static-sites.md), [Disaster Recovery](packages/panel-client/public/docs/02-guides/disaster-recovery.md) |
-| [Architecture](packages/panel-client/public/docs/03-architecture/) | [Overview](packages/panel-client/public/docs/03-architecture/overview.md), [System Overview](packages/panel-client/public/docs/03-architecture/system-overview.md), [Panel Server](packages/panel-client/public/docs/03-architecture/panel-server.md), [Panel Client](packages/panel-client/public/docs/03-architecture/panel-client.md), [nginx Configuration](packages/panel-client/public/docs/03-architecture/nginx-configuration.md), [State Management](packages/panel-client/public/docs/03-architecture/state-management.md), [Installer](packages/panel-client/public/docs/03-architecture/installer.md), [Installer Flow](packages/panel-client/public/docs/03-architecture/installer-flow.md), [Onboarding Flow](packages/panel-client/public/docs/03-architecture/onboarding-flow.md), [Management Flow](packages/panel-client/public/docs/03-architecture/management-flow.md), [E2E Test Sequences](packages/panel-client/public/docs/03-architecture/e2e-three-vm-sequences.md) |
-| [API Reference](packages/panel-client/public/docs/04-api-reference/) | [Overview](packages/panel-client/public/docs/04-api-reference/overview.md), [Onboarding](packages/panel-client/public/docs/04-api-reference/onboarding.md), [Tunnels](packages/panel-client/public/docs/04-api-reference/tunnels.md), [Users](packages/panel-client/public/docs/04-api-reference/users.md), [Sites](packages/panel-client/public/docs/04-api-reference/sites.md), [Certificates](packages/panel-client/public/docs/04-api-reference/certificates.md), [Services](packages/panel-client/public/docs/04-api-reference/services.md), [System](packages/panel-client/public/docs/04-api-reference/system.md) |
-| [Operations](packages/panel-client/public/docs/05-operations/) | [Monitoring](packages/panel-client/public/docs/05-operations/monitoring.md), [Upgrades](packages/panel-client/public/docs/05-operations/upgrades.md), [Backup & Restore](packages/panel-client/public/docs/05-operations/backup-and-restore.md), [Uninstalling](packages/panel-client/public/docs/05-operations/uninstalling.md) |
-| [Reference](packages/panel-client/public/docs/06-reference/) | [Config Files](packages/panel-client/public/docs/06-reference/config-files.md), [Ports & Services](packages/panel-client/public/docs/06-reference/ports-and-services.md), [Installer Flags](packages/panel-client/public/docs/06-reference/installer-flags.md), [Glossary](packages/panel-client/public/docs/06-reference/glossary.md), [Troubleshooting](packages/panel-client/public/docs/06-reference/troubleshooting.md) |
+| Section                                                              | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Introduction](packages/panel-client/public/docs/00-introduction/)   | [What is Portlama](packages/panel-client/public/docs/00-introduction/what-is-portlama.md), [How It Works](packages/panel-client/public/docs/00-introduction/how-it-works.md), [Quickstart](packages/panel-client/public/docs/00-introduction/quickstart.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| [Concepts](packages/panel-client/public/docs/01-concepts/)           | [Tunneling](packages/panel-client/public/docs/01-concepts/tunneling.md), [mTLS](packages/panel-client/public/docs/01-concepts/mtls.md), [Authentication](packages/panel-client/public/docs/01-concepts/authentication.md), [Certificates](packages/panel-client/public/docs/01-concepts/certificates.md), [Security Model](packages/panel-client/public/docs/01-concepts/security-model.md), [DNS & Domains](packages/panel-client/public/docs/01-concepts/dns-and-domains.md), [nginx Reverse Proxy](packages/panel-client/public/docs/01-concepts/nginx-reverse-proxy.md)                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| [Guides](packages/panel-client/public/docs/02-guides/)               | [Installation](packages/panel-client/public/docs/02-guides/installation.md), [Onboarding](packages/panel-client/public/docs/02-guides/onboarding.md), [First Tunnel](packages/panel-client/public/docs/02-guides/first-tunnel.md), [Mac Client Setup](packages/panel-client/public/docs/02-guides/mac-client-setup.md), [Managing Users](packages/panel-client/public/docs/02-guides/managing-users.md), [Certificate Management](packages/panel-client/public/docs/02-guides/certificate-management.md), [Static Sites](packages/panel-client/public/docs/02-guides/static-sites.md), [Disaster Recovery](packages/panel-client/public/docs/02-guides/disaster-recovery.md)                                                                                                                                                                                                                                                                                                                  |
+| [Architecture](packages/panel-client/public/docs/03-architecture/)   | [Overview](packages/panel-client/public/docs/03-architecture/overview.md), [System Overview](packages/panel-client/public/docs/03-architecture/system-overview.md), [Panel Server](packages/panel-client/public/docs/03-architecture/panel-server.md), [Panel Client](packages/panel-client/public/docs/03-architecture/panel-client.md), [nginx Configuration](packages/panel-client/public/docs/03-architecture/nginx-configuration.md), [State Management](packages/panel-client/public/docs/03-architecture/state-management.md), [Installer](packages/panel-client/public/docs/03-architecture/installer.md), [Installer Flow](packages/panel-client/public/docs/03-architecture/installer-flow.md), [Onboarding Flow](packages/panel-client/public/docs/03-architecture/onboarding-flow.md), [Management Flow](packages/panel-client/public/docs/03-architecture/management-flow.md), [E2E Test Sequences](packages/panel-client/public/docs/03-architecture/e2e-three-vm-sequences.md) |
+| [API Reference](packages/panel-client/public/docs/04-api-reference/) | [Overview](packages/panel-client/public/docs/04-api-reference/overview.md), [Onboarding](packages/panel-client/public/docs/04-api-reference/onboarding.md), [Tunnels](packages/panel-client/public/docs/04-api-reference/tunnels.md), [Users](packages/panel-client/public/docs/04-api-reference/users.md), [Sites](packages/panel-client/public/docs/04-api-reference/sites.md), [Certificates](packages/panel-client/public/docs/04-api-reference/certificates.md), [Services](packages/panel-client/public/docs/04-api-reference/services.md), [System](packages/panel-client/public/docs/04-api-reference/system.md)                                                                                                                                                                                                                                                                                                                                                                      |
+| [Operations](packages/panel-client/public/docs/05-operations/)       | [Monitoring](packages/panel-client/public/docs/05-operations/monitoring.md), [Upgrades](packages/panel-client/public/docs/05-operations/upgrades.md), [Backup & Restore](packages/panel-client/public/docs/05-operations/backup-and-restore.md), [Uninstalling](packages/panel-client/public/docs/05-operations/uninstalling.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| [Reference](packages/panel-client/public/docs/06-reference/)         | [Config Files](packages/panel-client/public/docs/06-reference/config-files.md), [Ports & Services](packages/panel-client/public/docs/06-reference/ports-and-services.md), [Installer Flags](packages/panel-client/public/docs/06-reference/installer-flags.md), [Glossary](packages/panel-client/public/docs/06-reference/glossary.md), [Troubleshooting](packages/panel-client/public/docs/06-reference/troubleshooting.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ### E2E Test Results
 

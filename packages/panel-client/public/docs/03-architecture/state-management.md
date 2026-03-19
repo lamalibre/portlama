@@ -78,6 +78,7 @@ export async function writeTunnels(tunnels) {
 ```
 
 **Why this works:**
+
 - `rename()` is atomic on POSIX filesystems — it either completes fully or not at all
 - `fd.sync()` ensures the data is flushed to the physical disk before the rename
 - If the process crashes during `writeFile`, only the `.tmp` file is affected — the original state file is untouched
@@ -85,6 +86,7 @@ export async function writeTunnels(tunnels) {
 - The worst case is losing the most recent write, which preserves the previous consistent state
 
 **Why the temp file is in the same directory:**
+
 - `rename()` is only atomic within the same filesystem
 - `/etc/portlama/tunnels.json.tmp` and `/etc/portlama/tunnels.json` are on the same filesystem, so the rename is guaranteed to be atomic
 
@@ -112,15 +114,15 @@ The central configuration file, validated by Zod on every load and update.
 
 **Field definitions:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `ip` | `string` | Yes | VPS public IP address (detected during install) |
-| `domain` | `string \| null` | Yes | Base domain (set during onboarding, null before) |
-| `email` | `string (email) \| null` | Yes | Admin email for Let's Encrypt (set during onboarding) |
-| `dataDir` | `string` | Yes | Path to state directory (`/etc/portlama`) |
-| `staticDir` | `string` | No | Path to panel-client dist (overrides default resolution) |
-| `maxSiteSize` | `number` | No | Maximum static site size in bytes (default: 500 MB) |
-| `onboarding.status` | `enum` | Yes | Current onboarding state |
+| Field               | Type                     | Required | Description                                              |
+| ------------------- | ------------------------ | -------- | -------------------------------------------------------- |
+| `ip`                | `string`                 | Yes      | VPS public IP address (detected during install)          |
+| `domain`            | `string \| null`         | Yes      | Base domain (set during onboarding, null before)         |
+| `email`             | `string (email) \| null` | Yes      | Admin email for Let's Encrypt (set during onboarding)    |
+| `dataDir`           | `string`                 | Yes      | Path to state directory (`/etc/portlama`)                |
+| `staticDir`         | `string`                 | No       | Path to panel-client dist (overrides default resolution) |
+| `maxSiteSize`       | `number`                 | No       | Maximum static site size in bytes (default: 500 MB)      |
+| `onboarding.status` | `enum`                   | Yes      | Current onboarding state                                 |
 
 **Zod validation:**
 
@@ -131,7 +133,10 @@ const ConfigSchema = z.object({
   email: z.string().email().nullable(),
   dataDir: z.string().min(1),
   staticDir: z.string().optional(),
-  maxSiteSize: z.number().optional().default(500 * 1024 * 1024),
+  maxSiteSize: z
+    .number()
+    .optional()
+    .default(500 * 1024 * 1024),
   onboarding: z.object({
     status: z.enum(['FRESH', 'DOMAIN_SET', 'DNS_READY', 'PROVISIONING', 'COMPLETED']),
   }),
@@ -139,6 +144,7 @@ const ConfigSchema = z.object({
 ```
 
 Validation runs:
+
 - At server startup (`loadConfig()`)
 - Before every config update (`updateConfig()`)
 - Invalid data throws a Zod error, caught by the error handler and returned as a 400
@@ -248,12 +254,14 @@ Stored at `/etc/portlama/tunnels.json`. An array of tunnel objects.
 ```
 
 **Operations:**
+
 - `readTunnels()` — returns the array, or `[]` if the file does not exist
 - `writeTunnels(tunnels)` — atomic write of the full array
 
 Read returns `[]` for missing files (ENOENT), enabling the system to start with no tunnels defined.
 
 **Tunnel lifecycle:**
+
 1. `POST /api/tunnels` — adds a tunnel object, issues TLS cert, writes nginx vhost
 2. `DELETE /api/tunnels/:id` — removes the tunnel object, removes nginx vhost
 3. On both: the full array is written atomically after modification
@@ -280,6 +288,7 @@ Stored at `/etc/portlama/sites.json`. An array of site objects.
 ```
 
 **Operations:**
+
 - `readSites()` — returns the array, or `[]` if the file does not exist
 - `writeSites(sites)` — atomic write of the full array
 
@@ -295,7 +304,7 @@ Authelia reads its user database from `/etc/authelia/users.yml` at runtime. Port
 users:
   admin:
     displayname: admin
-    password: $2b$12$...   # bcrypt hash
+    password: $2b$12$... # bcrypt hash
     email: admin@portlama.local
     groups:
       - admins
@@ -321,6 +330,7 @@ async function sudoWriteFile(destPath, content, mode = '644') {
 ```
 
 This pattern:
+
 1. Writes to a temp file in `/tmp/` (writable by the `portlama` user)
 2. Uses `sudo mv` to move it to `/etc/authelia/users.yml` (requires root)
 3. Uses `sudo chmod` to set permissions (600 for sensitive files)
@@ -335,34 +345,34 @@ The `sudo mv` is atomic (same-filesystem rename). The scoped `sudoers` rules all
 
 Different config files are resolved through different mechanisms:
 
-| File | Resolution |
-|------|------------|
-| `panel.json` | `PORTLAMA_CONFIG` env var → `dev/panel.json` (dev) → `/etc/portlama/panel.json` (prod) |
-| `tunnels.json` | `PORTLAMA_STATE_DIR` env var → `/etc/portlama` + `/tunnels.json` |
-| `sites.json` | `PORTLAMA_STATE_DIR` env var → `/etc/portlama` + `/sites.json` |
-| `invitations.json` | `PORTLAMA_STATE_DIR` env var → `/etc/portlama` + `/invitations.json` |
-| `users.yml` | Hardcoded: `/etc/authelia/users.yml` |
-| PKI files | `PORTLAMA_PKI_DIR` env var → `/etc/portlama/pki` |
+| File               | Resolution                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------- |
+| `panel.json`       | `PORTLAMA_CONFIG` env var → `dev/panel.json` (dev) → `/etc/portlama/panel.json` (prod) |
+| `tunnels.json`     | `PORTLAMA_STATE_DIR` env var → `/etc/portlama` + `/tunnels.json`                       |
+| `sites.json`       | `PORTLAMA_STATE_DIR` env var → `/etc/portlama` + `/sites.json`                         |
+| `invitations.json` | `PORTLAMA_STATE_DIR` env var → `/etc/portlama` + `/invitations.json`                   |
+| `users.yml`        | Hardcoded: `/etc/authelia/users.yml`                                                   |
+| PKI files          | `PORTLAMA_PKI_DIR` env var → `/etc/portlama/pki`                                       |
 
 Environment variables allow overriding paths for development and testing without modifying code.
 
 ## File Permissions
 
-| File | Mode | Owner | Rationale |
-|------|------|-------|-----------|
-| `panel.json` | `0640` | `portlama:portlama` | Readable by service, writable by owner |
-| `tunnels.json` | `0600` | `portlama:portlama` | Written by Panel Server |
-| `sites.json` | `0600` | `portlama:portlama` | Written by Panel Server |
-| `invitations.json` | `0600` | `portlama:portlama` | Written by Panel Server |
-| `pki/ca.key` | `0600` | `root:root` | CA private key — most sensitive file |
-| `pki/ca.crt` | `0644` | `root:root` | CA cert — needs to be readable by nginx |
-| `pki/client.key` | `0600` | `root:root` | Client private key |
-| `pki/client.crt` | `0644` | `root:root` | Client cert |
-| `pki/client.p12` | `0600` | `root:root` | PKCS12 bundle with private key |
-| `pki/.p12-password` | `0600` | `root:root` | Password for PKCS12 bundle |
-| `users.yml` | `0600` | `root:root` | Contains bcrypt password hashes |
-| `configuration.yml` | `0600` | `root:root` | Contains JWT and session secrets |
-| `.secrets.json` | `0600` | `root:root` | Encryption keys |
+| File                | Mode   | Owner               | Rationale                               |
+| ------------------- | ------ | ------------------- | --------------------------------------- |
+| `panel.json`        | `0640` | `portlama:portlama` | Readable by service, writable by owner  |
+| `tunnels.json`      | `0600` | `portlama:portlama` | Written by Panel Server                 |
+| `sites.json`        | `0600` | `portlama:portlama` | Written by Panel Server                 |
+| `invitations.json`  | `0600` | `portlama:portlama` | Written by Panel Server                 |
+| `pki/ca.key`        | `0600` | `root:root`         | CA private key — most sensitive file    |
+| `pki/ca.crt`        | `0644` | `root:root`         | CA cert — needs to be readable by nginx |
+| `pki/client.key`    | `0600` | `root:root`         | Client private key                      |
+| `pki/client.crt`    | `0644` | `root:root`         | Client cert                             |
+| `pki/client.p12`    | `0600` | `root:root`         | PKCS12 bundle with private key          |
+| `pki/.p12-password` | `0600` | `root:root`         | Password for PKCS12 bundle              |
+| `users.yml`         | `0600` | `root:root`         | Contains bcrypt password hashes         |
+| `configuration.yml` | `0600` | `root:root`         | Contains JWT and session secrets        |
+| `.secrets.json`     | `0600` | `root:root`         | Encryption keys                         |
 
 PKI and Authelia files are owned by root because they are written during installation (as root) or via `sudo` commands. The Panel Server reads them using `sudo` when needed (e.g., reading `users.yml` for the users API).
 
@@ -397,14 +407,14 @@ This ensures that concurrent tunnel creation requests do not trigger multiple si
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `packages/panel-server/src/lib/config.js` | Config loading, Zod validation, atomic updates |
-| `packages/panel-server/src/lib/state.js` | tunnels.json + sites.json atomic read/write |
-| `packages/panel-server/src/lib/authelia.js` | users.yml read/write via sudo |
-| `packages/panel-server/src/lib/files.js` | Static site file operations |
-| `packages/create-portlama/src/tasks/panel.js` | Initial panel.json creation |
-| `packages/create-portlama/src/tasks/mtls.js` | Initial PKI file creation |
+| File                                          | Role                                           |
+| --------------------------------------------- | ---------------------------------------------- |
+| `packages/panel-server/src/lib/config.js`     | Config loading, Zod validation, atomic updates |
+| `packages/panel-server/src/lib/state.js`      | tunnels.json + sites.json atomic read/write    |
+| `packages/panel-server/src/lib/authelia.js`   | users.yml read/write via sudo                  |
+| `packages/panel-server/src/lib/files.js`      | Static site file operations                    |
+| `packages/create-portlama/src/tasks/panel.js` | Initial panel.json creation                    |
+| `packages/create-portlama/src/tasks/mtls.js`  | Initial PKI file creation                      |
 
 ## Design Decisions
 

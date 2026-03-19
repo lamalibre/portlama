@@ -342,9 +342,7 @@ export async function writeAppVhost(subdomain, domain, port, certPath) {
  */
 export async function writeStaticSiteVhost(site, certDir, domain) {
   const certDirClean = certDir.replace(/\/+$/, '');
-  const tryFiles = site.spaMode
-    ? 'try_files $uri $uri/ /index.html'
-    : 'try_files $uri $uri/ =404';
+  const tryFiles = site.spaMode ? 'try_files $uri $uri/ /index.html' : 'try_files $uri $uri/ =404';
 
   let autheliaBlock = '';
   let locationAuthDirectives = '';
@@ -397,10 +395,14 @@ ${autheliaBlock}
     location / {${locationAuthDirectives}
         ${tryFiles};
     }
-${site.autheliaProtected && domain ? `
+${
+  site.autheliaProtected && domain
+    ? `
     # Redirect unauthenticated requests to Authelia login portal
     error_page 401 =302 $redirection_url;
-` : ''}
+`
+    : ''
+}
 }
 `;
 
@@ -430,7 +432,9 @@ ${site.autheliaProtected && domain ? `
         await execa('sudo', ['rm', '-f', availablePath]);
         await execa('sudo', ['rm', '-f', path.join(SITES_ENABLED, name)]);
       }
-      throw new Error(`Nginx config test failed after writing vhost for ${site.fqdn}: ${result.error}`);
+      throw new Error(
+        `Nginx config test failed after writing vhost for ${site.fqdn}: ${result.error}`,
+      );
     }
 
     // 5. Reload nginx
@@ -537,7 +541,8 @@ export async function reload() {
 export async function enableSite(name) {
   try {
     await execa('sudo', [
-      'ln', '-sf',
+      'ln',
+      '-sf',
       path.join(SITES_AVAILABLE, name),
       path.join(SITES_ENABLED, name),
     ]);

@@ -372,8 +372,8 @@ function DnsVerificationModal({ site, onClose }) {
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
         <h3 className="text-lg font-semibold text-white mb-2">DNS Verification</h3>
         <p className="text-zinc-400 text-sm mb-4">
-          Add an A record pointing{' '}
-          <span className="text-cyan-400 font-mono">{site.fqdn}</span> to your server IP.
+          Add an A record pointing <span className="text-cyan-400 font-mono">{site.fqdn}</span> to
+          your server IP.
         </p>
 
         <div className="bg-zinc-800 rounded-lg p-4 mb-4">
@@ -447,8 +447,8 @@ function DeleteConfirmation({ site, onConfirm, onCancel, isPending }) {
         <h3 className="text-lg font-semibold text-white mb-2">Delete Site</h3>
         <p className="text-zinc-400 text-sm mb-6">
           Are you sure you want to delete{' '}
-          <span className="text-cyan-400 font-mono">{site.fqdn}</span>? This will remove
-          all files, the nginx configuration, and certificate mapping.
+          <span className="text-cyan-400 font-mono">{site.fqdn}</span>? This will remove all files,
+          the nginx configuration, and certificate mapping.
         </p>
         <div className="flex items-center justify-end gap-3">
           <button
@@ -535,7 +535,9 @@ function SiteSettingsModal({ site, onClose }) {
           <label className="flex items-center justify-between gap-3 cursor-pointer">
             <div>
               <span className="text-sm text-zinc-200">SPA Mode</span>
-              <p className="text-xs text-zinc-500 mt-0.5">Fallback to index.html for client-side routing</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Fallback to index.html for client-side routing
+              </p>
             </div>
             <input
               type="checkbox"
@@ -616,9 +618,7 @@ function SiteSettingsModal({ site, onClose }) {
                 </select>
               )}
 
-              {usersQuery.isLoading && (
-                <p className="text-xs text-zinc-500">Loading users...</p>
-              )}
+              {usersQuery.isLoading && <p className="text-xs text-zinc-500">Loading users...</p>}
             </div>
           )}
         </div>
@@ -703,8 +703,12 @@ function SiteTable({ sites, onDelete, onFiles, onVerifyDns, onSettings }) {
                   <span className="text-zinc-400 font-mono">{site.fqdn}</span>
                 )}
               </td>
-              <td className="py-3 px-4"><TypeBadge type={site.type} /></td>
-              <td className="py-3 px-4"><StatusBadge site={site} /></td>
+              <td className="py-3 px-4">
+                <TypeBadge type={site.type} />
+              </td>
+              <td className="py-3 px-4">
+                <StatusBadge site={site} />
+              </td>
               <td className="py-3 px-4 text-sm text-zinc-400 font-mono">
                 {formatBytes(site.totalSize || 0)}
               </td>
@@ -875,12 +879,7 @@ export default function Sites() {
 
   // If file browser is open, show it instead of the sites list
   if (fileBrowserSite) {
-    return (
-      <FileBrowser
-        site={fileBrowserSite}
-        onBack={() => setFileBrowserSite(null)}
-      />
-    );
+    return <FileBrowser site={fileBrowserSite} onBack={() => setFileBrowserSite(null)} />;
   }
 
   return (
@@ -905,9 +904,7 @@ export default function Sites() {
       </div>
 
       {/* Add Site Form */}
-      {showForm && domain && (
-        <AddSiteForm domain={domain} onClose={() => setShowForm(false)} />
-      )}
+      {showForm && domain && <AddSiteForm domain={domain} onClose={() => setShowForm(false)} />}
 
       {/* Sites List */}
       {sitesQuery.isLoading ? (
@@ -951,18 +948,12 @@ export default function Sites() {
 
       {/* DNS Verification Modal */}
       {dnsVerifySite && (
-        <DnsVerificationModal
-          site={dnsVerifySite}
-          onClose={() => setDnsVerifySite(null)}
-        />
+        <DnsVerificationModal site={dnsVerifySite} onClose={() => setDnsVerifySite(null)} />
       )}
 
       {/* Site Settings Modal */}
       {settingsSite && (
-        <SiteSettingsModal
-          site={settingsSite}
-          onClose={() => setSettingsSite(null)}
-        />
+        <SiteSettingsModal site={settingsSite} onClose={() => setSettingsSite(null)} />
       )}
 
       {/* Delete Confirmation Modal */}

@@ -12,14 +12,14 @@ The installer runs as root on a fresh Ubuntu 24.04 server. It is completely non-
 
 ## Flags
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--help` | `-h` | Print help message and exit |
-| `--yes` | `-y` | Skip the confirmation prompt |
-| `--skip-harden` | | Skip OS hardening (swap, UFW, fail2ban, SSH) |
-| `--dev` | | Allow private/non-routable IP addresses |
-| `--force-full` | | Run full installation even on existing installs |
-| `--uninstall` | | Print manual removal guide and exit |
+| Flag            | Short | Description                                     |
+| --------------- | ----- | ----------------------------------------------- |
+| `--help`        | `-h`  | Print help message and exit                     |
+| `--yes`         | `-y`  | Skip the confirmation prompt                    |
+| `--skip-harden` |       | Skip OS hardening (swap, UFW, fail2ban, SSH)    |
+| `--dev`         |       | Allow private/non-routable IP addresses         |
+| `--force-full`  |       | Run full installation even on existing installs |
+| `--uninstall`   |       | Print manual removal guide and exit             |
 
 ### `--help`, `-h`
 
@@ -110,10 +110,10 @@ See also: [Uninstalling](../05-operations/uninstalling.md) for the full document
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORTLAMA_CONFIG` | `/etc/portlama/panel.json` | Override the panel config file path (panel-server) |
-| `NODE_ENV` | — | Set to `development` (or leave unset) to skip mTLS verification and use dev config path; set to `production` for production behavior (panel-server) |
+| Variable          | Default                    | Description                                                                                                                                         |
+| ----------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORTLAMA_CONFIG` | `/etc/portlama/panel.json` | Override the panel config file path (panel-server)                                                                                                  |
+| `NODE_ENV`        | —                          | Set to `development` (or leave unset) to skip mTLS verification and use dev config path; set to `production` for production behavior (panel-server) |
 
 These environment variables affect the **panel server** at runtime, not the installer itself. They are listed here because they are the only environment-level configuration Portlama uses.
 
@@ -128,10 +128,10 @@ Environment=CONFIG_FILE=/etc/portlama/panel.json
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success (installation complete, or `--help`/`--uninstall` printed) |
-| 1 | Installation failed (error printed to stderr) |
+| Code | Meaning                                                            |
+| ---- | ------------------------------------------------------------------ |
+| 0    | Success (installation complete, or `--help`/`--uninstall` printed) |
+| 1    | Installation failed (error printed to stderr)                      |
 
 When the installer fails, it prints a boxed error message with the failure reason and a note that you can safely re-run the installer to retry:
 
@@ -149,10 +149,10 @@ When the installer fails, it prints a boxed error message with the failure reaso
 
 The installer checks these requirements at startup and fails with a descriptive error if any are not met:
 
-| Requirement | Check |
-|-------------|-------|
-| Root access | `process.getuid() === 0` |
-| Ubuntu 24.04 | Reads `/etc/os-release` |
+| Requirement                | Check                          |
+| -------------------------- | ------------------------------ |
+| Root access                | `process.getuid() === 0`       |
+| Ubuntu 24.04               | Reads `/etc/os-release`        |
 | Public IP (unless `--dev`) | Detects via network interfaces |
 
 ## Installation Phases
@@ -182,15 +182,15 @@ The installer runs in two sequential phases:
 
 The installer is designed to be re-run safely. Skip guards prevent duplicate work:
 
-| Component | Skip Condition |
-|-----------|---------------|
-| Swap file | Swap already active |
-| UFW firewall | Already active with required ports |
-| fail2ban | Config exists and service is running |
-| SSH hardening | Settings already correct |
-| Node.js | Already installed at expected version |
-| mTLS certificates | `ca.key` and `client.p12` already exist |
-| Panel config | Existing `panel.json` is merged (preserves domain, email, onboarding status) |
+| Component         | Skip Condition                                                               |
+| ----------------- | ---------------------------------------------------------------------------- |
+| Swap file         | Swap already active                                                          |
+| UFW firewall      | Already active with required ports                                           |
+| fail2ban          | Config exists and service is running                                         |
+| SSH hardening     | Settings already correct                                                     |
+| Node.js           | Already installed at expected version                                        |
+| mTLS certificates | `ca.key` and `client.p12` already exist                                      |
+| Panel config      | Existing `panel.json` is merged (preserves domain, email, onboarding status) |
 
 Components that are always redeployed on re-run:
 
@@ -241,19 +241,19 @@ npx @lamalibre/create-portlama --uninstall
 
 ## Quick Reference
 
-| Flag | Effect |
-|------|--------|
-| `--help` / `-h` | Print help, exit 0 |
-| `--yes` / `-y` | Skip confirmation |
-| `--skip-harden` | No swap, UFW, fail2ban, SSH hardening |
-| `--dev` | Allow private IPs |
-| `--force-full` | Full install even on existing installs |
-| `--uninstall` | Print removal guide, exit 0 |
+| Flag            | Effect                                 |
+| --------------- | -------------------------------------- |
+| `--help` / `-h` | Print help, exit 0                     |
+| `--yes` / `-y`  | Skip confirmation                      |
+| `--skip-harden` | No swap, UFW, fail2ban, SSH hardening  |
+| `--dev`         | Allow private IPs                      |
+| `--force-full`  | Full install even on existing installs |
+| `--uninstall`   | Print removal guide, exit 0            |
 
-| Requirement | Value |
-|-------------|-------|
-| OS | Ubuntu 24.04 |
-| Access | Root |
-| IP | Public (or `--dev` for private) |
-| Exit 0 | Success |
-| Exit 1 | Failure |
+| Requirement | Value                           |
+| ----------- | ------------------------------- |
+| OS          | Ubuntu 24.04                    |
+| Access      | Root                            |
+| IP          | Public (or `--dev` for private) |
+| Exit 0      | Success                         |
+| Exit 1      | Failure                         |

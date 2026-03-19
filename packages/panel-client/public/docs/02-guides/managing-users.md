@@ -28,13 +28,13 @@ Click the **Add User** button.
 
 A form appears with these fields:
 
-| Field | Required | Rules | Example |
-|-------|----------|-------|---------|
-| **Username** | Yes | 2-32 chars, lowercase alphanumeric with underscores and hyphens | `alice` |
-| **Display Name** | Yes | 1-100 characters | `Alice Johnson` |
-| **Email** | Yes | Valid email address | `alice@example.com` |
-| **Password** | Yes | 8-128 characters | A strong, unique password |
-| **Groups** | No | Optional list of group names | `admins`, `developers` |
+| Field            | Required | Rules                                                           | Example                   |
+| ---------------- | -------- | --------------------------------------------------------------- | ------------------------- |
+| **Username**     | Yes      | 2-32 chars, lowercase alphanumeric with underscores and hyphens | `alice`                   |
+| **Display Name** | Yes      | 1-100 characters                                                | `Alice Johnson`           |
+| **Email**        | Yes      | Valid email address                                             | `alice@example.com`       |
+| **Password**     | Yes      | 8-128 characters                                                | A strong, unique password |
+| **Groups**       | No       | Optional list of group names                                    | `admins`, `developers`    |
 
 Fill in the form and click **Create User**.
 
@@ -134,7 +134,7 @@ users:
   admin:
     displayname: Admin
     email: admin@example.com
-    password: $2b$12$...  # bcrypt hash
+    password: $2b$12$... # bcrypt hash
     groups:
       - admins
   alice:
@@ -150,13 +150,13 @@ All writes to this file are atomic: write to a temp file, then rename. This prev
 
 ### API Endpoints
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/api/users` | List all users (sorted alphabetically, no sensitive fields) |
-| `POST` | `/api/users` | Create a new user |
-| `PUT` | `/api/users/:username` | Update user fields |
-| `DELETE` | `/api/users/:username` | Delete a user (not the last one) |
-| `POST` | `/api/users/:username/reset-totp` | Generate a new TOTP secret |
+| Method   | Path                              | Purpose                                                     |
+| -------- | --------------------------------- | ----------------------------------------------------------- |
+| `GET`    | `/api/users`                      | List all users (sorted alphabetically, no sensitive fields) |
+| `POST`   | `/api/users`                      | Create a new user                                           |
+| `PUT`    | `/api/users/:username`            | Update user fields                                          |
+| `DELETE` | `/api/users/:username`            | Delete a user (not the last one)                            |
+| `POST`   | `/api/users/:username/reset-totp` | Generate a new TOTP secret                                  |
 
 ### Create User Request
 
@@ -212,13 +212,13 @@ The `totpUri` is used to generate a QR code that the user scans with their authe
 
 ### Validation Rules (Zod Schema)
 
-| Field | Rules |
-|-------|-------|
-| `username` | 2-32 chars, regex `^[a-z0-9_-]+$` |
-| `displayname` | 1-100 chars |
-| `email` | Valid email format |
-| `password` | 8-128 chars |
-| `groups` | Optional array of strings |
+| Field         | Rules                             |
+| ------------- | --------------------------------- |
+| `username`    | 2-32 chars, regex `^[a-z0-9_-]+$` |
+| `displayname` | 1-100 chars                       |
+| `email`       | Valid email format                |
+| `password`    | 8-128 chars                       |
+| `groups`      | Optional array of strings         |
 
 ### Password Hashing
 
@@ -236,20 +236,20 @@ Authelia reads `users.yml` on restart. If the restart fails, a warning is logged
 
 ## Quick Reference
 
-| Action | Steps |
-|--------|-------|
-| **Add user** | Users page, "Add User", fill form, "Create User" |
-| **Edit user** | Users page, "Edit" on user, modify fields, "Save" |
-| **Change password** | Edit user, enter new password, "Save" |
-| **Reset TOTP** | Users page, "Reset TOTP" on user, share QR code |
-| **Delete user** | Users page, "Delete" on user, confirm |
+| Action              | Steps                                             |
+| ------------------- | ------------------------------------------------- |
+| **Add user**        | Users page, "Add User", fill form, "Create User"  |
+| **Edit user**       | Users page, "Edit" on user, modify fields, "Save" |
+| **Change password** | Edit user, enter new password, "Save"             |
+| **Reset TOTP**      | Users page, "Reset TOTP" on user, share QR code   |
+| **Delete user**     | Users page, "Delete" on user, confirm             |
 
-| Constraint | Value |
-|------------|-------|
-| Username format | `^[a-z0-9_-]+$` |
-| Username length | 2-32 characters |
-| Password length | 8-128 characters |
-| Password hashing | bcrypt (cost 12) |
-| Minimum users | 1 (cannot delete last user) |
-| TOTP algorithm | SHA1, 6 digits, 30-second period |
-| User file | `/etc/authelia/users.yml` |
+| Constraint       | Value                            |
+| ---------------- | -------------------------------- |
+| Username format  | `^[a-z0-9_-]+$`                  |
+| Username length  | 2-32 characters                  |
+| Password length  | 8-128 characters                 |
+| Password hashing | bcrypt (cost 12)                 |
+| Minimum users    | 1 (cannot delete last user)      |
+| TOTP algorithm   | SHA1, 6 digits, 30-second period |
+| User file        | `/etc/authelia/users.yml`        |

@@ -13,6 +13,7 @@ You may use, copy, modify, and distribute this software for any **noncommercial*
 Commercial use of this software requires a commercial license, available by contacting licence@codelama.com.tr.
 
 Commercial use includes, but is not limited to:
+
 - Using Portlama in a business to serve data to clients or partners
 - Deploying Portlama as part of a revenue-generating service or product
 - Using Portlama internally at a for-profit organization
@@ -85,7 +86,7 @@ The first time you are notified in writing that you have violated any of these t
 
 ### No Liability
 
-***As far as the law allows, the software comes as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim.***
+**_As far as the law allows, the software comes as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim._**
 
 ### Definitions
 

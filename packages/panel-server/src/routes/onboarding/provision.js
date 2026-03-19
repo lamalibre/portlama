@@ -53,7 +53,8 @@ function emitProgress(taskId, status, message, log = null) {
     }
   }
 
-  const current = provisioningState.tasks.filter((t) => t.status === 'done').length +
+  const current =
+    provisioningState.tasks.filter((t) => t.status === 'done').length +
     (status === 'running' ? 1 : 0);
 
   const payload = {
@@ -81,7 +82,14 @@ async function runProvisioning(log) {
     // Step 1: Install Chisel
     emitProgress('install-chisel', 'running', 'Downloading Chisel binary...');
     const chiselResult = await chisel.installChisel();
-    emitProgress('install-chisel', 'running', 'Writing systemd service...', chiselResult.skipped ? 'Chisel already installed' : `Installed Chisel ${chiselResult.version}`);
+    emitProgress(
+      'install-chisel',
+      'running',
+      'Writing systemd service...',
+      chiselResult.skipped
+        ? 'Chisel already installed'
+        : `Installed Chisel ${chiselResult.version}`,
+    );
     await chisel.writeChiselService();
     emitProgress('install-chisel', 'running', 'Starting Chisel service...');
     await chisel.startChisel();
@@ -90,7 +98,14 @@ async function runProvisioning(log) {
     // Step 2: Install Authelia
     emitProgress('install-authelia', 'running', 'Downloading Authelia binary...');
     const autheliaResult = await authelia.installAuthelia();
-    emitProgress('install-authelia', 'running', 'Writing configuration...', autheliaResult.skipped ? 'Authelia already installed' : `Installed Authelia ${autheliaResult.version}`);
+    emitProgress(
+      'install-authelia',
+      'running',
+      'Writing configuration...',
+      autheliaResult.skipped
+        ? 'Authelia already installed'
+        : `Installed Authelia ${autheliaResult.version}`,
+    );
 
     const secrets = {
       jwtSecret: crypto.randomBytes(32).toString('hex'),
@@ -203,7 +218,6 @@ async function runProvisioning(log) {
       result,
       progress: { current: TASK_DEFINITIONS.length, total: TASK_DEFINITIONS.length },
     });
-
   } catch (err) {
     const failedTask = provisioningState.tasks.find((t) => t.status === 'running');
     const failedTaskId = failedTask?.id || 'unknown';
@@ -278,10 +292,12 @@ export default async function provisionRoute(fastify, _opts) {
   // WebSocket /provision/stream — real-time progress
   fastify.get('/provision/stream', { websocket: true }, (socket, _request) => {
     // Send current state immediately for late-joining clients
-    socket.send(JSON.stringify({
-      type: 'state',
-      ...provisioningState,
-    }));
+    socket.send(
+      JSON.stringify({
+        type: 'state',
+        ...provisioningState,
+      }),
+    );
 
     // Subscribe to progress events
     function onProgress(payload) {

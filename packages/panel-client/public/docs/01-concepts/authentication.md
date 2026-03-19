@@ -18,10 +18,10 @@ These two systems are completely independent. Admin certificate holders do not a
 
 ### Who uses what
 
-| Person | Accesses | Authentication method |
-|--------|----------|----------------------|
-| You (the admin) | Management panel at `https://<IP>:9292` | Client certificate (mTLS) |
-| Your users | Tunneled apps at `myapp.example.com` | Username + password + TOTP code |
+| Person          | Accesses                                | Authentication method           |
+| --------------- | --------------------------------------- | ------------------------------- |
+| You (the admin) | Management panel at `https://<IP>:9292` | Client certificate (mTLS)       |
+| Your users      | Tunneled apps at `myapp.example.com`    | Username + password + TOTP code |
 
 ### Managing users
 
@@ -188,7 +188,7 @@ Authelia reads user data from `/etc/authelia/users.yml`:
 users:
   alice:
     displayname: alice
-    password: $2b$12$xxxxx...  # bcrypt hash
+    password: $2b$12$xxxxx... # bcrypt hash
     email: alice@portlama.local
     groups:
       - admins
@@ -239,7 +239,8 @@ TOTP secrets are generated using `crypto.randomBytes` and encoded as base32:
 export function generateTotpSecret(username) {
   const secretBytes = crypto.randomBytes(20);
   const secret = base32Encode(secretBytes);
-  const uri = `otpauth://totp/Portlama:${encodeURIComponent(username)}?` +
+  const uri =
+    `otpauth://totp/Portlama:${encodeURIComponent(username)}?` +
     `secret=${secret}&issuer=Portlama&algorithm=SHA1&digits=6&period=30`;
   return { secret, uri };
 }
@@ -307,12 +308,12 @@ The flow works like this:
 
 When authentication succeeds, Authelia returns user information in response headers. nginx captures these with `auth_request_set` and forwards them to the proxied app:
 
-| Header | Content | Example |
-|--------|---------|---------|
-| `Remote-User` | Username | `alice` |
-| `Remote-Groups` | Comma-separated groups | `admins` |
-| `Remote-Name` | Display name | `alice` |
-| `Remote-Email` | Email address | `alice@portlama.local` |
+| Header          | Content                | Example                |
+| --------------- | ---------------------- | ---------------------- |
+| `Remote-User`   | Username               | `alice`                |
+| `Remote-Groups` | Comma-separated groups | `admins`               |
+| `Remote-Name`   | Display name           | `alice`                |
+| `Remote-Email`  | Email address          | `alice@portlama.local` |
 
 Your tunneled app can read these headers to identify the authenticated user without implementing its own authentication.
 
@@ -334,10 +335,10 @@ The `sudoWriteFile` helper writes to a random temp file in `/tmp/`, then uses `s
 
 Authelia requires three secrets, all generated with `crypto.randomBytes`:
 
-| Secret | Purpose | Storage |
-|--------|---------|---------|
-| `jwtSecret` | Signs JWT tokens | `/etc/authelia/configuration.yml` |
-| `sessionSecret` | Encrypts session cookies | `/etc/authelia/configuration.yml` |
+| Secret                 | Purpose                  | Storage                           |
+| ---------------------- | ------------------------ | --------------------------------- |
+| `jwtSecret`            | Signs JWT tokens         | `/etc/authelia/configuration.yml` |
+| `sessionSecret`        | Encrypts session cookies | `/etc/authelia/configuration.yml` |
 | `storageEncryptionKey` | Encrypts SQLite database | `/etc/authelia/configuration.yml` |
 
 A copy is also stored in `/etc/authelia/.secrets.json` (mode `600`) for reference. The configuration file itself is mode `600` to prevent unauthorized reading of these secrets.
@@ -348,45 +349,45 @@ The panel server API prevents deleting the last Authelia user. If only one user 
 
 ### Source files
 
-| File | Purpose |
-|------|---------|
-| `packages/panel-server/src/lib/authelia.js` | Install, configure, user CRUD, TOTP generation |
-| `packages/panel-server/src/routes/management/users.js` | User management API endpoints |
-| `packages/panel-server/src/lib/nginx.js` | App vhost with Authelia forward-auth block |
-| `packages/panel-server/src/lib/certbot.js` | TLS cert for `auth.example.com` subdomain |
+| File                                                   | Purpose                                        |
+| ------------------------------------------------------ | ---------------------------------------------- |
+| `packages/panel-server/src/lib/authelia.js`            | Install, configure, user CRUD, TOTP generation |
+| `packages/panel-server/src/routes/management/users.js` | User management API endpoints                  |
+| `packages/panel-server/src/lib/nginx.js`               | App vhost with Authelia forward-auth block     |
+| `packages/panel-server/src/lib/certbot.js`             | TLS cert for `auth.example.com` subdomain      |
 
 ## Quick Reference
 
 ### Two authentication systems
 
-| System | Protects | Method | Session |
-|--------|----------|--------|---------|
-| mTLS | Admin panel | Client certificate | Permanent (cert-based) |
-| Authelia | Tunneled apps | Password + TOTP | 12h expiry, 2h inactivity |
+| System   | Protects      | Method             | Session                   |
+| -------- | ------------- | ------------------ | ------------------------- |
+| mTLS     | Admin panel   | Client certificate | Permanent (cert-based)    |
+| Authelia | Tunneled apps | Password + TOTP    | 12h expiry, 2h inactivity |
 
 ### Authelia service
 
-| Property | Value |
-|----------|-------|
-| Binary | `/usr/local/bin/authelia` |
-| Config | `/etc/authelia/configuration.yml` |
-| Users | `/etc/authelia/users.yml` |
-| Database | `/etc/authelia/db.sqlite3` |
-| Log | `/var/log/authelia/authelia.log` |
-| Listen | `127.0.0.1:9091` |
-| Systemd unit | `authelia.service` |
-| RAM usage | ~25MB |
+| Property     | Value                             |
+| ------------ | --------------------------------- |
+| Binary       | `/usr/local/bin/authelia`         |
+| Config       | `/etc/authelia/configuration.yml` |
+| Users        | `/etc/authelia/users.yml`         |
+| Database     | `/etc/authelia/db.sqlite3`        |
+| Log          | `/var/log/authelia/authelia.log`  |
+| Listen       | `127.0.0.1:9091`                  |
+| Systemd unit | `authelia.service`                |
+| RAM usage    | ~25MB                             |
 
 ### TOTP parameters
 
-| Parameter | Value |
-|-----------|-------|
-| Algorithm | SHA-1 |
-| Digits | 6 |
-| Period | 30 seconds |
-| Issuer | `Portlama` |
+| Parameter     | Value               |
+| ------------- | ------------------- |
+| Algorithm     | SHA-1               |
+| Digits        | 6                   |
+| Period        | 30 seconds          |
+| Issuer        | `Portlama`          |
 | Secret length | 20 bytes (160 bits) |
-| Encoding | Base32 |
+| Encoding      | Base32              |
 
 ### Systemd commands
 
@@ -403,21 +404,21 @@ sudo systemctl restart authelia
 
 ### API endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/users` | List all users (without password hashes) |
-| POST | `/api/users` | Create user with username, displayname, email, and password |
-| PUT | `/api/users/:username` | Update user password or display name |
-| DELETE | `/api/users/:username` | Delete user (not the last one) |
-| POST | `/api/users/:username/reset-totp` | Generate new TOTP secret |
+| Method | Path                              | Description                                                 |
+| ------ | --------------------------------- | ----------------------------------------------------------- |
+| GET    | `/api/users`                      | List all users (without password hashes)                    |
+| POST   | `/api/users`                      | Create user with username, displayname, email, and password |
+| PUT    | `/api/users/:username`            | Update user password or display name                        |
+| DELETE | `/api/users/:username`            | Delete user (not the last one)                              |
+| POST   | `/api/users/:username/reset-totp` | Generate new TOTP secret                                    |
 
 ### Password hashing
 
-| Property | Value |
-|----------|-------|
-| Algorithm | bcrypt |
-| Cost factor | 12 |
-| Memory per hash | ~4KB |
+| Property         | Value                                   |
+| ---------------- | --------------------------------------- |
+| Algorithm        | bcrypt                                  |
+| Cost factor      | 12                                      |
+| Memory per hash  | ~4KB                                    |
 | Why not argon2id | ~93MB per hash, causes OOM on 512MB VPS |
 
 ### Related documentation

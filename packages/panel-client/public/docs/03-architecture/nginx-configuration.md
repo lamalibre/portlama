@@ -120,6 +120,7 @@ server {
 ```
 
 Key characteristics:
+
 - Listens on port 9292, separate from standard HTTPS port 443
 - Uses a self-signed TLS certificate (browser will warn, this is expected)
 - Includes the mTLS snippet for client certificate enforcement
@@ -184,6 +185,7 @@ server {
 ```
 
 Identical to the IP vhost except:
+
 - Listens on port 443 (standard HTTPS)
 - Uses Let's Encrypt certificate (no browser warning)
 - `server_name` is `panel.<domain>`
@@ -262,6 +264,7 @@ server {
 ```
 
 Key characteristics:
+
 - WebSocket upgrade is mandatory (Chisel uses WebSocket transport)
 - 24-hour read/send timeouts to keep tunnel connections alive without nginx closing them
 - No mTLS and no Authelia — Chisel handles its own authentication
@@ -335,6 +338,7 @@ server {
 ```
 
 Key characteristics:
+
 - Forward auth via `auth_request` to Authelia's `/api/authz/auth-request` endpoint
 - Passes authenticated user info as headers (`Remote-User`, `Remote-Groups`, etc.)
 - WebSocket support for apps that need it
@@ -370,6 +374,7 @@ server {
 ```
 
 Two serving modes based on the `spaMode` flag:
+
 - **Standard**: `try_files $uri $uri/ =404` — serves files as-is, 404 for missing paths
 - **SPA**: `try_files $uri $uri/ /index.html` — falls back to `index.html` for client-side routing
 
@@ -389,6 +394,7 @@ ssl_verify_client on;
 Included with `include /etc/nginx/snippets/portlama-mtls.conf;` in any vhost that requires client certificate verification.
 
 **What `ssl_verify_client on` does:**
+
 - During the TLS handshake, nginx requests a client certificate from the browser
 - The browser presents the imported `client.p12` certificate
 - nginx verifies the certificate was signed by the CA at `/etc/portlama/pki/ca.crt`
@@ -522,6 +528,7 @@ proxy_set_header Connection "upgrade";
 ```
 
 These directives are applied in:
+
 - **Panel vhosts** (`/api` location) — for provisioning progress stream and live log streaming
 - **Tunnel vhost** — for Chisel WebSocket transport
 - **App vhosts** (`/` location) — for tunneled apps that use WebSocket
@@ -557,34 +564,34 @@ All Portlama-managed files are prefixed with `portlama-` to distinguish them fro
 
 ### Created by the Installer
 
-| Vhost | When | Removed |
-|-------|------|---------|
+| Vhost               | When         | Removed                 |
+| ------------------- | ------------ | ----------------------- |
 | `portlama-panel-ip` | Installation | Never (fallback access) |
 
 ### Created During Onboarding
 
-| Vhost | When | Removed |
-|-------|------|---------|
+| Vhost                   | When                | Removed                      |
+| ----------------------- | ------------------- | ---------------------------- |
 | `portlama-panel-domain` | Provisioning step 4 | Never (primary panel access) |
-| `portlama-auth` | Provisioning step 4 | Never (auth portal) |
-| `portlama-tunnel` | Provisioning step 4 | Never (tunnel endpoint) |
+| `portlama-auth`         | Provisioning step 4 | Never (auth portal)          |
+| `portlama-tunnel`       | Provisioning step 4 | Never (tunnel endpoint)      |
 
 ### Created/Removed at Runtime
 
-| Vhost | Created | Removed |
-|-------|---------|---------|
-| `portlama-app-<name>` | POST /api/tunnels | DELETE /api/tunnels/:id |
-| `portlama-site-<uuid>` | POST /api/sites | DELETE /api/sites/:id |
+| Vhost                  | Created           | Removed                 |
+| ---------------------- | ----------------- | ----------------------- |
+| `portlama-app-<name>`  | POST /api/tunnels | DELETE /api/tunnels/:id |
+| `portlama-site-<uuid>` | POST /api/sites   | DELETE /api/sites/:id   |
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `packages/create-portlama/src/tasks/nginx.js` | Installer: self-signed cert, mTLS snippet, IP vhost |
-| `packages/panel-server/src/lib/nginx.js` | Runtime: vhost generation, write-with-rollback, enable/disable/reload |
-| `/etc/nginx/snippets/portlama-mtls.conf` | Shared mTLS snippet |
-| `/etc/nginx/sites-available/portlama-*` | Vhost configuration files |
-| `/etc/nginx/sites-enabled/portlama-*` | Symlinks to enabled vhosts |
+| File                                          | Role                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------- |
+| `packages/create-portlama/src/tasks/nginx.js` | Installer: self-signed cert, mTLS snippet, IP vhost                   |
+| `packages/panel-server/src/lib/nginx.js`      | Runtime: vhost generation, write-with-rollback, enable/disable/reload |
+| `/etc/nginx/snippets/portlama-mtls.conf`      | Shared mTLS snippet                                                   |
+| `/etc/nginx/sites-available/portlama-*`       | Vhost configuration files                                             |
+| `/etc/nginx/sites-enabled/portlama-*`         | Symlinks to enabled vhosts                                            |
 
 ## Design Decisions
 

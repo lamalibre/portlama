@@ -14,13 +14,13 @@ Think of it as three steps: rent a storefront (create a droplet), set up the sto
 
 Before you start, make sure you have:
 
-| Requirement | Details |
-|---|---|
-| **DigitalOcean account** | Any cloud provider works, but this guide uses DigitalOcean. You need a fresh Ubuntu 24.04 droplet. |
-| **Domain name** | A domain you control (e.g., `example.com`). You need access to its DNS settings. |
-| **Mac (or Linux machine)** | The computer running the web apps you want to expose. Must have outbound internet access. |
-| **SSH key** | An SSH key pair for accessing the droplet. DigitalOcean can generate one during droplet creation. |
-| **A local web app** | Something listening on a port — a dev server, a blog engine, any HTTP service. |
+| Requirement                | Details                                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| **DigitalOcean account**   | Any cloud provider works, but this guide uses DigitalOcean. You need a fresh Ubuntu 24.04 droplet. |
+| **Domain name**            | A domain you control (e.g., `example.com`). You need access to its DNS settings.                   |
+| **Mac (or Linux machine)** | The computer running the web apps you want to expose. Must have outbound internet access.          |
+| **SSH key**                | An SSH key pair for accessing the droplet. DigitalOcean can generate one during droplet creation.  |
+| **A local web app**        | Something listening on a port — a dev server, a blog engine, any HTTP service.                     |
 
 **Cost:** $4/month for the smallest DigitalOcean droplet (512MB RAM, 1 vCPU). That is all you need.
 
@@ -30,12 +30,12 @@ Before you start, make sure you have:
 
 Log in to DigitalOcean and create a new droplet:
 
-| Setting | Value |
-|---|---|
-| Image | Ubuntu 24.04 (LTS) |
-| Plan | Basic, $4/mo (512MB RAM, 1 vCPU, 10GB SSD) |
-| Region | Closest to your users |
-| Authentication | SSH key (not password) |
+| Setting        | Value                                      |
+| -------------- | ------------------------------------------ |
+| Image          | Ubuntu 24.04 (LTS)                         |
+| Plan           | Basic, $4/mo (512MB RAM, 1 vCPU, 10GB SSD) |
+| Region         | Closest to your users                      |
+| Authentication | SSH key (not password)                     |
 
 Wait for the droplet to boot. Note its public IP address (e.g., `203.0.113.42`).
 
@@ -248,11 +248,11 @@ You are now in the management panel. Navigate to **Tunnels** and click **Create 
 
 Fill in the tunnel details:
 
-| Field | Example | Description |
-|---|---|---|
-| Subdomain | `myapp` | Creates `myapp.example.com` |
-| Local port | `8001` | The port your app listens on locally |
-| Description | `My web app` | Optional label |
+| Field       | Example      | Description                          |
+| ----------- | ------------ | ------------------------------------ |
+| Subdomain   | `myapp`      | Creates `myapp.example.com`          |
+| Local port  | `8001`       | The port your app listens on locally |
+| Description | `My web app` | Optional label                       |
 
 Click **Create**. The panel:
 
@@ -330,14 +330,14 @@ The installer accepts optional flags:
 npx @lamalibre/create-portlama [flags]
 ```
 
-| Flag | Effect |
-|---|---|
-| `--help`, `-h` | Print help message and exit |
-| `--yes`, `-y` | Skip the confirmation prompt |
-| `--skip-harden` | Skip OS hardening (swap, UFW, fail2ban, SSH) |
-| `--dev` | Allow private/non-routable IP addresses |
-| `--force-full` | Run full installation even on existing installs |
-| `--uninstall` | Print manual removal guide and exit |
+| Flag            | Effect                                          |
+| --------------- | ----------------------------------------------- |
+| `--help`, `-h`  | Print help message and exit                     |
+| `--yes`, `-y`   | Skip the confirmation prompt                    |
+| `--skip-harden` | Skip OS hardening (swap, UFW, fail2ban, SSH)    |
+| `--dev`         | Allow private/non-routable IP addresses         |
+| `--force-full`  | Run full installation even on existing installs |
+| `--uninstall`   | Print manual removal guide and exit             |
 
 The `--dev` flag is useful for testing on local VMs that do not have public IP addresses.
 
@@ -434,14 +434,14 @@ scp root@203.0.113.42:/etc/portlama/pki/client.p12 .
 
 ### Time Estimates
 
-| Step | Time |
-|---|---|
-| Create droplet | 1 minute |
-| Run installer | 2-3 minutes |
-| Import certificate | 1 minute |
-| Onboarding wizard | 3-5 minutes (depends on DNS propagation) |
-| Create first tunnel | 1 minute |
-| **Total** | **~10 minutes** |
+| Step                | Time                                     |
+| ------------------- | ---------------------------------------- |
+| Create droplet      | 1 minute                                 |
+| Run installer       | 2-3 minutes                              |
+| Import certificate  | 1 minute                                 |
+| Onboarding wizard   | 3-5 minutes (depends on DNS propagation) |
+| Create first tunnel | 1 minute                                 |
+| **Total**           | **~10 minutes**                          |
 
 ### Related Documentation
 

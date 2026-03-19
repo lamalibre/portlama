@@ -6,7 +6,7 @@
 
 Imagine your home computer runs a web app, but your router blocks anyone from the internet from reaching it. It is like having a shop inside a locked building with no front door.
 
-Portlama solves this with a tunnel. Your home computer reaches *out* to a small server on the internet (the VPS) and holds open a connection. When someone visits your domain, the VPS sends the request back through that open connection to your home computer, which responds as if the visitor connected directly.
+Portlama solves this with a tunnel. Your home computer reaches _out_ to a small server on the internet (the VPS) and holds open a connection. When someone visits your domain, the VPS sends the request back through that open connection to your home computer, which responds as if the visitor connected directly.
 
 Think of it like a phone call. Your home computer calls the VPS and stays on the line. When a visitor arrives at the VPS, the VPS says "someone is here for you" over the open line, and your home computer handles the conversation through that same call.
 
@@ -57,11 +57,11 @@ The Chisel client on your Mac runs as a launchd service. If the connection drops
 
 You can run multiple tunnels simultaneously. Each tunnel maps a different subdomain to a different local port:
 
-| Subdomain | Local port | What it exposes |
-|-----------|-----------|-----------------|
-| `myapp.example.com` | 3000 | React dev server |
-| `api.example.com` | 8080 | Backend API |
-| `blog.example.com` | 4000 | Blog engine |
+| Subdomain           | Local port | What it exposes  |
+| ------------------- | ---------- | ---------------- |
+| `myapp.example.com` | 3000       | React dev server |
+| `api.example.com`   | 8080       | Backend API      |
+| `blog.example.com`  | 4000       | Blog engine      |
 
 All tunnels share the same Chisel client connection. The client multiplexes all port mappings over a single WebSocket.
 
@@ -195,11 +195,11 @@ The binary is a single static Go executable with no runtime dependencies.
 
 ### Source files
 
-| File | Purpose |
-|------|---------|
-| `packages/panel-server/src/lib/chisel.js` | Install, start, stop, restart, status, config update |
-| `packages/panel-server/src/routes/management/tunnels.js` | Tunnel CRUD API endpoints |
-| `packages/create-portlama/src/tasks/nginx.js` | Tunnel vhost nginx template (written during provisioning) |
+| File                                                     | Purpose                                                   |
+| -------------------------------------------------------- | --------------------------------------------------------- |
+| `packages/panel-server/src/lib/chisel.js`                | Install, start, stop, restart, status, config update      |
+| `packages/panel-server/src/routes/management/tunnels.js` | Tunnel CRUD API endpoints                                 |
+| `packages/create-portlama/src/tasks/nginx.js`            | Tunnel vhost nginx template (written during provisioning) |
 
 ### Port mapping model
 
@@ -215,28 +215,28 @@ The Chisel server in `--reverse` mode does not need per-tunnel port entries in i
 
 ### Architecture
 
-| Component | Location | Port | Role |
-|-----------|----------|------|------|
-| Chisel server | VPS | `127.0.0.1:9090` | Accepts WebSocket connections from clients |
-| Chisel client | Mac | outbound only | Connects to VPS, exposes local ports |
-| nginx tunnel vhost | VPS | `443` | TLS termination for `tunnel.example.com` |
-| nginx app vhost | VPS | `443` | TLS + Authelia auth for each `app.example.com` |
+| Component          | Location | Port             | Role                                           |
+| ------------------ | -------- | ---------------- | ---------------------------------------------- |
+| Chisel server      | VPS      | `127.0.0.1:9090` | Accepts WebSocket connections from clients     |
+| Chisel client      | Mac      | outbound only    | Connects to VPS, exposes local ports           |
+| nginx tunnel vhost | VPS      | `443`            | TLS termination for `tunnel.example.com`       |
+| nginx app vhost    | VPS      | `443`            | TLS + Authelia auth for each `app.example.com` |
 
 ### Chisel server flags
 
-| Flag | Value | Purpose |
-|------|-------|---------|
-| `--reverse` | (no value) | Enable reverse tunneling |
-| `--port` | `9090` | WebSocket listen port |
-| `--host` | `127.0.0.1` | Bind to localhost only |
+| Flag        | Value       | Purpose                  |
+| ----------- | ----------- | ------------------------ |
+| `--reverse` | (no value)  | Enable reverse tunneling |
+| `--port`    | `9090`      | WebSocket listen port    |
+| `--host`    | `127.0.0.1` | Bind to localhost only   |
 
 ### Chisel client flags
 
-| Flag | Value | Purpose |
-|------|-------|---------|
-| `--keepalive` | `25s` | WebSocket ping interval |
-| Server URL | `https://tunnel.example.com` | Where to connect |
-| Port mapping | `R:3000:localhost:3000` | Reverse-map local port |
+| Flag          | Value                        | Purpose                 |
+| ------------- | ---------------------------- | ----------------------- |
+| `--keepalive` | `25s`                        | WebSocket ping interval |
+| Server URL    | `https://tunnel.example.com` | Where to connect        |
+| Port mapping  | `R:3000:localhost:3000`      | Reverse-map local port  |
 
 ### Systemd commands
 

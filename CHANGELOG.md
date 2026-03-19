@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add regex validation on `allowedSites` entries in `UpdateAllowedSitesSchema`
 
 **Affected packages:**
+
 - `@lamalibre/portlama-panel-server` 0.1.0 → 0.1.1
 - `@lamalibre/portlama-panel-client` 0.1.0 → 0.1.1
 - `@lamalibre/create-portlama` 1.0.23 → 1.0.24

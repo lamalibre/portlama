@@ -6,7 +6,7 @@
 
 When you visit a normal HTTPS website, your browser checks the server's certificate to verify you are talking to the real site. This is one-way trust: the browser trusts the server.
 
-Mutual TLS (mTLS) adds a second direction. The server also checks *your* certificate to verify you are an authorized admin. This is two-way trust: the browser trusts the server, and the server trusts the browser.
+Mutual TLS (mTLS) adds a second direction. The server also checks _your_ certificate to verify you are an authorized admin. This is two-way trust: the browser trusts the server, and the server trusts the browser.
 
 Think of it like a members-only club with ID checks at the door. The club has a sign outside proving it is legitimate (the server certificate). But to get in, you also need to show your membership card (the client certificate). If you do not have the card, the bouncer does not even let you through the door — you never reach the lobby.
 
@@ -105,15 +105,15 @@ When connecting a Mac to Portlama using `portlama-agent`, you should **not** use
 
 Agent certificates have capability-based access. By default, a new agent can only read tunnel configuration. Admins can grant additional capabilities per-agent from the panel UI:
 
-| Capability | What it grants |
-|---|---|
-| `tunnels:read` | List tunnels, download plist (always-on) |
-| `tunnels:write` | Create and delete tunnels |
-| `services:read` | View service status |
-| `services:write` | Start/stop/restart services |
-| `system:read` | View system stats (CPU, RAM, disk) |
-| `sites:read` | List sites and browse files |
-| `sites:write` | Upload and delete files on assigned sites |
+| Capability       | What it grants                            |
+| ---------------- | ----------------------------------------- |
+| `tunnels:read`   | List tunnels, download plist (always-on)  |
+| `tunnels:write`  | Create and delete tunnels                 |
+| `services:read`  | View service status                       |
+| `services:write` | Start/stop/restart services               |
+| `system:read`    | View system stats (CPU, RAM, disk)        |
+| `sites:read`     | List sites and browse files               |
+| `sites:write`    | Upload and delete files on assigned sites |
 
 Capabilities are stored server-side, so changing what an agent can do does not require reissuing its certificate. Users, certificates, agent management, and logs always remain admin-only.
 
@@ -159,11 +159,19 @@ await execa('openssl', ['genrsa', '-out', `${pkiDir}/ca.key`, '4096']);
 
 // Step 2: CA certificate
 await execa('openssl', [
-  'req', '-x509', '-new', '-nodes',
-  '-key', `${pkiDir}/ca.key`,
-  '-sha256', '-days', '3650',
-  '-out', `${pkiDir}/ca.crt`,
-  '-subj', '/CN=Portlama CA/O=Portlama',
+  'req',
+  '-x509',
+  '-new',
+  '-nodes',
+  '-key',
+  `${pkiDir}/ca.key`,
+  '-sha256',
+  '-days',
+  '3650',
+  '-out',
+  `${pkiDir}/ca.crt`,
+  '-subj',
+  '/CN=Portlama CA/O=Portlama',
 ]);
 
 // Step 3: Client key
@@ -171,33 +179,52 @@ await execa('openssl', ['genrsa', '-out', `${pkiDir}/client.key`, '4096']);
 
 // Step 4: CSR + sign
 await execa('openssl', [
-  'req', '-new',
-  '-key', `${pkiDir}/client.key`,
-  '-out', `${pkiDir}/client.csr`,
-  '-subj', '/CN=admin/O=Portlama',
+  'req',
+  '-new',
+  '-key',
+  `${pkiDir}/client.key`,
+  '-out',
+  `${pkiDir}/client.csr`,
+  '-subj',
+  '/CN=admin/O=Portlama',
 ]);
 await execa('openssl', [
-  'x509', '-req',
-  '-in', `${pkiDir}/client.csr`,
-  '-CA', `${pkiDir}/ca.crt`,
-  '-CAkey', `${pkiDir}/ca.key`,
+  'x509',
+  '-req',
+  '-in',
+  `${pkiDir}/client.csr`,
+  '-CA',
+  `${pkiDir}/ca.crt`,
+  '-CAkey',
+  `${pkiDir}/ca.key`,
   '-CAcreateserial',
-  '-out', `${pkiDir}/client.crt`,
-  '-days', '730',
+  '-out',
+  `${pkiDir}/client.crt`,
+  '-days',
+  '730',
   '-sha256',
 ]);
 
 // Step 5: PKCS12 bundle
 await execa('openssl', [
-  'pkcs12', '-export',
-  '-keypbe', 'PBE-SHA1-3DES',
-  '-certpbe', 'PBE-SHA1-3DES',
-  '-macalg', 'sha1',
-  '-out', `${pkiDir}/client.p12`,
-  '-inkey', `${pkiDir}/client.key`,
-  '-in', `${pkiDir}/client.crt`,
-  '-certfile', `${pkiDir}/ca.crt`,
-  '-passout', `pass:${password}`,
+  'pkcs12',
+  '-export',
+  '-keypbe',
+  'PBE-SHA1-3DES',
+  '-certpbe',
+  'PBE-SHA1-3DES',
+  '-macalg',
+  'sha1',
+  '-out',
+  `${pkiDir}/client.p12`,
+  '-inkey',
+  `${pkiDir}/client.key`,
+  '-in',
+  `${pkiDir}/client.crt`,
+  '-certfile',
+  `${pkiDir}/ca.crt`,
+  '-passout',
+  `pass:${password}`,
 ]);
 ```
 
@@ -205,12 +232,12 @@ await execa('openssl', [
 
 The PKCS12 export uses legacy encryption algorithms (`PBE-SHA1-3DES`) and SHA-1 MAC. This is deliberate. Modern OpenSSL 3.x defaults to AES-256-CBC with SHA-256, which macOS Keychain Access cannot import. The legacy flags ensure compatibility across all platforms:
 
-| Platform | Modern PKCS12 | Legacy PKCS12 (PBE-SHA1-3DES) |
-|----------|:------------:|:-----------------------------:|
-| macOS Keychain Access | fails | works |
-| Firefox | works | works |
-| Chrome (Windows) | works | works |
-| Chrome (Linux) | works | works |
+| Platform              | Modern PKCS12 | Legacy PKCS12 (PBE-SHA1-3DES) |
+| --------------------- | :-----------: | :---------------------------: |
+| macOS Keychain Access |     fails     |             works             |
+| Firefox               |     works     |             works             |
+| Chrome (Windows)      |     works     |             works             |
+| Chrome (Linux)        |     works     |             works             |
 
 ### nginx mTLS enforcement
 
@@ -331,8 +358,7 @@ The CA certificate is never rotated — it has a 10-year validity. Since nginx t
 The mTLS generation task is idempotent. If `ca.key` and `client.p12` already exist (e.g., the installer is re-run), the entire generation is skipped. This prevents invalidating a previously imported client certificate:
 
 ```javascript
-const alreadyProvisioned =
-  existsSync(`${pkiDir}/ca.key`) && existsSync(`${pkiDir}/client.p12`);
+const alreadyProvisioned = existsSync(`${pkiDir}/ca.key`) && existsSync(`${pkiDir}/client.p12`);
 
 if (alreadyProvisioned) {
   // Read existing p12 password for the summary display
@@ -364,43 +390,43 @@ if (alreadyProvisioned) {
 
 ### Source files
 
-| File | Purpose |
-|------|---------|
-| `packages/create-portlama/src/tasks/mtls.js` | PKI generation during installation |
-| `packages/create-portlama/src/tasks/nginx.js` | mTLS snippet and panel vhost |
-| `packages/panel-server/src/lib/mtls.js` | Certificate rotation, expiry checks, .p12 download |
-| `packages/panel-server/src/middleware/mtls.js` | Request-level mTLS verification |
-| `packages/panel-server/src/routes/management/certs.js` | Certificate management API endpoints |
+| File                                                   | Purpose                                            |
+| ------------------------------------------------------ | -------------------------------------------------- |
+| `packages/create-portlama/src/tasks/mtls.js`           | PKI generation during installation                 |
+| `packages/create-portlama/src/tasks/nginx.js`          | mTLS snippet and panel vhost                       |
+| `packages/panel-server/src/lib/mtls.js`                | Certificate rotation, expiry checks, .p12 download |
+| `packages/panel-server/src/middleware/mtls.js`         | Request-level mTLS verification                    |
+| `packages/panel-server/src/routes/management/certs.js` | Certificate management API endpoints               |
 
 ## Quick Reference
 
 ### PKI hierarchy
 
-| Certificate | Signed by | Validity | Key size | Purpose |
-|-------------|-----------|----------|----------|---------|
-| CA (`ca.crt`) | Self-signed | 10 years | 4096-bit RSA | Trust anchor for nginx |
-| Admin (`client.crt`) | CA | 2 years | 4096-bit RSA | Full panel access (browser) |
-| Agent (`agents/<label>/client.crt`) | CA | 2 years | 4096-bit RSA | Capability-based access (Mac agent) |
-| Self-signed TLS | Self-signed | 10 years | 2048-bit RSA | HTTPS for IP access |
+| Certificate                         | Signed by   | Validity | Key size     | Purpose                             |
+| ----------------------------------- | ----------- | -------- | ------------ | ----------------------------------- |
+| CA (`ca.crt`)                       | Self-signed | 10 years | 4096-bit RSA | Trust anchor for nginx              |
+| Admin (`client.crt`)                | CA          | 2 years  | 4096-bit RSA | Full panel access (browser)         |
+| Agent (`agents/<label>/client.crt`) | CA          | 2 years  | 4096-bit RSA | Capability-based access (Mac agent) |
+| Self-signed TLS                     | Self-signed | 10 years | 2048-bit RSA | HTTPS for IP access                 |
 
 ### File permissions
 
-| File | Mode | Owner | Access |
-|------|------|-------|--------|
-| `ca.key` | `600` | root | CA signing only |
-| `ca.crt` | `644` | root | nginx reads this |
-| `client.key` | `600` | root | Bundled in .p12 |
-| `client.crt` | `644` | root | Bundled in .p12 |
-| `client.p12` | `600` | root | Downloaded by admin |
-| `.p12-password` | `600` | root | Installer summary |
+| File            | Mode  | Owner | Access              |
+| --------------- | ----- | ----- | ------------------- |
+| `ca.key`        | `600` | root  | CA signing only     |
+| `ca.crt`        | `644` | root  | nginx reads this    |
+| `client.key`    | `600` | root  | Bundled in .p12     |
+| `client.crt`    | `644` | root  | Bundled in .p12     |
+| `client.p12`    | `600` | root  | Downloaded by admin |
+| `.p12-password` | `600` | root  | Installer summary   |
 
 ### nginx directives
 
-| Directive | Value | Effect |
-|-----------|-------|--------|
-| `ssl_client_certificate` | `/etc/portlama/pki/ca.crt` | CA that signs valid client certs |
-| `ssl_verify_client` | `on` | Require client certificate (hard fail) |
-| `error_page 495 496` | `/cert-help.html` | Show help when cert is missing |
+| Directive                | Value                      | Effect                                 |
+| ------------------------ | -------------------------- | -------------------------------------- |
+| `ssl_client_certificate` | `/etc/portlama/pki/ca.crt` | CA that signs valid client certs       |
+| `ssl_verify_client`      | `on`                       | Require client certificate (hard fail) |
+| `error_page 495 496`     | `/cert-help.html`          | Show help when cert is missing         |
 
 ### OpenSSL commands
 
@@ -423,17 +449,17 @@ openssl pkcs12 -in /etc/portlama/pki/client.p12 -info -nokeys
 
 ### API endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/certs/mtls/rotate` | Rotate admin client certificate |
-| GET | `/api/certs/mtls/download` | Download current admin `.p12` file |
-| GET | `/api/certs` | List all certificates including mTLS |
-| POST | `/api/certs/agent` | Generate agent-scoped certificate |
-| GET | `/api/certs/agent` | List agent certificates |
-| GET | `/api/certs/agent/:label/download` | Download agent `.p12` file |
-| PATCH | `/api/certs/agent/:label/capabilities` | Update agent capabilities |
-| PATCH | `/api/certs/agent/:label/allowed-sites` | Update agent site access |
-| DELETE | `/api/certs/agent/:label` | Revoke agent certificate |
+| Method | Path                                    | Description                          |
+| ------ | --------------------------------------- | ------------------------------------ |
+| POST   | `/api/certs/mtls/rotate`                | Rotate admin client certificate      |
+| GET    | `/api/certs/mtls/download`              | Download current admin `.p12` file   |
+| GET    | `/api/certs`                            | List all certificates including mTLS |
+| POST   | `/api/certs/agent`                      | Generate agent-scoped certificate    |
+| GET    | `/api/certs/agent`                      | List agent certificates              |
+| GET    | `/api/certs/agent/:label/download`      | Download agent `.p12` file           |
+| PATCH  | `/api/certs/agent/:label/capabilities`  | Update agent capabilities            |
+| PATCH  | `/api/certs/agent/:label/allowed-sites` | Update agent site access             |
+| DELETE | `/api/certs/agent/:label`               | Revoke agent certificate             |
 
 ### Related documentation
 

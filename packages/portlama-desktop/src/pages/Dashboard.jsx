@@ -30,18 +30,29 @@ export default function Dashboard({ status }) {
     onSuccess: invalidateAll,
   });
 
-  const anyPending = stopMutation.isPending || startMutation.isPending ||
-    restartMutation.isPending || updateMutation.isPending;
+  const anyPending =
+    stopMutation.isPending ||
+    startMutation.isPending ||
+    restartMutation.isPending ||
+    updateMutation.isPending;
 
-  const lastResult = updateMutation.isSuccess ? { type: 'success', msg: updateMutation.data }
-    : updateMutation.isError ? { type: 'error', msg: updateMutation.error?.message || 'Update failed' }
-    : stopMutation.isSuccess ? { type: 'success', msg: stopMutation.data }
-    : stopMutation.isError ? { type: 'error', msg: stopMutation.error?.message || 'Stop failed' }
-    : startMutation.isSuccess ? { type: 'success', msg: startMutation.data }
-    : startMutation.isError ? { type: 'error', msg: startMutation.error?.message || 'Start failed' }
-    : restartMutation.isSuccess ? { type: 'success', msg: restartMutation.data }
-    : restartMutation.isError ? { type: 'error', msg: restartMutation.error?.message || 'Restart failed' }
-    : null;
+  const lastResult = updateMutation.isSuccess
+    ? { type: 'success', msg: updateMutation.data }
+    : updateMutation.isError
+      ? { type: 'error', msg: updateMutation.error?.message || 'Update failed' }
+      : stopMutation.isSuccess
+        ? { type: 'success', msg: stopMutation.data }
+        : stopMutation.isError
+          ? { type: 'error', msg: stopMutation.error?.message || 'Stop failed' }
+          : startMutation.isSuccess
+            ? { type: 'success', msg: startMutation.data }
+            : startMutation.isError
+              ? { type: 'error', msg: startMutation.error?.message || 'Start failed' }
+              : restartMutation.isSuccess
+                ? { type: 'success', msg: restartMutation.data }
+                : restartMutation.isError
+                  ? { type: 'error', msg: restartMutation.error?.message || 'Restart failed' }
+                  : null;
 
   const chisel = status?.chisel;
 
@@ -57,16 +68,14 @@ export default function Dashboard({ status }) {
             <span className="text-xs font-medium uppercase text-zinc-400">Connection</span>
           </div>
           <div className="flex items-center gap-2 mb-2">
-            <span className={`h-3 w-3 rounded-full ${
-              chisel?.running ? 'bg-green-400' : 'bg-red-400'
-            }`} />
+            <span
+              className={`h-3 w-3 rounded-full ${chisel?.running ? 'bg-green-400' : 'bg-red-400'}`}
+            />
             <span className="text-white font-semibold">
               {chisel?.running ? 'Connected' : 'Disconnected'}
             </span>
           </div>
-          {chisel?.pid && (
-            <p className="text-xs text-zinc-500">PID: {chisel.pid}</p>
-          )}
+          {chisel?.pid && <p className="text-xs text-zinc-500">PID: {chisel.pid}</p>}
         </div>
 
         {/* Chisel Info */}
@@ -93,7 +102,11 @@ export default function Dashboard({ status }) {
             disabled={anyPending || !chisel?.running}
             className="flex items-center gap-2 rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {stopMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Square size={14} />}
+            {stopMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Square size={14} />
+            )}
             Stop
           </button>
           <button
@@ -101,7 +114,11 @@ export default function Dashboard({ status }) {
             disabled={anyPending || chisel?.running}
             className="flex items-center gap-2 rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {startMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            {startMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Play size={14} />
+            )}
             Start
           </button>
           <button
@@ -109,7 +126,11 @@ export default function Dashboard({ status }) {
             disabled={anyPending || !chisel?.installed}
             className="flex items-center gap-2 rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {restartMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {restartMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} />
+            )}
             Restart
           </button>
         </div>
@@ -123,14 +144,20 @@ export default function Dashboard({ status }) {
           disabled={anyPending}
           className="flex items-center gap-2 rounded bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          {updateMutation.isPending ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Download size={14} />
+          )}
           Update Agent
         </button>
         <p className="text-xs text-zinc-500 mt-2">
           Re-fetch tunnel configuration from the panel and reload Chisel.
         </p>
         {lastResult && (
-          <p className={`text-xs mt-2 ${lastResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+          <p
+            className={`text-xs mt-2 ${lastResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}
+          >
             {lastResult.msg}
           </p>
         )}

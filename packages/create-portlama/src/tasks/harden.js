@@ -31,18 +31,12 @@ export function hardenTasks(ctx, task) {
         // Add to /etc/fstab if not already present
         const fstab = await readFile('/etc/fstab', 'utf8');
         if (!fstab.includes('/swapfile')) {
-          await writeFile(
-            '/etc/fstab',
-            fstab.trimEnd() + '\n/swapfile none swap sw 0 0\n',
-          );
+          await writeFile('/etc/fstab', fstab.trimEnd() + '\n/swapfile none swap sw 0 0\n');
         }
 
         // Set swappiness
         await execa('sysctl', ['vm.swappiness=10']);
-        await writeFile(
-          '/etc/sysctl.d/99-portlama.conf',
-          'vm.swappiness=10\n',
-        );
+        await writeFile('/etc/sysctl.d/99-portlama.conf', 'vm.swappiness=10\n');
 
         subtask.output = 'Swap file created and activated';
       },
@@ -177,10 +171,7 @@ bantime = 3600
         subtask.output = 'Restarting fail2ban...';
         await execa('systemctl', ['restart', 'fail2ban']);
 
-        const { stdout: status } = await execa('systemctl', [
-          'is-active',
-          'fail2ban',
-        ]);
+        const { stdout: status } = await execa('systemctl', ['is-active', 'fail2ban']);
         subtask.output = `fail2ban status: ${status.trim()}`;
       },
       rendererOptions: { persistentOutput: true },

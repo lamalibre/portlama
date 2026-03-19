@@ -33,9 +33,7 @@ function StatusBadge({ status }) {
           ? 'Inactive'
           : 'Unknown';
 
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${styles}`}>{label}</span>
-  );
+  return <span className={`text-xs px-2 py-0.5 rounded-full ${styles}`}>{label}</span>;
 }
 
 function ServiceCard({ service, onAction, isActing }) {
@@ -65,9 +63,7 @@ function ServiceCard({ service, onAction, isActing }) {
       </div>
 
       <p className="text-zinc-400 text-sm mb-4">
-        {service.status === 'active' && service.uptime
-          ? `Uptime: ${service.uptime}`
-          : '\u2014'}
+        {service.status === 'active' && service.uptime ? `Uptime: ${service.uptime}` : '\u2014'}
       </p>
 
       <div className="flex items-center gap-2">
@@ -214,9 +210,7 @@ function LogViewer({ services }) {
         className="h-96 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-4 font-mono text-sm"
       >
         {!selectedService ? (
-          <p className="text-zinc-500 text-center mt-36">
-            Select a service to view its logs
-          </p>
+          <p className="text-zinc-500 text-center mt-36">Select a service to view its logs</p>
         ) : wsError ? (
           <p className="text-red-400">{wsError}</p>
         ) : logLines.length === 0 ? (
@@ -224,9 +218,7 @@ function LogViewer({ services }) {
         ) : (
           logLines.map((line, i) => (
             <div key={i} className="leading-relaxed">
-              {line.timestamp && (
-                <span className="text-zinc-500">{line.timestamp} </span>
-              )}
+              {line.timestamp && <span className="text-zinc-500">{line.timestamp} </span>}
               <span className="text-zinc-300">{line.message}</span>
             </div>
           ))
@@ -270,9 +262,7 @@ export default function Services() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Services</h1>
-        <p className="text-zinc-500 text-sm mt-1">
-          Manage system services and view live logs
-        </p>
+        <p className="text-zinc-500 text-sm mt-1">Manage system services and view live logs</p>
       </div>
 
       {/* Service Cards */}

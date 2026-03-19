@@ -56,15 +56,15 @@ curl -s --cert client.p12:password \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | UUID v4 identifier |
-| `subdomain` | `string` | The subdomain portion (e.g., `app`) |
-| `fqdn` | `string` | Fully qualified domain name (e.g., `app.example.com`) |
-| `port` | `number` | Local port on your machine that this tunnel forwards to |
-| `description` | `string \| null` | Optional human-readable description |
-| `enabled` | `boolean` | Whether the tunnel is active (defaults to `true`) |
-| `createdAt` | `string` | ISO 8601 timestamp |
+| Field         | Type             | Description                                             |
+| ------------- | ---------------- | ------------------------------------------------------- |
+| `id`          | `string`         | UUID v4 identifier                                      |
+| `subdomain`   | `string`         | The subdomain portion (e.g., `app`)                     |
+| `fqdn`        | `string`         | Fully qualified domain name (e.g., `app.example.com`)   |
+| `port`        | `number`         | Local port on your machine that this tunnel forwards to |
+| `description` | `string \| null` | Optional human-readable description                     |
+| `enabled`     | `boolean`        | Whether the tunnel is active (defaults to `true`)       |
+| `createdAt`   | `string`         | ISO 8601 timestamp                                      |
 
 ---
 
@@ -89,11 +89,11 @@ If any step fails, previous steps are rolled back where possible (nginx vhost is
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `subdomain` | `string` | Lowercase alphanumeric + hyphens, max 63 chars, cannot start/end with hyphen | The subdomain to create |
-| `port` | `integer` | 1024 - 65535 | Local port on your machine |
-| `description` | `string` | Max 200 chars, optional (defaults to `""`) | Human-readable description |
+| Field         | Type      | Validation                                                                   | Description                |
+| ------------- | --------- | ---------------------------------------------------------------------------- | -------------------------- |
+| `subdomain`   | `string`  | Lowercase alphanumeric + hyphens, max 63 chars, cannot start/end with hyphen | The subdomain to create    |
+| `port`        | `integer` | 1024 - 65535                                                                 | Local port on your machine |
+| `description` | `string`  | Max 200 chars, optional (defaults to `""`)                                   | Human-readable description |
 
 **Subdomain regex:**
 
@@ -132,17 +132,17 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid subdomain format, port out of range |
-| 400 | `{"error":"Subdomain 'panel' is reserved"}` | Subdomain is in the reserved list |
-| 400 | `{"error":"Subdomain 'app' is already in use"}` | Another tunnel uses this subdomain |
-| 400 | `{"error":"Port 3000 is already in use by another tunnel"}` | Another tunnel uses this port |
-| 400 | `{"error":"Domain and email must be configured before creating tunnels"}` | Domain not set in config |
-| 500 | `{"error":"Failed to create tunnel","details":"Certificate issuance failed: ..."}` | certbot failed |
-| 500 | `{"error":"Failed to create tunnel","details":"Nginx configuration failed: ..."}` | nginx vhost write or test failed |
-| 500 | `{"error":"Failed to create tunnel","details":"Chisel reconfiguration failed: ..."}` | Chisel config update failed |
-| 500 | `{"error":"Failed to create tunnel","details":"State persistence failed: ..."}` | Failed to write tunnels.json |
+| Status | Body                                                                                 | When                                        |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}`                           | Invalid subdomain format, port out of range |
+| 400    | `{"error":"Subdomain 'panel' is reserved"}`                                          | Subdomain is in the reserved list           |
+| 400    | `{"error":"Subdomain 'app' is already in use"}`                                      | Another tunnel uses this subdomain          |
+| 400    | `{"error":"Port 3000 is already in use by another tunnel"}`                          | Another tunnel uses this port               |
+| 400    | `{"error":"Domain and email must be configured before creating tunnels"}`            | Domain not set in config                    |
+| 500    | `{"error":"Failed to create tunnel","details":"Certificate issuance failed: ..."}`   | certbot failed                              |
+| 500    | `{"error":"Failed to create tunnel","details":"Nginx configuration failed: ..."}`    | nginx vhost write or test failed            |
+| 500    | `{"error":"Failed to create tunnel","details":"Chisel reconfiguration failed: ..."}` | Chisel config update failed                 |
+| 500    | `{"error":"Failed to create tunnel","details":"State persistence failed: ..."}`      | Failed to write tunnels.json                |
 
 ### Creation Flow
 
@@ -184,9 +184,9 @@ Only enabled tunnels are included in the Mac plist output.
 }
 ```
 
-| Field | Type | Validation | Description |
-|-------|------|------------|-------------|
-| `enabled` | `boolean` | Required | Whether the tunnel should be active |
+| Field     | Type      | Validation | Description                         |
+| --------- | --------- | ---------- | ----------------------------------- |
+| `enabled` | `boolean` | Required   | Whether the tunnel should be active |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -215,10 +215,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 404 | `{"error":"Tunnel not found"}` | No tunnel with the given UUID |
-| 500 | `{"error":"Failed to toggle tunnel","details":"..."}` | nginx, Chisel, or state operation failed |
+| Status | Body                                                  | When                                     |
+| ------ | ----------------------------------------------------- | ---------------------------------------- |
+| 404    | `{"error":"Tunnel not found"}`                        | No tunnel with the given UUID            |
+| 500    | `{"error":"Failed to toggle tunnel","details":"..."}` | nginx, Chisel, or state operation failed |
 
 ---
 
@@ -248,10 +248,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 404 | `{"error":"Tunnel not found"}` | No tunnel with the given UUID |
-| 500 | `{"error":"Failed to delete tunnel","details":"..."}` | nginx, Chisel, or state operation failed |
+| Status | Body                                                  | When                                     |
+| ------ | ----------------------------------------------------- | ---------------------------------------- |
+| 404    | `{"error":"Tunnel not found"}`                        | No tunnel with the given UUID            |
+| 500    | `{"error":"Failed to delete tunnel","details":"..."}` | nginx, Chisel, or state operation failed |
 
 ---
 
@@ -261,9 +261,9 @@ Downloads a macOS launchd plist file that configures the Chisel client to connec
 
 **Query parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `format` | `string` | (none) | Set to `json` to get the plist content as JSON with instructions instead of a raw file download |
+| Parameter | Type     | Default | Description                                                                                     |
+| --------- | -------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `format`  | `string` | (none)  | Set to `json` to get the plist content as JSON with instructions instead of a raw file download |
 
 **Request (file download):**
 
@@ -304,10 +304,10 @@ curl -s --cert client.p12:password \
 
 **Errors:**
 
-| Status | Body | When |
-|--------|------|------|
-| 400 | `{"error":"Domain not configured"}` | Domain has not been set |
-| 500 | `{"error":"Failed to generate Mac plist","details":"..."}` | Plist generation failed |
+| Status | Body                                                       | When                    |
+| ------ | ---------------------------------------------------------- | ----------------------- |
+| 400    | `{"error":"Domain not configured"}`                        | Domain has not been set |
+| 500    | `{"error":"Failed to generate Mac plist","details":"..."}` | Plist generation failed |
 
 ## Validation Rules
 
@@ -329,14 +329,14 @@ curl -s --cert client.p12:password \
 
 ## Quick Reference
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/tunnels` | List all tunnels (newest first) |
-| POST | `/api/tunnels` | Create a tunnel (cert + vhost + chisel + state) |
-| PATCH | `/api/tunnels/:id` | Toggle tunnel enabled/disabled |
-| DELETE | `/api/tunnels/:id` | Delete a tunnel by UUID |
-| GET | `/api/tunnels/mac-plist` | Download launchd plist for Mac client |
-| GET | `/api/tunnels/mac-plist?format=json` | Get plist content and instructions as JSON |
+| Method | Path                                 | Description                                     |
+| ------ | ------------------------------------ | ----------------------------------------------- |
+| GET    | `/api/tunnels`                       | List all tunnels (newest first)                 |
+| POST   | `/api/tunnels`                       | Create a tunnel (cert + vhost + chisel + state) |
+| PATCH  | `/api/tunnels/:id`                   | Toggle tunnel enabled/disabled                  |
+| DELETE | `/api/tunnels/:id`                   | Delete a tunnel by UUID                         |
+| GET    | `/api/tunnels/mac-plist`             | Download launchd plist for Mac client           |
+| GET    | `/api/tunnels/mac-plist?format=json` | Get plist content and instructions as JSON      |
 
 ### Tunnel Object Shape
 

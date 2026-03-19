@@ -25,10 +25,10 @@ You see the onboarding wizard with the first step: **Configure your domain**.
 
 The first step asks for two pieces of information:
 
-| Field | Example | Purpose |
-|-------|---------|---------|
-| **Domain** | `example.com` | Base domain for your Portlama installation |
-| **Email** | `you@example.com` | Used for Let's Encrypt certificate registration |
+| Field      | Example           | Purpose                                         |
+| ---------- | ----------------- | ----------------------------------------------- |
+| **Domain** | `example.com`     | Base domain for your Portlama installation      |
+| **Email**  | `you@example.com` | Used for Let's Encrypt certificate registration |
 
 Enter your domain name (without `www.` or any prefix — just the base domain) and your email address, then click **Save & Continue**.
 
@@ -42,9 +42,9 @@ The wizard now shows the DNS records you need to create at your domain registrar
 
 You need two A records:
 
-| Type | Name | Value |
-|------|------|-------|
-| **A** | `example.com` | `203.0.113.42` |
+| Type  | Name            | Value          |
+| ----- | --------------- | -------------- |
+| **A** | `example.com`   | `203.0.113.42` |
 | **A** | `*.example.com` | `203.0.113.42` |
 
 The first record points your base domain to the server. The second is a wildcard record that allows Portlama to create subdomains (like `app.example.com`, `blog.example.com`) without adding individual DNS records each time.
@@ -52,23 +52,27 @@ The first record points your base domain to the server. The second is a wildcard
 **How to add these records** (varies by provider):
 
 **Cloudflare:**
+
 1. Go to your domain's DNS settings.
 2. Click "Add Record".
 3. Type: A, Name: `@`, Content: your server IP, Proxy: DNS only (gray cloud).
 4. Add another: Type: A, Name: `*`, Content: your server IP, Proxy: DNS only.
 
 **DigitalOcean DNS:**
+
 1. Go to Networking and select your domain.
 2. Add an A record: Hostname `@`, Directs to: your droplet.
 3. Add an A record: Hostname `*`, Directs to: your droplet.
 
 **Namecheap:**
+
 1. Go to Domain List and click Manage next to your domain.
 2. Go to Advanced DNS.
 3. Add: Type A Record, Host `@`, Value: your server IP.
 4. Add: Type A Record, Host `*`, Value: your server IP.
 
 **GoDaddy:**
+
 1. Go to My Products and click DNS next to your domain.
 2. Add Record: Type A, Name `@`, Value: your server IP.
 3. Add Record: Type A, Name `*`, Value: your server IP.
@@ -116,10 +120,10 @@ The provisioner runs certbot to obtain Let's Encrypt certificates for `panel.exa
 
 Three new nginx vhosts are written and enabled:
 
-| Vhost | Domain | Purpose |
-|-------|--------|---------|
-| Panel | `panel.example.com` | Admin panel with mTLS |
-| Auth | `auth.example.com` | Authelia login portal |
+| Vhost  | Domain               | Purpose                   |
+| ------ | -------------------- | ------------------------- |
+| Panel  | `panel.example.com`  | Admin panel with mTLS     |
+| Auth   | `auth.example.com`   | Authelia login portal     |
 | Tunnel | `tunnel.example.com` | Chisel WebSocket endpoint |
 
 nginx is tested with `nginx -t` and reloaded.
@@ -179,11 +183,11 @@ FRESH → DOMAIN_SET → DNS_READY → PROVISIONING → COMPLETED
 
 Each transition is enforced by the API:
 
-| Endpoint | Required State | New State |
-|----------|---------------|-----------|
-| `POST /api/onboarding/domain` | `FRESH` or `DOMAIN_SET` | `DOMAIN_SET` |
-| `POST /api/onboarding/verify-dns` | `DOMAIN_SET` or `DNS_READY` | `DNS_READY` |
-| `POST /api/onboarding/provision` | `DNS_READY` | `PROVISIONING` then `COMPLETED` |
+| Endpoint                          | Required State              | New State                       |
+| --------------------------------- | --------------------------- | ------------------------------- |
+| `POST /api/onboarding/domain`     | `FRESH` or `DOMAIN_SET`     | `DOMAIN_SET`                    |
+| `POST /api/onboarding/verify-dns` | `DOMAIN_SET` or `DNS_READY` | `DNS_READY`                     |
+| `POST /api/onboarding/provision`  | `DNS_READY`                 | `PROVISIONING` then `COMPLETED` |
 
 After `COMPLETED`, all onboarding endpoints return `410 Gone`. Management endpoints return `503 Service Unavailable` before `COMPLETED`.
 
@@ -193,12 +197,12 @@ Provisioning runs asynchronously — the `POST /api/onboarding/provision` endpoi
 
 Each provisioning task calls library functions in `packages/panel-server/src/lib/`:
 
-| Task | Library | Key Function |
-|------|---------|-------------|
-| Install Chisel | `lib/chisel.js` | `installChisel()`, `writeChiselService()`, `startChisel()` |
-| Install Authelia | `lib/authelia.js` | `installAuthelia()`, `writeAutheliaConfig()`, `createUser()` |
-| Issue certs | `lib/certbot.js` | `issueCoreCerts()`, `setupAutoRenew()` |
-| Configure nginx | `lib/nginx.js` | `writePanelVhost()`, `writeAuthVhost()`, `writeTunnelVhost()` |
+| Task             | Library           | Key Function                                                  |
+| ---------------- | ----------------- | ------------------------------------------------------------- |
+| Install Chisel   | `lib/chisel.js`   | `installChisel()`, `writeChiselService()`, `startChisel()`    |
+| Install Authelia | `lib/authelia.js` | `installAuthelia()`, `writeAutheliaConfig()`, `createUser()`  |
+| Issue certs      | `lib/certbot.js`  | `issueCoreCerts()`, `setupAutoRenew()`                        |
+| Configure nginx  | `lib/nginx.js`    | `writePanelVhost()`, `writeAuthVhost()`, `writeTunnelVhost()` |
 
 ### DNS Verification Logic
 
@@ -211,24 +215,24 @@ The test subdomain `test-portlama-check` is chosen to be unlikely to have an exp
 
 ## Quick Reference
 
-| Step | Action | Expected Duration |
-|------|--------|------------------|
-| Domain + email | Enter in wizard | 30 seconds |
-| DNS records | Add at registrar | 2-5 minutes |
-| DNS propagation | Wait and verify | 1-30 minutes |
-| Provisioning | Automatic | 2-5 minutes |
-| TOTP enrollment | Scan QR code | 1 minute |
+| Step            | Action           | Expected Duration |
+| --------------- | ---------------- | ----------------- |
+| Domain + email  | Enter in wizard  | 30 seconds        |
+| DNS records     | Add at registrar | 2-5 minutes       |
+| DNS propagation | Wait and verify  | 1-30 minutes      |
+| Provisioning    | Automatic        | 2-5 minutes       |
+| TOTP enrollment | Scan QR code     | 1 minute          |
 
-| URL | Purpose | Auth Method |
-|-----|---------|-------------|
-| `https://panel.example.com` | Admin panel | mTLS client certificate |
-| `https://auth.example.com` | Authelia login | Username + password + TOTP |
-| `https://203.0.113.42:9292` | IP fallback panel | mTLS client certificate |
+| URL                         | Purpose           | Auth Method                |
+| --------------------------- | ----------------- | -------------------------- |
+| `https://panel.example.com` | Admin panel       | mTLS client certificate    |
+| `https://auth.example.com`  | Authelia login    | Username + password + TOTP |
+| `https://203.0.113.42:9292` | IP fallback panel | mTLS client certificate    |
 
-| Onboarding Status | Meaning |
-|-------------------|---------|
-| `FRESH` | No domain configured yet |
-| `DOMAIN_SET` | Domain saved, DNS not verified |
-| `DNS_READY` | DNS verified, ready to provision |
-| `PROVISIONING` | Stack installation in progress |
-| `COMPLETED` | Fully operational |
+| Onboarding Status | Meaning                          |
+| ----------------- | -------------------------------- |
+| `FRESH`           | No domain configured yet         |
+| `DOMAIN_SET`      | Domain saved, DNS not verified   |
+| `DNS_READY`       | DNS verified, ready to provision |
+| `PROVISIONING`    | Stack installation in progress   |
+| `COMPLETED`       | Fully operational                |

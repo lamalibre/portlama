@@ -7,25 +7,51 @@ import { execa } from 'execa';
  */
 export const ALLOWED_EXTENSIONS = new Set([
   // HTML
-  '.html', '.htm',
+  '.html',
+  '.htm',
   // Styles
   '.css',
   // Scripts
-  '.js', '.mjs',
+  '.js',
+  '.mjs',
   // Images
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.avif', '.bmp',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+  '.webp',
+  '.avif',
+  '.bmp',
   // Fonts
-  '.woff', '.woff2', '.ttf', '.eot', '.otf',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.eot',
+  '.otf',
   // Media
-  '.mp4', '.webm', '.ogg', '.mp3', '.wav', '.flac',
+  '.mp4',
+  '.webm',
+  '.ogg',
+  '.mp3',
+  '.wav',
+  '.flac',
   // Documents
-  '.pdf', '.txt', '.md',
+  '.pdf',
+  '.txt',
+  '.md',
   // Data
-  '.json', '.xml', '.csv', '.geojson', '.topojson',
+  '.json',
+  '.xml',
+  '.csv',
+  '.geojson',
+  '.topojson',
   // Maps
   '.map',
   // Web config
-  '.webmanifest', '.manifest',
+  '.webmanifest',
+  '.manifest',
   // WebAssembly
   '.wasm',
 ]);
@@ -68,12 +94,22 @@ export async function runClamAvScan(directoryPath) {
   }
 
   // Run ClamAV scan
-  const result = await execa('docker', [
-    'run', '--rm',
-    '-v', `${directoryPath}:/scan:ro`,
-    'clamav/clamav',
-    'clamscan', '-r', '--infected', '--no-summary', '/scan',
-  ], { reject: false });
+  const result = await execa(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '-v',
+      `${directoryPath}:/scan:ro`,
+      'clamav/clamav',
+      'clamscan',
+      '-r',
+      '--infected',
+      '--no-summary',
+      '/scan',
+    ],
+    { reject: false },
+  );
 
   if (result.exitCode === 0) {
     // Clean — no infections found

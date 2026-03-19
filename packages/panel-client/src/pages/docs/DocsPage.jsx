@@ -60,7 +60,10 @@ function DocsSidebar({ index, currentSlug, sidebarOpen, onClose }) {
       {/* Desktop sidebar */}
       <div className="sticky top-0 hidden h-screen w-72 flex-shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-900/50 lg:flex">
         <div className="border-b border-zinc-800 px-4 py-4">
-          <Link to="/docs" className="text-sm font-semibold text-zinc-300 hover:text-cyan-400 flex items-center gap-2">
+          <Link
+            to="/docs"
+            className="text-sm font-semibold text-zinc-300 hover:text-cyan-400 flex items-center gap-2"
+          >
             <BookOpen size={14} className="text-cyan-400" />
             Documentation
           </Link>
@@ -321,15 +324,16 @@ export default function DocsPage() {
             )}
 
             {/* Content */}
-            {loading && (
-              <div className="text-zinc-500 text-sm py-12">Loading...</div>
-            )}
+            {loading && <div className="text-zinc-500 text-sm py-12">Loading...</div>}
 
             {error && (
               <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-6 text-sm text-yellow-400">
                 <p className="font-semibold mb-2">Page Not Available</p>
                 <p className="text-yellow-500/80">{error}</p>
-                <Link to="/docs/what-is-portlama" className="mt-4 inline-block text-cyan-400 hover:underline">
+                <Link
+                  to="/docs/what-is-portlama"
+                  className="mt-4 inline-block text-cyan-400 hover:underline"
+                >
                   Go to Introduction
                 </Link>
               </div>

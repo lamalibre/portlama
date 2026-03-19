@@ -9,7 +9,10 @@ const ConfigSchema = z.object({
   email: z.string().email().nullable(),
   dataDir: z.string().min(1),
   staticDir: z.string().optional(),
-  maxSiteSize: z.number().optional().default(500 * 1024 * 1024),
+  maxSiteSize: z
+    .number()
+    .optional()
+    .default(500 * 1024 * 1024),
   onboarding: z.object({
     status: z.enum(['FRESH', 'DOMAIN_SET', 'DNS_READY', 'PROVISIONING', 'COMPLETED']),
   }),
@@ -44,9 +47,7 @@ export async function loadConfig() {
     raw = await readFile(configPath, 'utf-8');
   } catch (err) {
     if (err.code === 'ENOENT') {
-      throw new Error(
-        `Config file not found at ${configPath}. Run create-portlama to initialize.`,
-      );
+      throw new Error(`Config file not found at ${configPath}. Run create-portlama to initialize.`);
     }
     throw new Error(`Failed to read config file at ${configPath}: ${err.message}`);
   }
@@ -88,7 +89,10 @@ export async function updateConfig(patch) {
   const validated = ConfigSchema.parse(merged);
 
   const tmpPath = `${configPath}.tmp`;
-  await writeFile(tmpPath, JSON.stringify(validated, null, 2) + '\n', { encoding: 'utf-8', mode: 0o640 });
+  await writeFile(tmpPath, JSON.stringify(validated, null, 2) + '\n', {
+    encoding: 'utf-8',
+    mode: 0o640,
+  });
   await rename(tmpPath, configPath);
 
   config = validated;
