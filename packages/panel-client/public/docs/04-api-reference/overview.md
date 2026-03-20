@@ -258,52 +258,67 @@ There is no application-level rate limiting. The mTLS requirement means only aut
 
 ### Endpoint Summary
 
-| Method | Path                                    | Group      | Description                            |
-| ------ | --------------------------------------- | ---------- | -------------------------------------- |
-| GET    | `/api/health`                           | Always     | Health check                           |
-| GET    | `/api/onboarding/status`                | Always     | Onboarding state                       |
-| POST   | `/api/onboarding/domain`                | Onboarding | Set domain and email                   |
-| POST   | `/api/onboarding/verify-dns`            | Onboarding | Verify DNS records                     |
-| POST   | `/api/onboarding/provision`             | Onboarding | Start provisioning                     |
-| WS     | `/api/onboarding/provision/stream`      | Onboarding | Provisioning progress                  |
-| GET    | `/api/invite/:token`                    | Public     | Get invitation details                 |
-| POST   | `/api/invite/:token/accept`             | Public     | Accept invitation                      |
-| GET    | `/api/system/stats`                     | Management | System statistics                      |
-| GET    | `/api/tunnels`                          | Management | List tunnels                           |
-| POST   | `/api/tunnels`                          | Management | Create tunnel                          |
-| PATCH  | `/api/tunnels/:id`                      | Management | Toggle tunnel enabled/disabled         |
-| DELETE | `/api/tunnels/:id`                      | Management | Delete tunnel                          |
-| GET    | `/api/tunnels/mac-plist`                | Management | Download Mac plist                     |
-| GET    | `/api/sites`                            | Management | List static sites                      |
-| POST   | `/api/sites`                            | Management | Create static site                     |
-| DELETE | `/api/sites/:id`                        | Management | Delete static site                     |
-| PATCH  | `/api/sites/:id`                        | Management | Update site settings                   |
-| POST   | `/api/sites/:id/verify-dns`             | Management | Verify site DNS                        |
-| GET    | `/api/sites/:id/files`                  | Management | List site files                        |
-| POST   | `/api/sites/:id/files`                  | Management | Upload site files                      |
-| DELETE | `/api/sites/:id/files`                  | Management | Delete site file                       |
-| GET    | `/api/invitations`                      | Management | List invitations                       |
-| POST   | `/api/invitations`                      | Management | Create invitation                      |
-| DELETE | `/api/invitations/:id`                  | Management | Revoke invitation                      |
-| GET    | `/api/users`                            | Management | List users                             |
-| POST   | `/api/users`                            | Management | Create user                            |
-| PUT    | `/api/users/:username`                  | Management | Update user                            |
-| DELETE | `/api/users/:username`                  | Management | Delete user                            |
-| POST   | `/api/users/:username/reset-totp`       | Management | Reset TOTP secret                      |
-| GET    | `/api/certs`                            | Management | List certificates                      |
-| GET    | `/api/certs/auto-renew-status`          | Management | Auto-renew timer status                |
-| POST   | `/api/certs/:domain/renew`              | Management | Force-renew certificate                |
-| POST   | `/api/certs/mtls/rotate`                | Management | Rotate mTLS cert                       |
-| GET    | `/api/certs/mtls/download`              | Management | Download client.p12                    |
-| POST   | `/api/certs/agent`                      | Management | Generate agent certificate             |
-| GET    | `/api/certs/agent`                      | Management | List agent certificates                |
-| GET    | `/api/certs/agent/:label/download`      | Management | Download agent .p12                    |
-| PATCH  | `/api/certs/agent/:label/capabilities`  | Management | Update agent capabilities              |
-| PATCH  | `/api/certs/agent/:label/allowed-sites` | Management | Update agent site access               |
-| DELETE | `/api/certs/agent/:label`               | Management | Revoke agent certificate               |
-| GET    | `/api/services`                         | Management | List service statuses                  |
-| POST   | `/api/services/:name/:action`           | Management | Control a service (start/stop/restart) |
-| WS     | `/api/services/:name/logs`              | Management | Stream service logs                    |
+| Method | Path                                      | Group      | Description                            |
+| ------ | ----------------------------------------- | ---------- | -------------------------------------- |
+| GET    | `/api/health`                             | Always     | Health check                           |
+| GET    | `/api/onboarding/status`                  | Always     | Onboarding state                       |
+| POST   | `/api/onboarding/domain`                  | Onboarding | Set domain and email                   |
+| POST   | `/api/onboarding/verify-dns`              | Onboarding | Verify DNS records                     |
+| POST   | `/api/onboarding/provision`               | Onboarding | Start provisioning                     |
+| WS     | `/api/onboarding/provision/stream`        | Onboarding | Provisioning progress                  |
+| GET    | `/api/invite/:token`                      | Public     | Get invitation details                 |
+| POST   | `/api/invite/:token/accept`               | Public     | Accept invitation                      |
+| GET    | `/api/system/stats`                       | Management | System statistics                      |
+| GET    | `/api/tunnels`                            | Management | List tunnels                           |
+| POST   | `/api/tunnels`                            | Management | Create tunnel                          |
+| PATCH  | `/api/tunnels/:id`                        | Management | Toggle tunnel enabled/disabled         |
+| DELETE | `/api/tunnels/:id`                        | Management | Delete tunnel                          |
+| GET    | `/api/tunnels/mac-plist`                  | Management | Download Mac plist                     |
+| GET    | `/api/sites`                              | Management | List static sites                      |
+| POST   | `/api/sites`                              | Management | Create static site                     |
+| DELETE | `/api/sites/:id`                          | Management | Delete static site                     |
+| PATCH  | `/api/sites/:id`                          | Management | Update site settings                   |
+| POST   | `/api/sites/:id/verify-dns`               | Management | Verify site DNS                        |
+| GET    | `/api/sites/:id/files`                    | Management | List site files                        |
+| POST   | `/api/sites/:id/files`                    | Management | Upload site files                      |
+| DELETE | `/api/sites/:id/files`                    | Management | Delete site file                       |
+| GET    | `/api/invitations`                        | Management | List invitations                       |
+| POST   | `/api/invitations`                        | Management | Create invitation                      |
+| DELETE | `/api/invitations/:id`                    | Management | Revoke invitation                      |
+| GET    | `/api/users`                              | Management | List users                             |
+| POST   | `/api/users`                              | Management | Create user                            |
+| PUT    | `/api/users/:username`                    | Management | Update user                            |
+| DELETE | `/api/users/:username`                    | Management | Delete user                            |
+| POST   | `/api/users/:username/reset-totp`         | Management | Reset TOTP secret                      |
+| GET    | `/api/certs`                              | Management | List certificates                      |
+| GET    | `/api/certs/auto-renew-status`            | Management | Auto-renew timer status                |
+| POST   | `/api/certs/:domain/renew`                | Management | Force-renew certificate                |
+| POST   | `/api/certs/mtls/rotate`                  | Management | Rotate mTLS cert                       |
+| GET    | `/api/certs/mtls/download`                | Management | Download client.p12                    |
+| POST   | `/api/certs/agent`                        | Management | Generate agent certificate             |
+| GET    | `/api/certs/agent`                        | Management | List agent certificates                |
+| GET    | `/api/certs/agent/:label/download`        | Management | Download agent .p12                    |
+| PATCH  | `/api/certs/agent/:label/capabilities`    | Management | Update agent capabilities              |
+| PATCH  | `/api/certs/agent/:label/allowed-sites`   | Management | Update agent site access               |
+| DELETE | `/api/certs/agent/:label`                 | Management | Revoke agent certificate               |
+| GET    | `/api/services`                           | Management | List service statuses                  |
+| POST   | `/api/services/:name/:action`             | Management | Control a service (start/stop/restart) |
+| WS     | `/api/services/:name/logs`                | Management | Stream service logs                    |
+| GET    | `/api/shell/config`                       | Management | Get shell configuration                |
+| PATCH  | `/api/shell/config`                       | Management | Update shell configuration             |
+| GET    | `/api/shell/policies`                     | Management | List shell policies                    |
+| POST   | `/api/shell/policies`                     | Management | Create shell policy                    |
+| PATCH  | `/api/shell/policies/:policyId`           | Management | Update shell policy                    |
+| DELETE | `/api/shell/policies/:policyId`           | Management | Delete shell policy                    |
+| POST   | `/api/shell/enable/:label`                | Management | Enable shell access for an agent       |
+| DELETE | `/api/shell/enable/:label`                | Management | Disable shell access for an agent      |
+| GET    | `/api/shell/sessions`                     | Management | List shell session audit log           |
+| GET    | `/api/shell/recordings/:label`            | Management | List session recordings for an agent   |
+| GET    | `/api/shell/recordings/:label/:sessionId` | Management | Download a session recording           |
+| GET    | `/api/shell/file/:label`                  | Management | Download file from agent               |
+| POST   | `/api/shell/file/:label`                  | Management | Upload file to agent                   |
+| WS     | `/api/shell/connect/:label`               | Management | Admin WebSocket for shell relay        |
+| WS     | `/api/shell/agent/:label`                 | Management | Agent WebSocket for shell relay        |
 
 ### Agent Capabilities
 

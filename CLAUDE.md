@@ -88,6 +88,9 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Secrets: `crypto.randomBytes`, never hardcoded
 - Onboarding endpoints: 410 Gone after completion
 - Management endpoints: 503 before onboarding completes
+- Remote shell: 5-gate auth chain (global toggle → agent cert enabled → time window → IP check → admin cert) — shell access is never implicitly on
+- Shell sessions use tmux on the agent machine — `portlama-shell.sh` wrapper enforces a command blocklist with hard-blocked patterns and restricted prefixes
+- Shell session recordings stored on the agent in `~/.portlama/shell-recordings/`, audit log on the server in `shell-sessions.json`
 
 **Certificate scoping:**
 
@@ -98,6 +101,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
   - `system:read` — system stats
   - `sites:read` / `sites:write` — static site file browsing and deployment (site CRUD is admin-only)
   - `allowedSites: string[]` — per-site scoping; agent sees and can deploy to only listed sites
+- Shell management endpoints (enable/disable, policies, sessions) are admin-only at the route level — there is no `shell:admin` capability
 - Revoked certs tracked in `revoked.json`, rejected by middleware
 - Never give admin cert to Mac agents — generate scoped agent certs
 

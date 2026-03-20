@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `portlama-agent sites` command to list, create, and delete static sites from the CLI
 - Add `portlama-agent deploy <site> <path>` command to deploy a local directory to a static site
 - Add Zod validation on file listing and upload query parameters for defense in depth
+- Add remote shell access via tmux — admin can open a terminal on any agent machine through the existing WebSocket tunnel with `portlama-agent shell <label>`
+- Add policy-based shell access control — named policies with IP allow/deny lists, command blocklists, inactivity timeouts, and file size limits
+- Add 5-gate auth chain for shell sessions: global toggle → agent cert enabled → time window → IP check → admin cert
+- Add shell session recording via `tmux pipe-pane`, stored on agent at `~/.portlama/shell-recordings/`
+- Add session audit log on the panel server (`shell-sessions.json`)
+- Add restricted shell wrapper (`portlama-shell.sh`) with hard-blocked patterns and configurable restricted commands
+- Add file transfer between admin and agent: `portlama-agent cp <label>:/path ./local`
+- Add session log viewer: `portlama-agent shell-log <label>`
+- Add agent shell gateway: `portlama-agent shell-server` (background service, polls panel for shell access)
+- Add Shell tab to the desktop app for managing policies, agent access, and sessions
+- Add `GET /api/shell/agent-status` endpoint for agents to check their own shell access
 
 ### Changed
 
@@ -45,13 +56,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add symlink protection in deploy command directory scanner (skips symlinks, uses `lstat` to prevent TOCTOU)
 - Add `encodeURIComponent` on all dynamic URL path segments in panel client API helpers and agent CLI
 - Add regex validation on `allowedSites` entries in `UpdateAllowedSitesSchema`
+- Add tmux special-key allowlist in shell gateway — only permitted key names (Enter, Escape, arrows, etc.) accepted
+- Add strict CIDR prefix validation (1-32) for shell policy IP lists
+- Add IPv6 normalization for IP access control — strips `::ffff:` prefix from IPv4-mapped addresses
+- Add Mutex-based locking on shell session audit log to prevent concurrent write races
+- Add PEM private key file permissions (0o600) in agent WebSocket helpers
+- Add URL encoding on all dynamic path segments in desktop app Rust API calls
 
 **Affected packages:**
 
-- `@lamalibre/portlama-panel-server` 0.1.0 → 0.1.1
+- `@lamalibre/portlama-panel-server` 0.1.0 → 0.1.2
 - `@lamalibre/portlama-panel-client` 0.1.0 → 0.1.1
-- `@lamalibre/create-portlama` 1.0.23 → 1.0.24
-- `@lamalibre/portlama-agent` 1.0.1 → 1.0.2
+- `@lamalibre/create-portlama` 1.0.23 → 1.0.25
+- `@lamalibre/portlama-agent` 1.0.1 → 1.0.3
+- `@lamalibre/portlama-desktop` 0.1.0 → 0.1.1
+- `@lamalibre/install-portlama-desktop` 0.0.2 → 0.0.3
 
 ## [1.0.0] - 2026-03-12
 

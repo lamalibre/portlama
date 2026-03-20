@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import {
   Terminal,
+  SquareTerminal,
   Activity,
   Network,
   Compass,
@@ -15,6 +16,7 @@ import {
 import Dashboard from './pages/Dashboard.jsx';
 import Tunnels from './pages/Tunnels.jsx';
 import Services from './pages/Services.jsx';
+import Shell from './pages/Shell.jsx';
 import Logs from './pages/Logs.jsx';
 import SettingsPage from './pages/Settings.jsx';
 
@@ -22,6 +24,7 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity },
   { id: 'tunnels', label: 'Tunnels', icon: Network },
   { id: 'services', label: 'Services', icon: Compass },
+  { id: 'shell', label: 'Shell', icon: SquareTerminal },
   { id: 'logs', label: 'Logs', icon: ScrollText },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -78,6 +81,8 @@ export default function App() {
         return <Tunnels />;
       case 'services':
         return <Services />;
+      case 'shell':
+        return <Shell />;
       case 'logs':
         return <Logs />;
       case 'settings':

@@ -200,6 +200,157 @@ export async function uploadSiteFiles(
 }
 
 /**
+ * Fetch shell configuration for this agent.
+ * @param {string} panelUrl
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @returns {Promise<{ enabled: boolean, label: string, blocklist?: string[], timeWindow?: object }>}
+ */
+export async function fetchShellConfig(panelUrl, p12Path, p12Password) {
+  const url = `${panelUrl}/api/shell/config`;
+  try {
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch shell config from panel. ` + `Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Fetch the agent's own status from the panel.
+ * The server derives the agent label from the mTLS client certificate CN.
+ * @param {string} panelUrl
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @returns {Promise<{ label: string }>}
+ */
+export async function fetchAgentStatus(panelUrl, p12Path, p12Password) {
+  const url = `${panelUrl}/api/shell/agent-status`;
+  try {
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch agent status from panel. ` + `Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Fetch shell session list from the panel.
+ * @param {string} panelUrl
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @returns {Promise<{ sessions: Array }>}
+ */
+export async function fetchShellSessions(panelUrl, p12Path, p12Password) {
+  const url = `${panelUrl}/api/shell/sessions`;
+  try {
+    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch shell sessions from panel. ` + `Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Download a shell session recording from the panel.
+ * @param {string} panelUrl
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @param {string} agentLabel - The agent label that owns the recording
+ * @param {string} sessionId
+ * @param {string} outputPath - Local path to write the recording to
+ * @returns {Promise<void>}
+ */
+export async function downloadShellRecording(
+  panelUrl,
+  p12Path,
+  p12Password,
+  agentLabel,
+  sessionId,
+  outputPath,
+) {
+  const url = `${panelUrl}/api/shell/recordings/${encodeURIComponent(agentLabel)}/${encodeURIComponent(sessionId)}`;
+  try {
+    await execa('curl', [...certArgs(p12Path, p12Password), '-o', outputPath, url]);
+  } catch (err) {
+    throw new Error(
+      `Failed to download shell recording from panel. ` + `Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Download a file from a remote agent via the panel relay.
+ * @param {string} panelUrl
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @param {string} agentLabel
+ * @param {string} remotePath - Absolute path on the remote agent
+ * @param {string} outputPath - Local path to write the file to
+ * @returns {Promise<void>}
+ */
+export async function downloadRemoteFile(
+  panelUrl,
+  p12Path,
+  p12Password,
+  agentLabel,
+  remotePath,
+  outputPath,
+) {
+  const url = `${panelUrl}/api/shell/file/${encodeURIComponent(agentLabel)}?path=${encodeURIComponent(remotePath)}`;
+  try {
+    await execa('curl', [...certArgs(p12Path, p12Password), '-o', outputPath, url]);
+  } catch (err) {
+    throw new Error(
+      `Failed to download file from agent ${agentLabel}. ` +
+        `Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Upload a local file to a remote agent via the panel relay.
+ * @param {string} panelUrl
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @param {string} agentLabel
+ * @param {string} remotePath - Absolute path on the remote agent
+ * @param {string} localFilePath - Local file to upload
+ * @returns {Promise<object>}
+ */
+export async function uploadRemoteFile(
+  panelUrl,
+  p12Path,
+  p12Password,
+  agentLabel,
+  remotePath,
+  localFilePath,
+) {
+  const url = `${panelUrl}/api/shell/file/${encodeURIComponent(agentLabel)}?path=${encodeURIComponent(remotePath)}`;
+  try {
+    const { stdout } = await execa('curl', [
+      ...certArgs(p12Path, p12Password),
+      '-X',
+      'POST',
+      '-F',
+      `file=@${localFilePath}`,
+      url,
+    ]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to upload file to agent ${agentLabel}. ` + `Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
  * Delete a file from a static site.
  * @param {string} panelUrl
  * @param {string} p12Path

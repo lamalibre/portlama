@@ -7,7 +7,14 @@ import globals from 'globals';
 export default [
   // 1. Global ignores
   {
-    ignores: ['**/node_modules/', '**/dist/', '**/coverage/', '**/.vite/', '.claude/worktrees/'],
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/coverage/',
+      '**/.vite/',
+      '.claude/worktrees/',
+      '**/target/',
+    ],
   },
 
   // 2. Base config for all JS/JSX files
@@ -26,6 +33,7 @@ export default [
       'packages/create-portlama/**/*.js',
       'packages/panel-server/**/*.js',
       'packages/portlama-agent/**/*.js',
+      'packages/install-portlama-desktop/**/*.js',
     ],
     languageOptions: {
       globals: {

@@ -5,6 +5,7 @@ mod commands;
 mod config;
 mod chisel;
 mod services;
+mod shell;
 mod tray;
 
 fn main() {
@@ -34,6 +35,16 @@ fn main() {
             services::get_service_registry,
             services::add_custom_service,
             services::remove_custom_service,
+            shell::get_shell_config,
+            shell::update_shell_config,
+            shell::get_shell_policies,
+            shell::create_shell_policy,
+            shell::update_shell_policy,
+            shell::delete_shell_policy,
+            shell::enable_agent_shell,
+            shell::disable_agent_shell,
+            shell::get_shell_sessions,
+            shell::get_agent_certs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running portlama desktop");
