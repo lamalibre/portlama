@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import { assertMacOS, CHISEL_BIN_DIR, LOGS_DIR } from '../lib/platform.js';
 import { loadAgentConfig, saveAgentConfig } from '../lib/config.js';
 import { fetchHealth, fetchPlist, fetchTunnels } from '../lib/panel-api.js';
+import { extractPemFromP12 } from '../lib/ws-helpers.js';
 import { installChisel } from '../lib/chisel.js';
 import { rewritePlist, writePlistFile } from '../lib/plist.js';
 import { isAgentLoaded, unloadAgent, loadAgent, getAgentPid } from '../lib/launchctl.js';
@@ -95,19 +96,31 @@ export async function runSetup() {
   const tasks = new Listr(
     [
       {
+        title: 'Creating directories',
+        task: async () => {
+          await mkdir(CHISEL_BIN_DIR, { recursive: true });
+          await mkdir(LOGS_DIR, { recursive: true });
+        },
+      },
+      {
+        title: 'Extracting CA certificate',
+        task: async (_ctx, task) => {
+          const pem = await extractPemFromP12(ctx.p12Path, ctx.p12Password);
+          if (pem.caPath) {
+            task.output = `CA certificate saved to ${pem.caPath}`;
+          } else {
+            task.output = 'No CA certificate found in P12 (TLS verification will be disabled)';
+          }
+        },
+        rendererOptions: { persistentOutput: true },
+      },
+      {
         title: 'Verifying panel connectivity',
         task: async (_ctx, task) => {
           const health = await fetchHealth(ctx.panelUrl, ctx.p12Path, ctx.p12Password);
           task.output = `Panel is reachable (status: ${health.status || 'ok'})`;
         },
         rendererOptions: { persistentOutput: true },
-      },
-      {
-        title: 'Creating directories',
-        task: async () => {
-          await mkdir(CHISEL_BIN_DIR, { recursive: true });
-          await mkdir(LOGS_DIR, { recursive: true });
-        },
       },
       {
         title: 'Installing Chisel',

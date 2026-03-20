@@ -1,23 +1,112 @@
+import crypto from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { writeFile, unlink } from 'node:fs/promises';
+import path from 'node:path';
 import { execa } from 'execa';
+import { AGENT_DIR } from './platform.js';
+import { CA_CERT_PATH } from './ws-helpers.js';
+
+/** Track whether the insecure-fallback warning has already been printed. */
+let insecureWarningShown = false;
+
+/**
+ * Validate that p12Path and p12Password do not contain newlines or other
+ * characters that could break the curl config file format.
+ * @param {string} p12Path
+ * @param {string} p12Password
+ */
+function validateCertInputs(p12Path, p12Password) {
+  if (/[\r\n]/.test(p12Path)) {
+    throw new Error('p12Path must not contain newline characters');
+  }
+  if (/[\r\n]/.test(p12Password)) {
+    throw new Error('p12Password must not contain newline characters');
+  }
+}
+
+/**
+ * Create a temporary curl config file containing the mTLS cert credentials.
+ * The file is written with mode 0600 so only the owner can read it, keeping
+ * the P12 password out of process argument lists (invisible to `ps aux`).
+ * @param {string} p12Path - Path to client.p12
+ * @param {string} p12Password - P12 password
+ * @returns {Promise<string>} Path to the temporary config file
+ */
+async function createCurlConfig(p12Path, p12Password) {
+  validateCertInputs(p12Path, p12Password);
+  const suffix = crypto.randomBytes(8).toString('hex');
+  const configPath = path.join(AGENT_DIR, `.curl-config-${suffix}.tmp`);
+  const content = `cert = "${p12Path}:${p12Password}"\ncert-type = "P12"\n`;
+  await writeFile(configPath, content, { mode: 0o600 });
+  return configPath;
+}
+
+/**
+ * Remove a temporary curl config file. Errors are silently ignored
+ * (the file may already have been cleaned up).
+ * @param {string} configPath
+ */
+async function removeCurlConfig(configPath) {
+  try {
+    await unlink(configPath);
+  } catch {
+    // Ignore — file may already be gone
+  }
+}
 
 /**
  * Build the common curl args for mTLS authentication.
- * @param {string} p12Path - Path to client.p12
- * @param {string} p12Password - P12 password
+ * The cert credentials are passed via a config file (-K) so the P12
+ * password never appears in process argument lists.
+ * Uses the panel CA certificate for TLS verification when available.
+ * Falls back to -k (insecure) with a warning if the CA cert is missing.
+ * @param {string} configPath - Path to the temporary curl config file
  * @returns {string[]}
  */
-function certArgs(p12Path, p12Password) {
-  return [
-    '--cert-type',
-    'P12',
-    '--cert',
-    `${p12Path}:${p12Password}`,
-    '-k', // accept self-signed server cert
+function certArgs(configPath) {
+  const args = [
+    '-K',
+    configPath,
     '-s', // silent
     '-f', // fail on HTTP errors
     '--max-time',
     '30',
   ];
+
+  if (existsSync(CA_CERT_PATH)) {
+    args.push('--cacert', CA_CERT_PATH);
+  } else {
+    args.push('-k');
+    if (!insecureWarningShown) {
+      insecureWarningShown = true;
+      process.stderr.write(
+        'WARNING: CA certificate not found at ' +
+          CA_CERT_PATH +
+          '. Using -k (insecure). ' +
+          'Re-run "portlama-agent setup" to extract the CA certificate from your P12.\n',
+      );
+    }
+  }
+
+  return args;
+}
+
+/**
+ * Execute a curl command with mTLS credentials passed via a temporary config
+ * file.  The config file is created before the call and removed afterwards,
+ * regardless of success or failure.
+ * @param {string} p12Path
+ * @param {string} p12Password
+ * @param {string[]} extraArgs - Additional curl arguments (must end with the URL)
+ * @returns {Promise<import('execa').ExecaReturnValue>}
+ */
+async function curlWithConfig(p12Path, p12Password, extraArgs) {
+  const configPath = await createCurlConfig(p12Path, p12Password);
+  try {
+    return await execa('curl', [...certArgs(configPath), ...extraArgs]);
+  } finally {
+    await removeCurlConfig(configPath);
+  }
 }
 
 /**
@@ -30,7 +119,7 @@ function certArgs(p12Path, p12Password) {
 export async function fetchHealth(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/health`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -51,7 +140,7 @@ export async function fetchHealth(panelUrl, p12Path, p12Password) {
 export async function fetchPlist(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/tunnels/mac-plist?format=json`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(`Failed to fetch plist from panel. ` + `Details: ${err.stderr || err.message}`);
@@ -68,7 +157,7 @@ export async function fetchPlist(panelUrl, p12Path, p12Password) {
 export async function fetchTunnels(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/tunnels`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -87,7 +176,7 @@ export async function fetchTunnels(panelUrl, p12Path, p12Password) {
 export async function fetchSites(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/sites`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(`Failed to fetch sites from panel. ` + `Details: ${err.stderr || err.message}`);
@@ -105,8 +194,7 @@ export async function fetchSites(panelUrl, p12Path, p12Password) {
 export async function createSite(panelUrl, p12Path, p12Password, body) {
   const url = `${panelUrl}/api/sites`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [
       '-X',
       'POST',
       '-H',
@@ -132,12 +220,7 @@ export async function createSite(panelUrl, p12Path, p12Password, body) {
 export async function deleteSite(panelUrl, p12Path, p12Password, siteId) {
   const url = `${panelUrl}/api/sites/${encodeURIComponent(siteId)}`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      '-X',
-      'DELETE',
-      url,
-    ]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, ['-X', 'DELETE', url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(`Failed to delete site from panel. ` + `Details: ${err.stderr || err.message}`);
@@ -156,7 +239,7 @@ export async function deleteSite(panelUrl, p12Path, p12Password, siteId) {
 export async function fetchSiteFiles(panelUrl, p12Path, p12Password, siteId, dirPath = '.') {
   const url = `${panelUrl}/api/sites/${encodeURIComponent(siteId)}/files?path=${encodeURIComponent(dirPath)}`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -186,13 +269,7 @@ export async function uploadSiteFiles(
   const url = `${panelUrl}/api/sites/${encodeURIComponent(siteId)}/files?path=${encodeURIComponent(dirPath)}`;
   const fileArgs = localFilePaths.flatMap((fp) => ['-F', `file=@${fp}`]);
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
-      '-X',
-      'POST',
-      ...fileArgs,
-      url,
-    ]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, ['-X', 'POST', ...fileArgs, url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(`Failed to upload files to site. ` + `Details: ${err.stderr || err.message}`);
@@ -209,7 +286,7 @@ export async function uploadSiteFiles(
 export async function fetchShellConfig(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/shell/config`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -229,7 +306,7 @@ export async function fetchShellConfig(panelUrl, p12Path, p12Password) {
 export async function fetchAgentStatus(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/shell/agent-status`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -248,7 +325,7 @@ export async function fetchAgentStatus(panelUrl, p12Path, p12Password) {
 export async function fetchShellSessions(panelUrl, p12Path, p12Password) {
   const url = `${panelUrl}/api/shell/sessions`;
   try {
-    const { stdout } = await execa('curl', [...certArgs(p12Path, p12Password), url]);
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
     throw new Error(
@@ -277,7 +354,7 @@ export async function downloadShellRecording(
 ) {
   const url = `${panelUrl}/api/shell/recordings/${encodeURIComponent(agentLabel)}/${encodeURIComponent(sessionId)}`;
   try {
-    await execa('curl', [...certArgs(p12Path, p12Password), '-o', outputPath, url]);
+    await curlWithConfig(p12Path, p12Password, ['-o', outputPath, url]);
   } catch (err) {
     throw new Error(
       `Failed to download shell recording from panel. ` + `Details: ${err.stderr || err.message}`,
@@ -305,7 +382,7 @@ export async function downloadRemoteFile(
 ) {
   const url = `${panelUrl}/api/shell/file/${encodeURIComponent(agentLabel)}?path=${encodeURIComponent(remotePath)}`;
   try {
-    await execa('curl', [...certArgs(p12Path, p12Password), '-o', outputPath, url]);
+    await curlWithConfig(p12Path, p12Password, ['-o', outputPath, url]);
   } catch (err) {
     throw new Error(
       `Failed to download file from agent ${agentLabel}. ` +
@@ -334,8 +411,7 @@ export async function uploadRemoteFile(
 ) {
   const url = `${panelUrl}/api/shell/file/${encodeURIComponent(agentLabel)}?path=${encodeURIComponent(remotePath)}`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [
       '-X',
       'POST',
       '-F',
@@ -362,8 +438,7 @@ export async function uploadRemoteFile(
 export async function deleteSiteFile(panelUrl, p12Path, p12Password, siteId, filePath) {
   const url = `${panelUrl}/api/sites/${encodeURIComponent(siteId)}/files`;
   try {
-    const { stdout } = await execa('curl', [
-      ...certArgs(p12Path, p12Password),
+    const { stdout } = await curlWithConfig(p12Path, p12Password, [
       '-X',
       'DELETE',
       '-H',

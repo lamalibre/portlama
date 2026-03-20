@@ -8,7 +8,7 @@ import WebSocket from 'ws';
 import { AGENT_DIR } from '../lib/platform.js';
 import { requireAgentConfig } from '../lib/config.js';
 import { fetchAgentStatus } from '../lib/panel-api.js';
-import { extractPemFromP12, buildWsUrl } from '../lib/ws-helpers.js';
+import { extractPemFromP12, buildWsUrl, buildWsTlsOptions } from '../lib/ws-helpers.js';
 
 const RECORDINGS_DIR = path.join(AGENT_DIR, 'shell-recordings');
 const BLOCKLIST_PATH = path.join(AGENT_DIR, 'shell-blocklist.json');
@@ -197,14 +197,7 @@ async function connectRelay(config, agentLabel, pem) {
 
   console.log(chalk.dim(`  Connecting to relay: ${wsUrl}`));
 
-  const cert = await readFile(pem.certPath);
-  const key = await readFile(pem.keyPath);
-
-  const ws = new WebSocket(wsUrl, {
-    cert,
-    key,
-    rejectUnauthorized: false, // Accept self-signed server cert (same as curl -k)
-  });
+  const ws = new WebSocket(wsUrl, buildWsTlsOptions(pem));
 
   let tmuxStarted = false;
   let outputPoller = null;

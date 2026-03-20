@@ -1,8 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import WebSocket from 'ws';
 import { requireAgentConfig } from '../lib/config.js';
-import { extractPemFromP12, buildWsUrl } from '../lib/ws-helpers.js';
+import { extractPemFromP12, buildWsUrl, buildWsTlsOptions } from '../lib/ws-helpers.js';
 
 /**
  * Run the interactive shell client.
@@ -32,14 +31,7 @@ export async function runShell(args) {
 
   const wsUrl = buildWsUrl(config.panelUrl, `/api/shell/connect/${encodeURIComponent(agentLabel)}`);
 
-  const cert = await readFile(pem.certPath);
-  const key = await readFile(pem.keyPath);
-
-  const ws = new WebSocket(wsUrl, {
-    cert,
-    key,
-    rejectUnauthorized: false, // Accept self-signed server cert
-  });
+  const ws = new WebSocket(wsUrl, buildWsTlsOptions(pem));
 
   let connected = false;
   let rawModeSet = false;
