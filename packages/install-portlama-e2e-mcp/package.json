@@ -1,13 +1,13 @@
 {
   "name": "@lamalibre/install-portlama-e2e-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for Portlama E2E test infrastructure — VM lifecycle, snapshots, test execution",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.md",
   "author": "Code Lama Software",
   "main": "src/index.js",
   "bin": {
-    "install-portlama-e2e-mcp": "./bin/install-portlama-e2e-mcp.js"
+    "install-portlama-e2e-mcp": "bin/install-portlama-e2e-mcp.js"
   },
   "files": [
     "bin",
