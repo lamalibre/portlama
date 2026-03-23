@@ -8,6 +8,7 @@ dist/
 *.csr
 .DS_Store
 *.log
+*.tgz
 coverage/
 .vite/
 dev/panel.json

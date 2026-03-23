@@ -13,7 +13,8 @@ portlama/
 │   ├── portlama-agent/        @lamalibre/portlama-agent — Mac tunnel agent CLI
 │   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop agent (service discovery, tunnel management)
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
-│   └── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
+│   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
+│   └── install-portlama-e2e-mcp/ @lamalibre/install-portlama-e2e-mcp — npx installer + MCP server for E2E test infrastructure
 ├── tests/
 │   ├── e2e/                   Single-VM end-to-end tests
 │   └── e2e-three-vm/          Three-VM integration tests (Multipass)

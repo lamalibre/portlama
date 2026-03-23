@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add MCP server for E2E test infrastructure with 19 tools: VM lifecycle, snapshots, provisioning, test execution with dependency resolution, and two-tier logging
+- Add npx installer (`npx @lamalibre/install-portlama-e2e-mcp`) that auto-registers the MCP server with Claude Code via `claude mcp add`
+- Add VM resource profiles (production/development/performance) matching real deployment tiers
+- Add snapshot checkpoint system for fast VM state restore between test iterations
+- Add hot-reload tool for re-deploying individual packages to VMs without full reprovisioning
+- Add test dependency graph so individual tests can run with automatic prerequisite resolution
+- Add auto-discovery of test files from filesystem with git-tracked allowlist — only committed scripts matching `NN-name.sh` are executable
 - Add hardware-bound certificate enrollment for agents — private keys generated in macOS Keychain as non-extractable, enrolled via one-time tokens and CSR signing
 - Add `POST /api/certs/agent/enroll` admin endpoint to generate enrollment tokens (10-minute expiry, single-use)
 - Add `POST /api/enroll` public endpoint for agents to enroll with token + CSR (no mTLS required)
@@ -32,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Add domain parameter validation (regex) in E2E MCP to prevent shell injection in provisioning commands
+- Add path traversal protection on E2E MCP log and test result file reads
+- Add snapshot name validation in E2E MCP to prevent argument injection
+- Add restricted file permissions (0o700 dir, 0o600 files) for E2E MCP state files containing credentials
+- Add P12 password transfer via file in E2E MCP instead of command-line arguments to prevent process listing exposure
+- Add explicit environment variable allowlist in E2E MCP for child processes instead of forwarding full `process.env`
+- Add git-tracked file allowlist for test script execution — untracked or injected `.sh` files are rejected
 - Add timing-safe token comparison (`crypto.timingSafeEqual`) for enrollment tokens on public endpoint
 - Add mutex (`withTokenLock`) to serialize token creation and consumption, preventing TOCTOU races
 - Add CSR structural validation (`openssl req -verify`) before signing in both agent and admin paths
@@ -49,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `@lamalibre/portlama-agent` 1.0.5 → 1.0.6
 - `@lamalibre/portlama-desktop` 0.1.2 → 0.1.3
 - `@lamalibre/install-portlama-admin` — → 1.0.0 (new)
+- `@lamalibre/install-portlama-e2e-mcp` — → 0.1.0 (new)
 
 ## [Unreleased] - 2026-03-22
 
