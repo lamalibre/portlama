@@ -1,0 +1,14 @@
+{
+  "name": "@lamalibre/portlama-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "node prepare.js",
+    "dev": "node prepare.js && vitepress dev src",
+    "build": "node prepare.js && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  }
+}

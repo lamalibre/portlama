@@ -9,6 +9,8 @@
     "build": "npm run --workspaces --if-present build",
     "dev:server": "npm run dev -w packages/panel-server",
     "dev:client": "npm run dev -w packages/panel-client",
+    "docs:dev": "npm --prefix website run dev",
+    "docs:build": "npm --prefix website run build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
