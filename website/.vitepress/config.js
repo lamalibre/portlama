@@ -34,6 +34,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/00-introduction/what-is-portlama' },
       { text: 'API Reference', link: '/04-api-reference/overview' },
+      { text: 'E2E Results', link: '/e2e-results/single-vm-e2e' },
     ],
 
     socialLinks: [{ icon: 'github', link: 'https://github.com/lamalibre/portlama' }],

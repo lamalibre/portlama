@@ -9,7 +9,15 @@
  * Run before `vitepress build` or `vitepress dev`.
  */
 
-import { readFileSync, writeFileSync, cpSync, mkdirSync, rmSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  cpSync,
+  mkdirSync,
+  rmSync,
+  readdirSync,
+  existsSync,
+} from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,9 +47,106 @@ const sidebar = index.sections.map((section) => ({
   })),
 }));
 
+// 3. Copy E2E test results into src/e2e-results/
+const e2eSource = resolve(__dirname, '..', 'e2e-logs');
+const e2eDest = resolve(srcDir, 'e2e-results');
+
+/** Map of log filenames to sidebar display titles. */
+const SINGLE_VM_TESTS = [
+  ['single-test-01-fresh-install.md', '01 Fresh Install'],
+  ['single-test-02-mtls-enforcement.md', '02 mTLS Enforcement'],
+  ['single-test-03-onboarding-flow.md', '03 Onboarding Flow'],
+  ['single-test-04-tunnel-lifecycle.md', '04 Tunnel Lifecycle'],
+  ['single-test-05-user-lifecycle.md', '05 User Lifecycle'],
+  ['single-test-06-service-control.md', '06 Service Control'],
+  ['single-test-07-cert-renewal.md', '07 Cert Renewal'],
+  ['single-test-08-mtls-rotation.md', '08 mTLS Rotation'],
+  ['single-test-09-ip-fallback.md', '09 IP Fallback'],
+  ['single-test-10-resilience.md', '10 Resilience'],
+  ['single-test-11-input-validation.md', '11 Input Validation'],
+  ['single-test-12-user-invitations.md', '12 User Invitations'],
+  ['single-test-13-site-lifecycle.md', '13 Site Lifecycle'],
+  ['single-test-15-plugin-lifecycle.md', '15 Plugin Lifecycle'],
+  ['single-test-16-enrollment-tokens.md', '16 Enrollment Tokens'],
+];
+
+const THREE_VM_TESTS = [
+  ['test-01-onboarding-complete.md', '01 Onboarding Complete'],
+  ['test-02-tunnel-traffic.md', '02 Tunnel Traffic'],
+  ['test-03-tunnel-toggle-traffic.md', '03 Tunnel Toggle'],
+  ['test-04-authelia-auth.md', '04 Authelia Auth'],
+  ['test-05-admin-journey.md', '05 Admin Journey'],
+  ['test-06-tunnel-user-journey.md', '06 Tunnel User Journey'],
+  ['test-07-site-visitor-journey.md', '07 Site Visitor Journey'],
+  ['test-08-invitation-journey.md', '08 Invitation Journey'],
+  ['test-09-agent-site-deploy.md', '09 Agent Site Deploy'],
+  ['test-11-plugin-lifecycle.md', '11 Plugin Lifecycle'],
+  ['test-12-enrollment-lifecycle.md', '12 Enrollment Lifecycle'],
+];
+
+if (existsSync(e2eSource)) {
+  mkdirSync(e2eDest, { recursive: true });
+
+  // Copy summary files
+  for (const name of ['single-vm-e2e.md', 'three-vm-e2e.md']) {
+    const src = resolve(e2eSource, name);
+    if (existsSync(src)) cpSync(src, resolve(e2eDest, name));
+  }
+
+  // Copy individual test results
+  const allTests = [...SINGLE_VM_TESTS, ...THREE_VM_TESTS];
+  for (const [filename] of allTests) {
+    const src = resolve(e2eSource, filename);
+    if (existsSync(src)) cpSync(src, resolve(e2eDest, filename));
+  }
+
+  // Also copy setup/orchestration logs
+  for (const name of ['orchestrate.md', 'setup-host.md', 'setup-agent.md', 'setup-visitor.md']) {
+    const src = resolve(e2eSource, name);
+    if (existsSync(src)) cpSync(src, resolve(e2eDest, name));
+  }
+
+  console.log('Copied E2E test results');
+} else {
+  console.warn('e2e-logs/ not found — skipping E2E results');
+}
+
+// Build sidebar — docs sections + E2E results
+const e2eSidebarSections = [];
+
+if (existsSync(e2eSource)) {
+  const singleVmItems = [
+    { text: 'Summary', link: '/e2e-results/single-vm-e2e' },
+  ];
+  for (const [filename, title] of SINGLE_VM_TESTS) {
+    if (existsSync(resolve(e2eSource, filename))) {
+      singleVmItems.push({
+        text: title,
+        link: `/e2e-results/${filename.replace(/\.md$/, '')}`,
+      });
+    }
+  }
+  e2eSidebarSections.push({ text: 'E2E: Single-VM', items: singleVmItems });
+
+  const threeVmItems = [
+    { text: 'Summary', link: '/e2e-results/three-vm-e2e' },
+  ];
+  for (const [filename, title] of THREE_VM_TESTS) {
+    if (existsSync(resolve(e2eSource, filename))) {
+      threeVmItems.push({
+        text: title,
+        link: `/e2e-results/${filename.replace(/\.md$/, '')}`,
+      });
+    }
+  }
+  e2eSidebarSections.push({ text: 'E2E: Three-VM', items: threeVmItems });
+}
+
+const fullSidebar = [...sidebar, ...e2eSidebarSections];
+
 const sidebarPath = resolve(__dirname, '.vitepress', 'sidebar.json');
-writeFileSync(sidebarPath, JSON.stringify(sidebar, null, 2) + '\n');
-console.log(`Wrote ${sidebar.length} sidebar sections`);
+writeFileSync(sidebarPath, JSON.stringify(fullSidebar, null, 2) + '\n');
+console.log(`Wrote ${fullSidebar.length} sidebar sections`);
 
 // 3. Write landing page
 const landingPage = `---
