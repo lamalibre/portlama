@@ -40,8 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Affected packages:**
 
+- `@lamalibre/create-portlama` 1.0.31 → 1.0.32
 - `@lamalibre/portlama-panel-server` 0.1.6 → 0.1.8
 - `@lamalibre/portlama-panel-client` 0.1.4 → 0.1.6
+- `@lamalibre/install-portlama-e2e-mcp` 0.1.3 → 0.1.4
 - `@lamalibre/portlama-agent` 1.0.7 → 1.0.8
 
 ## [Unreleased] - 2026-03-24
