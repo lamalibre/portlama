@@ -216,6 +216,15 @@ if [ "$SKIP_SETUP" = "false" ]; then
   log_ok "Tarball ready: ${TARBALL}"
 
   # -----------------------------------------------------------------------
+  # 2a-bis: Build and pack portlama-agent tarball
+  # -----------------------------------------------------------------------
+  log_step "Packing portlama-agent tarball..."
+  AGENT_TARBALL=$(cd "${REPO_ROOT}/packages/portlama-agent" && npm pack --pack-destination /tmp 2>/dev/null | tail -1)
+  AGENT_TARBALL="/tmp/${AGENT_TARBALL}"
+  [ -f "$AGENT_TARBALL" ] || log_fatal "npm pack (portlama-agent) failed — tarball not found"
+  log_ok "Agent tarball ready: ${AGENT_TARBALL}"
+
+  # -----------------------------------------------------------------------
   # 2b: Install npm on host VM and run the installer
   # -----------------------------------------------------------------------
   log_step "Installing npm on ${VM_HOST}..."
@@ -277,7 +286,7 @@ if [ "$SKIP_SETUP" = "false" ]; then
   log_ok "Host VM setup complete"
 
   # -----------------------------------------------------------------------
-  # 2d: Extract credentials from host
+  # 2d: Extract credentials from host and create enrollment token
   # -----------------------------------------------------------------------
   log_info "Extracting credentials from ${VM_HOST}..."
   CREDS_JSON=$(multipass exec "${VM_HOST}" -- sudo cat /tmp/portlama-test-credentials.json 2>/dev/null || echo "{}")
@@ -285,26 +294,27 @@ if [ "$SKIP_SETUP" = "false" ]; then
   [ -n "$AGENT_P12_PASSWORD" ] || log_fatal "Could not extract agentP12Password from credentials"
   log_ok "Credentials extracted (agent P12 password obtained)"
 
+  log_step "Creating enrollment token on ${VM_HOST}..."
+  ENROLL_BODY='{"label":"test-agent-enrolled","capabilities":["tunnels:read","tunnels:write","services:read","services:write","system:read"]}'
+  ENROLL_B64=$(echo -n "$ENROLL_BODY" | base64)
+  TOKEN_RESPONSE=$(multipass exec "${VM_HOST}" -- sudo /tmp/vm-api-helper.sh POST "certs/agent/enroll" "$ENROLL_B64" 2>/dev/null || echo '{"ok":false}')
+  ENROLLMENT_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token // empty')
+  [ -n "$ENROLLMENT_TOKEN" ] || log_fatal "Could not create enrollment token"
+  log_ok "Enrollment token created"
+
   # -----------------------------------------------------------------------
-  # 2e: Transfer agent P12 to agent VM and run setup-agent.sh
+  # 2e: Transfer agent tarball to agent VM and run setup-agent.sh
   # -----------------------------------------------------------------------
-  log_info "Transferring agent P12 to ${VM_AGENT}..."
-  # Copy P12 to a readable location — multipass transfer runs as the ubuntu user
-  multipass exec "${VM_HOST}" -- sudo cp /etc/portlama/pki/agents/test-agent/client.p12 /tmp/agent-export.p12
-  multipass exec "${VM_HOST}" -- sudo chmod 644 /tmp/agent-export.p12
-  LOCAL_TMP_P12=$(mktemp /tmp/portlama-agent-XXXXXX)
-  multipass transfer "${VM_HOST}:/tmp/agent-export.p12" "${LOCAL_TMP_P12}" || \
-    log_fatal "Failed to transfer P12 from host"
-  multipass transfer "${LOCAL_TMP_P12}" "${VM_AGENT}:/tmp/agent.p12" || \
-    log_fatal "Failed to transfer P12 to agent"
-  rm -f "${LOCAL_TMP_P12}"
-  log_ok "Agent P12 transferred"
+  log_info "Transferring portlama-agent tarball to ${VM_AGENT}..."
+  multipass transfer "${AGENT_TARBALL}" "${VM_AGENT}:/tmp/portlama-agent.tgz" || \
+    log_fatal "Failed to transfer agent tarball"
+  log_ok "Agent tarball transferred"
 
   log_step "Running setup-agent.sh on ${VM_AGENT}..."
   set +e
   multipass exec "${VM_AGENT}" -- sudo \
     env "LOG_LEVEL=${LOG_LEVEL}" \
-    bash /tmp/e2e/setup-agent.sh "${HOST_IP}" "${TEST_DOMAIN}" "${AGENT_P12_PASSWORD}"
+    bash /tmp/e2e/setup-agent.sh "${HOST_IP}" "${TEST_DOMAIN}" "${ENROLLMENT_TOKEN}"
   SETUP_AGENT_RC=$?
   set -e
   multipass exec "${VM_AGENT}" -- sudo chmod 644 /tmp/setup-agent.md 2>/dev/null || true
@@ -338,6 +348,7 @@ else
   CREDS_JSON=$(multipass exec "${VM_HOST}" -- sudo cat /tmp/portlama-test-credentials.json 2>/dev/null || echo "{}")
   AGENT_P12_PASSWORD=$(echo "$CREDS_JSON" | jq -r '.agentP12Password // empty')
   [ -n "$AGENT_P12_PASSWORD" ] || log_fatal "Could not extract agentP12Password — was setup run?"
+  ENROLLMENT_TOKEN="" # Not needed when skipping setup
 fi
 
 # ============================================================================

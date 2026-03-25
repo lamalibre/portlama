@@ -42,7 +42,7 @@ Each service gets its own virtual host (vhost) — a configuration block that te
 | `panel.example.com`  | Panel server (`:3100`)      | mTLS client certificate            | 443  |
 | `auth.example.com`   | Authelia (`:9091`)          | None (it is the auth service)      | 443  |
 | `tunnel.example.com` | Chisel server (`:9090`)     | None (Chisel handles its own auth) | 443  |
-| `myapp.example.com`  | Chisel → your Mac (`:3000`) | Authelia TOTP 2FA                  | 443  |
+| `myapp.example.com`  | Chisel → your machine (`:3000`) | Authelia TOTP 2FA                  | 443  |
 
 ### When things go wrong
 

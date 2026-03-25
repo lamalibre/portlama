@@ -3,7 +3,7 @@ import { execa } from 'execa';
 import { readFile, writeFile, rename, open, mkdir, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { assertMacOS, AGENT_DIR } from '../lib/platform.js';
+import { assertSupportedPlatform, AGENT_DIR } from '../lib/platform.js';
 
 const PLUGINS_FILE = path.join(AGENT_DIR, 'plugins.json');
 
@@ -225,7 +225,7 @@ async function showStatus() {
  * Entry point for the plugin subcommand.
  */
 export async function runPlugin(args) {
-  assertMacOS();
+  assertSupportedPlatform();
 
   const subcommand = args[0];
   const target = args[1];

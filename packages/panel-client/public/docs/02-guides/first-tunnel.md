@@ -4,13 +4,13 @@
 
 ## In Plain English
 
-A tunnel connects a web app running on your local machine (behind your home router or office firewall) to a public URL on your Portlama server. Visitors go to `app.example.com`, and Portlama forwards the request through a secure WebSocket tunnel to your Mac, which serves the response. Your app never leaves your machine — only the traffic flows through the relay.
+A tunnel connects a web app running on your local machine (behind your home router or office firewall) to a public URL on your Portlama server. Visitors go to `app.example.com`, and Portlama forwards the request through a secure WebSocket tunnel to your machine, which serves the response. Your app never leaves your machine — only the traffic flows through the relay.
 
 ## Prerequisites
 
 - A completed [Portlama onboarding](onboarding.md) with your domain configured
-- A **web app running locally** on your Mac (or any machine) on a port between 1024 and 65535
-- The **Chisel client** installed on your Mac (see [Mac Client Setup](mac-client-setup.md) for installation)
+- A **web app running locally** on your machine (macOS or Linux) on a port between 1024 and 65535
+- The **Chisel client** installed on your machine (see [Mac Client Setup](mac-client-setup.md) for installation)
 
 For this guide, assume you have a web app running on `http://localhost:3000`.
 
@@ -68,7 +68,7 @@ When all four steps succeed, the new tunnel appears in the list with its subdoma
 
 ### 5. Update the Chisel Client on Your Mac
 
-After creating a tunnel, you need to update the Chisel client configuration on your Mac to include the new port mapping.
+After creating a tunnel, you need to update the agent configuration on your machine to include the new port mapping.
 
 Click the **Download Mac Plist** button at the top of the tunnels page. This downloads a `com.portlama.chisel.plist` file containing all current tunnel port mappings.
 
@@ -173,7 +173,7 @@ Browser → app.example.com:443
     → Authelia auth_request (checks session cookie / prompts login)
     → proxy_pass 127.0.0.1:3000
       → Chisel server (reverse tunnel)
-        → Chisel client (on your Mac)
+        → Chisel client (on your machine)
           → localhost:3000 (your app)
 ```
 

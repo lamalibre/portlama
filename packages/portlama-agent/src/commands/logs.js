@@ -1,14 +1,14 @@
 import { existsSync } from 'node:fs';
 import { execa } from 'execa';
 import chalk from 'chalk';
-import { assertMacOS, LOG_FILE, ERROR_LOG_FILE } from '../lib/platform.js';
+import { assertSupportedPlatform, LOG_FILE, ERROR_LOG_FILE } from '../lib/platform.js';
 
 /**
  * Stream chisel logs to the terminal.
  * Tails both stdout and stderr log files.
  */
 export async function runLogs() {
-  assertMacOS();
+  assertSupportedPlatform();
 
   const files = [];
   if (existsSync(LOG_FILE)) files.push(LOG_FILE);

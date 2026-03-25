@@ -6,6 +6,7 @@ import { writeAppVhost, removeAppVhost, enableAppVhost, disableAppVhost } from '
 import { updateChiselConfig } from '../../lib/chisel.js';
 import { issueTunnelCert } from '../../lib/certbot.js';
 import { generatePlist } from '../../lib/plist.js';
+import { buildChiselArgs } from '../../lib/chisel-args.js';
 
 const RESERVED_SUBDOMAINS = ['panel', 'auth', 'tunnel', 'www', 'mail', 'ftp', 'api'];
 
@@ -32,6 +33,42 @@ const CreateTunnelSchema = z.object({
 });
 
 export default async function tunnelRoutes(fastify, _opts) {
+  // GET /api/tunnels/agent-config — must be registered BEFORE /:id
+  fastify.get(
+    '/tunnels/agent-config',
+    {
+      preHandler: fastify.requireRole(['admin', 'agent'], { capability: 'tunnels:read' }),
+    },
+    async (request, reply) => {
+      try {
+        const config = getConfig();
+        const tunnels = await readTunnels();
+
+        if (!config.domain) {
+          return reply.code(400).send({ error: 'Domain not configured' });
+        }
+
+        const enabledTunnels = tunnels.filter((t) => t.enabled !== false);
+        const chiselArgs = buildChiselArgs(enabledTunnels, config.domain);
+
+        return {
+          domain: config.domain,
+          chiselServerUrl: `https://tunnel.${config.domain}:443`,
+          chiselArgs,
+          tunnels: enabledTunnels.map((t) => ({
+            port: t.port,
+            subdomain: t.subdomain,
+          })),
+        };
+      } catch (err) {
+        request.log.error(err, 'Failed to generate agent config');
+        return reply
+          .code(500)
+          .send({ error: 'Failed to generate agent config' });
+      }
+    },
+  );
+
   // GET /api/tunnels/mac-plist — must be registered BEFORE /:id
   fastify.get(
     '/tunnels/mac-plist',

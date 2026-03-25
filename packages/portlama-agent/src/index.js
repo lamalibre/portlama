@@ -9,7 +9,7 @@ function printHelp() {
   const d = chalk.dim;
 
   console.log(`
-${b('portlama-agent')} — Mac tunnel agent for Portlama
+${b('portlama-agent')} — tunnel agent for Portlama (macOS & Linux)
 
 ${b('USAGE')}
 
@@ -18,7 +18,7 @@ ${b('USAGE')}
 ${b('COMMANDS')}
 
   ${c('setup')}           Interactive setup: install Chisel, fetch tunnel config, start agent
-  ${c('update')}          Re-fetch plist from panel after tunnel changes
+  ${c('update')}          Re-fetch config from panel after tunnel changes
   ${c('uninstall')}       Stop agent and remove all files
   ${c('status')}          Show agent health, tunnel list, connection status
   ${c('logs')}            Stream Chisel log output (tail -f)
@@ -28,8 +28,11 @@ ${b('COMMANDS')}
 
 ${b('EXAMPLES')}
 
-  ${d('# First-time setup')}
+  ${d('# First-time setup (interactive)')}
   ${c('npx @lamalibre/portlama-agent setup')}
+
+  ${d('# Token-based setup (non-interactive)')}
+  ${c('PORTLAMA_ENROLLMENT_TOKEN=<token> portlama-agent setup --panel-url https://1.2.3.4:9292')}
 
   ${d('# After adding a tunnel on the panel')}
   ${c('portlama-agent update')}
@@ -52,9 +55,9 @@ ${b('EXAMPLES')}
 
 ${b('PREREQUISITES')}
 
-  ${d('•')} macOS (arm64 or x64)
-  ${d('•')} Agent certificate (.p12) generated from your Portlama panel
-    (Panel → Certificates → Agent Certificates → Generate)
+  ${d('•')} macOS (arm64 or x64) or Ubuntu Linux (arm64 or x64)
+  ${d('•')} Agent certificate (.p12) or enrollment token from your Portlama panel
+    (Panel → Certificates → Agent Certificates → Generate / Enroll)
   ${d('•')} Panel URL (e.g. https://1.2.3.4:9292)
 `);
   process.exit(0);

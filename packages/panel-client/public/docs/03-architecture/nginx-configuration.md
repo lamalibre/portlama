@@ -4,7 +4,7 @@
 
 ## In Plain English
 
-Every request to Portlama passes through nginx first. For the admin panel, nginx checks that your browser has a valid client certificate before letting the request through. For tunneled apps, nginx asks Authelia to verify the user's identity. For tunnel connections from your Mac, nginx upgrades the connection to a WebSocket and forwards it to the Chisel tunnel server.
+Every request to Portlama passes through nginx first. For the admin panel, nginx checks that your browser has a valid client certificate before letting the request through. For tunneled apps, nginx asks Authelia to verify the user's identity. For tunnel connections from your machine, nginx upgrades the connection to a WebSocket and forwards it to the Chisel tunnel server.
 
 nginx is the gatekeeper. The services behind it (Panel Server, Authelia, Chisel) all bind to `127.0.0.1` and are invisible from the internet. nginx is what makes them accessible — securely and selectively.
 

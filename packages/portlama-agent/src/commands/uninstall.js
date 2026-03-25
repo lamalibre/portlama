@@ -2,14 +2,14 @@ import { rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { Listr } from 'listr2';
 import chalk from 'chalk';
-import { assertMacOS, AGENT_DIR, PLIST_PATH } from '../lib/platform.js';
-import { isAgentLoaded, unloadAgent } from '../lib/launchctl.js';
+import { assertSupportedPlatform, AGENT_DIR, SERVICE_CONFIG_PATH, isLinux } from '../lib/platform.js';
+import { isAgentLoaded, unloadAgent } from '../lib/service.js';
 
 /**
- * Unload the agent, remove the plist, chisel binary, and config.
+ * Unload the agent, remove the service config, chisel binary, and config.
  */
 export async function runUninstall() {
-  assertMacOS();
+  assertSupportedPlatform();
 
   const tasks = new Listr(
     [
@@ -24,10 +24,14 @@ export async function runUninstall() {
         },
       },
       {
-        title: 'Removing plist file',
-        skip: () => !existsSync(PLIST_PATH) && 'Plist not found',
+        title: 'Removing service config',
+        skip: () => !existsSync(SERVICE_CONFIG_PATH) && 'Service config not found',
         task: async () => {
-          await rm(PLIST_PATH);
+          await rm(SERVICE_CONFIG_PATH);
+          if (isLinux()) {
+            const { execa } = await import('execa');
+            await execa('systemctl', ['daemon-reload']);
+          }
         },
       },
       {

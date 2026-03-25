@@ -1,7 +1,7 @@
 # @lamalibre/portlama-agent
 
-Mac tunnel agent for Portlama — installs a Chisel tunnel client and manages it
-as a macOS launchd agent.
+Tunnel agent for Portlama — manages a Chisel tunnel client as a system service
+on macOS (launchd) and Linux (systemd).
 
 ## Installation
 
@@ -10,16 +10,17 @@ npx @lamalibre/portlama-agent setup
 ```
 
 The setup command downloads the Chisel binary, configures the tunnel connection,
-installs a launchd plist, and starts the agent. The panel provides the
-connection details and an agent-scoped mTLS certificate.
+installs a system service (launchd plist on macOS, systemd unit on Linux), and
+starts the agent. The panel provides the connection details and an agent-scoped
+mTLS certificate.
 
 ## Commands
 
 | Command                            | Description                                |
 | ---------------------------------- | ------------------------------------------ |
 | `setup`                            | Install Chisel and configure the tunnel    |
-| `update`                           | Update Chisel binary to latest version     |
-| `uninstall`                        | Remove Chisel, plist, and configuration    |
+| `update`                           | Re-fetch config from panel and restart     |
+| `uninstall`                        | Remove Chisel, service, and configuration  |
 | `status`                           | Show tunnel connection status              |
 | `logs`                             | Display recent tunnel logs                 |
 | `sites`                            | List all static sites                      |
@@ -102,11 +103,11 @@ portlama-agent deploy blog ./dist
 
 ## Requirements
 
-| Requirement | Details                         |
-| ----------- | ------------------------------- |
-| OS          | macOS                           |
-| Node.js     | >= 20.0.0                       |
-| Access      | User account (no root required) |
+| Requirement | Details                                         |
+| ----------- | ----------------------------------------------- |
+| OS          | macOS or Ubuntu Linux (24.04 LTS)               |
+| Node.js     | >= 20.0.0                                       |
+| Access      | User account on macOS; root/sudo on Linux       |
 
 ## How It Works
 
@@ -115,8 +116,8 @@ certificate (not the admin certificate). It connects to the server's Chisel
 endpoint over WebSocket-over-HTTPS and exposes local ports as configured
 in the panel's tunnel settings.
 
-The launchd plist ensures the tunnel reconnects automatically after reboot
-or network changes.
+The system service (launchd on macOS, systemd on Linux) ensures the tunnel
+reconnects automatically after reboot or network changes.
 
 ## Further Reading
 

@@ -5,14 +5,15 @@ import { resolve } from 'node:path';
 import path from 'node:path';
 import { Listr } from 'listr2';
 import chalk from 'chalk';
-import { assertMacOS, CHISEL_BIN_DIR, LOGS_DIR, AGENT_DIR } from '../lib/platform.js';
+import { assertSupportedPlatform, isDarwin, CHISEL_BIN_DIR, LOGS_DIR, AGENT_DIR } from '../lib/platform.js';
 import { loadAgentConfig, saveAgentConfig } from '../lib/config.js';
-import { fetchHealth, fetchPlist, fetchTunnels, curlPostUnauthenticated } from '../lib/panel-api.js';
+import { fetchHealth, fetchAgentConfig, fetchTunnels, curlPostUnauthenticated } from '../lib/panel-api.js';
 import { extractPemFromP12, cleanupPemFiles } from '../lib/ws-helpers.js';
 import { installChisel } from '../lib/chisel.js';
-import { rewritePlist, writePlistFile } from '../lib/plist.js';
-import { isAgentLoaded, unloadAgent, loadAgent, getAgentPid } from '../lib/launchctl.js';
-import { generateKeypairAndCSR, importIdentityToKeychain, secureDelete } from '../lib/keychain.js';
+import { generateServiceConfig, writeServiceConfigFile } from '../lib/service-config.js';
+import { isAgentLoaded, unloadAgent, loadAgent, getAgentPid } from '../lib/service.js';
+import { generateKeypairAndCSR, secureDelete } from '../lib/keychain.js';
+import { storeEnrolledCert } from '../lib/cert-store.js';
 
 /**
  * Prompt for user input via readline.
@@ -38,6 +39,8 @@ function prompt(question, defaultValue) {
 
 /**
  * Parse --token and --panel-url flags from argv.
+ * Token can also be provided via PORTLAMA_ENROLLMENT_TOKEN env var
+ * to avoid exposure in process listings.
  * @returns {{ token?: string, panelUrl?: string }}
  */
 function parseSetupFlags() {
@@ -49,6 +52,10 @@ function parseSetupFlags() {
     } else if (args[i] === '--panel-url' && args[i + 1]) {
       flags.panelUrl = args[++i];
     }
+  }
+  // Prefer env var over CLI arg to keep token out of process listings
+  if (process.env.PORTLAMA_ENROLLMENT_TOKEN) {
+    flags.token = process.env.PORTLAMA_ENROLLMENT_TOKEN;
   }
   return flags;
 }
@@ -75,8 +82,8 @@ export async function runSetup() {
  * @param {{ token: string, panelUrl?: string }} flags
  */
 async function runTokenSetup(flags) {
-  // Step 1: Verify macOS
-  assertMacOS();
+  // Step 1: Verify supported platform
+  assertSupportedPlatform();
 
   // Check for existing config
   const existingConfig = await loadAgentConfig();
@@ -88,8 +95,10 @@ async function runTokenSetup(flags) {
   }
 
   console.log('');
-  console.log(chalk.bold('  Portlama Agent Setup (Hardware-Bound Certificate)'));
-  console.log(chalk.dim('  Connect this Mac to your Portlama server using a Keychain-bound certificate.'));
+  console.log(chalk.bold('  Portlama Agent Setup (Token-Based Enrollment)'));
+  console.log(chalk.dim(isDarwin()
+    ? '  Connect this Mac to your Portlama server using a Keychain-bound certificate.'
+    : '  Connect this machine to your Portlama server using a certificate.'));
   console.log('');
 
   let panelUrl = flags.panelUrl;
@@ -110,8 +119,10 @@ async function runTokenSetup(flags) {
     token: flags.token,
     agentLabel: null,
     keychainIdentity: null,
+    p12Path: null,
+    p12Password: null,
     chiselVersion: null,
-    plistXml: null,
+    serviceConfig: null,
     domain: null,
     tunnels: [],
   };
@@ -157,19 +168,25 @@ async function runTokenSetup(flags) {
         rendererOptions: { persistentOutput: true },
       },
       {
-        title: 'Importing certificate into Keychain',
+        title: isDarwin() ? 'Importing certificate into Keychain' : 'Storing certificate',
         task: async (_ctx, task) => {
           // The server overrides the CSR subject with the correct CN=agent:<label>
           // during signing, so the CSR placeholder subject doesn't matter.
-          const { identity } = await importIdentityToKeychain(
+          const result = await storeEnrolledCert(
             ctx._keyData.keyPath,
             ctx._certPem,
             ctx._caCertPem,
             ctx.agentLabel,
             console,
           );
-          ctx.keychainIdentity = identity;
-          task.output = `Identity "${identity}" imported (non-extractable)`;
+          if (result.identity) {
+            ctx.keychainIdentity = result.identity;
+            task.output = `Identity "${result.identity}" imported (non-extractable)`;
+          } else {
+            ctx.p12Path = result.p12Path;
+            ctx.p12Password = result.p12Password;
+            task.output = `Certificate stored at ${result.p12Path}`;
+          }
         },
         rendererOptions: { persistentOutput: true },
       },
@@ -183,12 +200,10 @@ async function runTokenSetup(flags) {
       {
         title: 'Verifying panel connectivity',
         task: async (_ctx, task) => {
-          const config = {
-            panelUrl: ctx.panelUrl,
-            authMethod: 'keychain',
-            keychainIdentity: ctx.keychainIdentity,
-          };
-          const health = await fetchHealth(config);
+          const authConfig = ctx.keychainIdentity
+            ? { panelUrl: ctx.panelUrl, authMethod: 'keychain', keychainIdentity: ctx.keychainIdentity }
+            : { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
+          const health = await fetchHealth(authConfig);
           task.output = `Panel is reachable (status: ${health.status || 'ok'})`;
         },
         rendererOptions: { persistentOutput: true },
@@ -209,30 +224,24 @@ async function runTokenSetup(flags) {
       {
         title: 'Fetching tunnel configuration',
         task: async (_ctx, task) => {
-          const config = {
-            panelUrl: ctx.panelUrl,
-            authMethod: 'keychain',
-            keychainIdentity: ctx.keychainIdentity,
-          };
-          const data = await fetchPlist(config);
-          ctx.plistXml = data.plist;
+          const authConfig = ctx.keychainIdentity
+            ? { panelUrl: ctx.panelUrl, authMethod: 'keychain', keychainIdentity: ctx.keychainIdentity }
+            : { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
 
-          const tunnelData = await fetchTunnels(config);
+          const agentConfig = await fetchAgentConfig(authConfig);
+          ctx.domain = agentConfig.domain;
+          ctx.serviceConfig = generateServiceConfig(agentConfig.chiselArgs);
+
+          const tunnelData = await fetchTunnels(authConfig);
           ctx.tunnels = tunnelData.tunnels || [];
           task.output = `${ctx.tunnels.length} tunnel(s) configured`;
         },
         rendererOptions: { persistentOutput: true },
       },
       {
-        title: 'Rewriting plist paths',
+        title: 'Writing service config',
         task: async () => {
-          ctx.plistXml = rewritePlist(ctx.plistXml);
-        },
-      },
-      {
-        title: 'Writing plist file',
-        task: async () => {
-          await writePlistFile(ctx.plistXml);
+          await writeServiceConfigFile(ctx.serviceConfig);
         },
       },
       {
@@ -247,13 +256,16 @@ async function runTokenSetup(flags) {
       },
       {
         title: 'Loading agent',
+        skip: () => ctx.tunnels.length === 0 && 'No tunnels configured — run portlama-agent update after creating tunnels',
         task: async () => {
           await loadAgent();
         },
       },
       {
         title: 'Verifying agent is running',
+        skip: () => ctx.tunnels.length === 0 && 'No tunnels configured',
         task: async (_ctx, task) => {
+          // Give the service manager a moment to start the process
           await new Promise((r) => setTimeout(r, 2000));
           const pid = await getAgentPid();
           if (pid) {
@@ -272,18 +284,24 @@ async function runTokenSetup(flags) {
       {
         title: 'Saving configuration',
         task: async () => {
-          const domainMatch = ctx.plistXml.match(/wss:\/\/tunnel\.([^:]+):/);
-          ctx.domain = domainMatch ? domainMatch[1] : null;
-
-          await saveAgentConfig({
+          const configData = {
             panelUrl: ctx.panelUrl,
-            authMethod: 'keychain',
-            keychainIdentity: ctx.keychainIdentity,
             agentLabel: ctx.agentLabel,
             domain: ctx.domain,
             chiselVersion: ctx.chiselVersion,
             setupAt: new Date().toISOString(),
-          });
+          };
+
+          if (ctx.keychainIdentity) {
+            configData.authMethod = 'keychain';
+            configData.keychainIdentity = ctx.keychainIdentity;
+          } else {
+            configData.authMethod = 'p12';
+            configData.p12Path = ctx.p12Path;
+            configData.p12Password = ctx.p12Password;
+          }
+
+          await saveAgentConfig(configData);
         },
       },
     ],
@@ -298,7 +316,7 @@ async function runTokenSetup(flags) {
     await tasks.run();
   } catch (err) {
     // Securely delete the temporary private key if it was generated but not
-    // yet imported into Keychain (importIdentityToKeychain handles its own cleanup).
+    // yet consumed by storeEnrolledCert (which handles its own cleanup).
     if (ctx._keyData?.keyPath) {
       await secureDelete(ctx._keyData.keyPath).catch(() => {});
     }
@@ -313,8 +331,8 @@ async function runTokenSetup(flags) {
  * Traditional P12-based setup flow.
  */
 async function runP12Setup() {
-  // Step 1: Verify macOS
-  assertMacOS();
+  // Step 1: Verify supported platform
+  assertSupportedPlatform();
 
   // Check for existing config
   const existingConfig = await loadAgentConfig();
@@ -328,7 +346,9 @@ async function runP12Setup() {
   // Step 2: Prompt credentials
   console.log('');
   console.log(chalk.bold('  Portlama Agent Setup'));
-  console.log(chalk.dim('  Connect this Mac to your Portlama server.'));
+  console.log(chalk.dim(isDarwin()
+    ? '  Connect this Mac to your Portlama server.'
+    : '  Connect this machine to your Portlama server.'));
   console.log('');
   console.log(chalk.dim('  The admin must generate an agent certificate from the panel first:'));
   console.log(chalk.dim('    Panel → Certificates → Agent Certificates → Generate'));
@@ -363,7 +383,7 @@ async function runP12Setup() {
     p12Path,
     p12Password,
     chiselVersion: null,
-    plistXml: null,
+    serviceConfig: null,
     domain: null,
     tunnels: [],
   };
@@ -415,8 +435,9 @@ async function runP12Setup() {
       {
         title: 'Fetching tunnel configuration',
         task: async (_ctx, task) => {
-          const data = await fetchPlist(ctx.panelUrl, ctx.p12Path, ctx.p12Password);
-          ctx.plistXml = data.plist;
+          const agentConfig = await fetchAgentConfig(ctx.panelUrl, ctx.p12Path, ctx.p12Password);
+          ctx.domain = agentConfig.domain;
+          ctx.serviceConfig = generateServiceConfig(agentConfig.chiselArgs);
 
           // Also fetch tunnel list for the summary
           const tunnelData = await fetchTunnels(ctx.panelUrl, ctx.p12Path, ctx.p12Password);
@@ -426,15 +447,9 @@ async function runP12Setup() {
         rendererOptions: { persistentOutput: true },
       },
       {
-        title: 'Rewriting plist paths',
+        title: 'Writing service config',
         task: async () => {
-          ctx.plistXml = rewritePlist(ctx.plistXml);
-        },
-      },
-      {
-        title: 'Writing plist file',
-        task: async () => {
-          await writePlistFile(ctx.plistXml);
+          await writeServiceConfigFile(ctx.serviceConfig);
         },
       },
       {
@@ -449,14 +464,16 @@ async function runP12Setup() {
       },
       {
         title: 'Loading agent',
+        skip: () => ctx.tunnels.length === 0 && 'No tunnels configured — run portlama-agent update after creating tunnels',
         task: async () => {
           await loadAgent();
         },
       },
       {
         title: 'Verifying agent is running',
+        skip: () => ctx.tunnels.length === 0 && 'No tunnels configured',
         task: async (_ctx, task) => {
-          // Give launchd a moment to start the process
+          // Give the service manager a moment to start the process
           await new Promise((r) => setTimeout(r, 2000));
           const pid = await getAgentPid();
           if (pid) {
@@ -475,10 +492,6 @@ async function runP12Setup() {
       {
         title: 'Saving configuration',
         task: async () => {
-          // Extract domain from the plist (look for wss://tunnel.<domain>)
-          const domainMatch = ctx.plistXml.match(/wss:\/\/tunnel\.([^:]+):/);
-          ctx.domain = domainMatch ? domainMatch[1] : null;
-
           await saveAgentConfig({
             panelUrl: ctx.panelUrl,
             authMethod: 'p12',

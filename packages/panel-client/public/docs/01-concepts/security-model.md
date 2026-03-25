@@ -70,9 +70,9 @@ The admin panel requires a client certificate at the TLS layer. Without the cert
 Portlama supports two types of certificates with different access levels:
 
 - **Admin certificate** — full access to all panel endpoints (for browser-based management)
-- **Agent certificate** — capability-based access (for Mac tunnel agents)
+- **Agent certificate** — capability-based access (for tunnel agents on macOS and Linux)
 
-Agent certificates are generated from the panel UI and should be used instead of the admin certificate when connecting Mac agents. Each agent is assigned granular capabilities that control what it can access:
+Agent certificates are generated from the panel UI and should be used instead of the admin certificate when connecting agents. Each agent is assigned granular capabilities that control what it can access:
 
 | Capability       | Grants                                     |
 | ---------------- | ------------------------------------------ |
@@ -88,7 +88,7 @@ Capabilities are stored server-side and can be updated without reissuing the cer
 
 In addition to capabilities, agent certificates support **per-site scoping** via `allowedSites`. Each agent has a list of site names it is permitted to access. When an agent calls `GET /api/sites`, it only sees sites in its `allowedSites` list. File operations (upload, list, delete) require both the relevant capability and the site name in the agent's `allowedSites`. The admin manages site assignments from **Panel** > **Certificates** > edit agent > **Site Access**, or via the `PATCH /api/certs/agent/:label/allowed-sites` endpoint.
 
-This two-level model (capabilities + site scoping) means that even if a Mac is compromised, the attacker is limited to whichever capabilities and sites were assigned to that agent — and the admin can revoke or reduce them immediately.
+This two-level model (capabilities + site scoping) means that even if a machine is compromised, the attacker is limited to whichever capabilities and sites were assigned to that agent — and the admin can revoke or reduce them immediately.
 
 mTLS is stronger than a login page because:
 

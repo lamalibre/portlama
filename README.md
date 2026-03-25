@@ -175,4 +175,4 @@ Portlama provides authentication and access control mechanisms, but no security 
 
 ## License
 
-[Polyform Noncommercial 1.0.0](LICENSE.md) — free for personal, academic, and noncommercial use. For commercial licensing, contact licence@codelama.com.tr.
+[Polyform Noncommercial 1.0.0](LICENSE.md) — free for personal, academic, and noncommercial use. For commercial licensing, contact license@codelama.com.tr.

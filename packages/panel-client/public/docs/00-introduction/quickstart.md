@@ -1,10 +1,10 @@
 # Quick Start
 
-> Go from zero to your first publicly accessible tunnel in about 10 minutes, using a $4 DigitalOcean droplet and your Mac.
+> Go from zero to your first publicly accessible tunnel in about 10 minutes, using a $4 DigitalOcean droplet and your Mac or Linux machine.
 
 ## In Plain English
 
-This guide walks you through the entire process of setting up Portlama. By the end, you will have a web app running on your Mac that anyone on the internet can access through your own domain, protected by two-factor authentication.
+This guide walks you through the entire process of setting up Portlama. By the end, you will have a web app running on your machine that anyone on the internet can access through your own domain, protected by two-factor authentication.
 
 Think of it as three steps: rent a storefront (create a droplet), set up the store (run the installer), and open for business (create a tunnel). The whole process takes about as long as making a cup of coffee.
 
@@ -441,7 +441,7 @@ scp root@203.0.113.42:/etc/portlama/pki/client.p12 .
 
 # 5. Complete onboarding wizard (domain, DNS, provision)
 # 6. Create tunnel in management panel
-# 7. Connect Chisel client on your Mac
+# 7. Connect tunnel agent on your machine
 # 8. Visit https://myapp.example.com
 # 9. Disconnect SSH forever
 ```

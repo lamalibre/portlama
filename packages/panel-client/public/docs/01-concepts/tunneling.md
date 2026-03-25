@@ -20,7 +20,7 @@ If the connection drops (internet hiccup, VPS restart, laptop sleep), the client
 
 Tunneling is the core of Portlama. Every time you create a tunnel in the management UI, you are telling Portlama to relay traffic from a subdomain on the internet to a specific port on your local machine.
 
-For example, if you run a web app on port 3000 of your Mac, you create a tunnel in the panel that maps `myapp.example.com` to port 3000. Visitors go to `https://myapp.example.com`, and Portlama relays their requests through the tunnel to your Mac's port 3000.
+For example, if you run a web app on port 3000 of your machine, you create a tunnel in the panel that maps `myapp.example.com` to port 3000. Visitors go to `https://myapp.example.com`, and Portlama relays their requests through the tunnel to your machine's port 3000.
 
 ### How a tunnel gets created
 
@@ -29,13 +29,13 @@ For example, if you run a web app on port 3000 of your Mac, you create a tunnel 
 3. Portlama issues a TLS certificate for `myapp.example.com` via Let's Encrypt
 4. Portlama writes an nginx vhost configuration to route `myapp.example.com` traffic
 5. Portlama restarts the tunnel server to pick up the new mapping
-6. You download the Mac client plist file and install it on your Mac
-7. The Mac client connects to the VPS and starts relaying traffic
+6. You run `portlama-agent setup` on your machine (or download the Mac plist manually)
+7. The agent connects to the VPS and starts relaying traffic
 
 ### What runs where
 
 ```
-Your Mac (behind firewall)           Internet            Your VPS ($4 droplet)
+Your machine (behind firewall)       Internet            Your VPS ($4 droplet)
 ┌─────────────────────┐                                 ┌──────────────────────┐
 │                     │                                 │                      │
 │  Web app (:3000)    │                                 │  nginx (TLS)         │
@@ -51,7 +51,7 @@ Your Mac (behind firewall)           Internet            Your VPS ($4 droplet)
 
 ### Auto-reconnect
 
-The Chisel client on your Mac runs as a launchd service. If the connection drops for any reason — network outage, VPS restart, laptop waking from sleep — it automatically reconnects within 5 seconds. You do not need to manually restart anything.
+The Chisel client runs as a system service (launchd on macOS, systemd on Linux). If the connection drops for any reason — network outage, VPS restart, laptop waking from sleep — it automatically reconnects within 5 seconds. You do not need to manually restart anything.
 
 ### Multiple tunnels
 
@@ -108,7 +108,7 @@ The server is not exposed directly to the internet. nginx terminates TLS on `tun
 
 ### Client configuration
 
-On the Mac, the Chisel client runs as a launchd service. The management panel generates a `.plist` file you download and install. The client command looks like:
+The Chisel client runs as a system service managed by `portlama-agent`. On macOS it uses a launchd plist; on Linux it uses a systemd unit. The client command looks like:
 
 ```bash
 chisel client --keepalive 25s \
@@ -133,9 +133,9 @@ Here is the complete path of an HTTP request through the tunnel:
 4. Chisel server:
    a. Receives the proxied request on local port 3000
    b. Forwards through WebSocket to the connected Chisel client
-5. Chisel client (on your Mac):
+5. Chisel client (on your machine):
    a. Receives the request from the WebSocket
-   b. Connects to localhost:3000 on the Mac
+   b. Connects to localhost:3000 on your machine
    c. Forwards the request to your web app
 6. Response travels back the same path in reverse
 ```
@@ -206,7 +206,7 @@ The binary is a single static Go executable with no runtime dependencies.
 Every tunnel creates a chain of port mappings:
 
 ```
-Public FQDN (443) → nginx vhost → Chisel server (local port) → WebSocket → Chisel client → localhost (Mac port)
+Public FQDN (443) → nginx vhost → Chisel server (local port) → WebSocket → Chisel client → localhost (local port)
 ```
 
 The Chisel server in `--reverse` mode does not need per-tunnel port entries in its own config. The client declares which ports to expose when it connects, and the server dynamically allocates local listeners. Restarting Chisel after adding a tunnel is done to ensure a clean state, but the server configuration itself stays the same.
@@ -218,7 +218,7 @@ The Chisel server in `--reverse` mode does not need per-tunnel port entries in i
 | Component          | Location | Port             | Role                                           |
 | ------------------ | -------- | ---------------- | ---------------------------------------------- |
 | Chisel server      | VPS      | `127.0.0.1:9090` | Accepts WebSocket connections from clients     |
-| Chisel client      | Mac      | outbound only    | Connects to VPS, exposes local ports           |
+| Chisel client      | Local    | outbound only    | Connects to VPS, exposes local ports           |
 | nginx tunnel vhost | VPS      | `443`            | TLS termination for `tunnel.example.com`       |
 | nginx app vhost    | VPS      | `443`            | TLS + Authelia auth for each `app.example.com` |
 
@@ -251,17 +251,43 @@ journalctl -u chisel -n 50 --no-pager
 sudo systemctl restart chisel
 ```
 
-### Mac launchd commands
+### Agent commands
+
+```bash
+# Set up the agent (interactive)
+npx @lamalibre/portlama-agent setup
+
+# Re-fetch config after tunnel changes
+portlama-agent update
+
+# Check agent status
+portlama-agent status
+
+# View logs
+portlama-agent logs
+```
+
+### macOS launchd commands
 
 ```bash
 # Load the tunnel service
-launchctl load ~/Library/LaunchAgents/com.portlama.tunnel.plist
+launchctl load ~/Library/LaunchAgents/com.portlama.chisel.plist
 
 # Unload the tunnel service
-launchctl unload ~/Library/LaunchAgents/com.portlama.tunnel.plist
+launchctl unload ~/Library/LaunchAgents/com.portlama.chisel.plist
 
 # Check if running
 launchctl list | grep portlama
+```
+
+### Linux systemd commands
+
+```bash
+# Check agent service status
+systemctl status portlama-chisel
+
+# View recent logs
+journalctl -u portlama-chisel -n 50 --no-pager
 ```
 
 ### Related documentation

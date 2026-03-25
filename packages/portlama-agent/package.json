@@ -1,7 +1,7 @@
 {
   "name": "@lamalibre/portlama-agent",
-  "version": "1.0.7",
-  "description": "Mac agent for Portlama — installs Chisel tunnel client and manages launchd agent",
+  "version": "1.0.8",
+  "description": "Tunnel agent for Portlama — manages Chisel tunnel client as a system service",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.md",
   "author": "Code Lama Software",
@@ -30,6 +30,9 @@
     "chisel",
     "macos",
     "launchd",
+    "linux",
+    "systemd",
+    "ubuntu",
     "agent"
   ],
   "dependencies": {

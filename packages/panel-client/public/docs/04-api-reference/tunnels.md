@@ -6,7 +6,7 @@
 
 A tunnel connects a web app running on your local machine (say, a development server on port 3000) to a public subdomain on your Portlama domain (like `app.example.com`). When someone visits that URL, the request travels through the tunnel back to your local machine.
 
-The tunnels API lets you create new tunnels, list existing ones, delete tunnels you no longer need, and download a macOS configuration file that keeps your local Chisel client connected automatically.
+The tunnels API lets you create new tunnels, list existing ones, delete tunnels you no longer need, download a platform-agnostic agent configuration, or download a macOS-specific plist file that keeps your local Chisel client connected automatically.
 
 ## Authentication
 
@@ -174,7 +174,7 @@ Return 201 with tunnel object
 
 Toggles a tunnel between enabled and disabled. When disabled, the tunnel's nginx vhost symlink is removed (config file is kept) and the tunnel is excluded from the Chisel server configuration. When re-enabled, the vhost is restored and Chisel is reconfigured.
 
-Only enabled tunnels are included in the Mac plist output.
+Only enabled tunnels are included in the agent config and Mac plist output.
 
 **Request:**
 
@@ -252,6 +252,50 @@ curl -s --cert client.p12:password \
 | ------ | ----------------------------------------------------- | ---------------------------------------- |
 | 404    | `{"error":"Tunnel not found"}`                        | No tunnel with the given UUID            |
 | 500    | `{"error":"Failed to delete tunnel","details":"..."}` | nginx, Chisel, or state operation failed |
+
+---
+
+### `GET /api/tunnels/agent-config`
+
+Returns platform-agnostic tunnel configuration for the portlama-agent CLI. Used by `portlama-agent setup` and `portlama-agent update` on both macOS and Linux.
+
+**Required capability:** `tunnels:read`
+
+**Request:**
+
+No request body.
+
+```bash
+curl -s --cert client.p12:password \
+  https://203.0.113.42:9292/api/tunnels/agent-config | jq
+```
+
+**Response (200):**
+
+```json
+{
+  "domain": "example.com",
+  "chiselServerUrl": "https://tunnel.example.com:443",
+  "chiselArgs": ["client", "--tls-skip-verify", "https://tunnel.example.com:443", "R:127.0.0.1:3000:127.0.0.1:3000"],
+  "tunnels": [
+    { "port": 3000, "subdomain": "app" }
+  ]
+}
+```
+
+| Field            | Type       | Description                                          |
+| ---------------- | ---------- | ---------------------------------------------------- |
+| `domain`         | `string`   | Base domain                                          |
+| `chiselServerUrl`| `string`   | Full URL to the Chisel server endpoint               |
+| `chiselArgs`     | `string[]` | Chisel client arguments (used to generate service config) |
+| `tunnels`        | `array`    | Enabled tunnels with port and subdomain              |
+
+**Errors:**
+
+| Status | Body                                        | When                    |
+| ------ | ------------------------------------------- | ----------------------- |
+| 400    | `{"error":"Domain not configured"}`         | Domain has not been set |
+| 500    | `{"error":"Failed to generate agent config"}` | Config generation failed |
 
 ---
 
@@ -335,6 +379,7 @@ curl -s --cert client.p12:password \
 | POST   | `/api/tunnels`                       | Create a tunnel (cert + vhost + chisel + state) |
 | PATCH  | `/api/tunnels/:id`                   | Toggle tunnel enabled/disabled                  |
 | DELETE | `/api/tunnels/:id`                   | Delete a tunnel by UUID                         |
+| GET    | `/api/tunnels/agent-config`          | Platform-agnostic agent config (macOS & Linux)  |
 | GET    | `/api/tunnels/mac-plist`             | Download launchd plist for Mac client           |
 | GET    | `/api/tunnels/mac-plist?format=json` | Get plist content and instructions as JSON      |
 

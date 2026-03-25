@@ -1,6 +1,6 @@
 import { createInterface } from 'node:readline';
 import chalk from 'chalk';
-import { assertMacOS } from '../lib/platform.js';
+import { assertSupportedPlatform } from '../lib/platform.js';
 import { requireAgentConfig } from '../lib/config.js';
 import { fetchSites, createSite, deleteSite } from '../lib/panel-api.js';
 import { formatBytes } from '../lib/format.js';
@@ -57,7 +57,7 @@ function parseFlags(args) {
  * @param {string[]} args
  */
 export async function runSites(args) {
-  assertMacOS();
+  assertSupportedPlatform();
   const config = await requireAgentConfig();
   const sub = args[0];
 

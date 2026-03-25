@@ -132,7 +132,7 @@ State is persisted in `/etc/portlama/panel.json` under the `onboarding` key.
 │                                                  │
 │  Next steps:                                     │
 │  1. Add your first tunnel                        │
-│  2. Configure the Mac agent                      │
+│  2. Configure the tunnel agent                   │
 │                                                  │
 │                    [Go to Dashboard →]            │
 └─────────────────────────────────────────────────┘

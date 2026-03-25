@@ -1,7 +1,7 @@
 import chalk from 'chalk';
-import { assertMacOS, CHISEL_BIN_PATH, PLIST_PATH, LOG_FILE, AGENT_DIR } from '../lib/platform.js';
+import { assertSupportedPlatform, CHISEL_BIN_PATH, SERVICE_CONFIG_PATH, LOG_FILE, AGENT_DIR } from '../lib/platform.js';
 import { loadAgentConfig } from '../lib/config.js';
-import { isAgentLoaded, getAgentPid } from '../lib/launchctl.js';
+import { isAgentLoaded, getAgentPid } from '../lib/service.js';
 import { getInstalledVersion } from '../lib/chisel.js';
 import { fetchTunnels } from '../lib/panel-api.js';
 import { existsSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs';
  * Print formatted status information about the agent.
  */
 export async function runStatus() {
-  assertMacOS();
+  assertSupportedPlatform();
 
   const b = chalk.bold;
   const c = chalk.cyan;
@@ -52,7 +52,7 @@ export async function runStatus() {
   );
 
   // Files
-  console.log(`  ${b('Plist:')}     ${existsSync(PLIST_PATH) ? g('present') : y('missing')}`);
+  console.log(`  ${b('Service:')}   ${existsSync(SERVICE_CONFIG_PATH) ? g('present') : y('missing')}`);
   console.log(`  ${b('Config:')}    ${existsSync(AGENT_DIR) ? g('present') : y('missing')}`);
   console.log(`  ${b('Logs:')}      ${d(LOG_FILE)}`);
 

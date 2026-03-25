@@ -88,16 +88,16 @@ If you are reading documentation and hit an unfamiliar term, this is the place t
 
 ### Chisel
 
-**Plain English:** A program that creates a secret tunnel between your Mac and the droplet. Web traffic goes through this tunnel disguised as normal HTTPS traffic, so firewalls and ISP filters do not block it.
+**Plain English:** A program that creates a secret tunnel between your machine and the droplet. Web traffic goes through this tunnel disguised as normal HTTPS traffic, so firewalls and ISP filters do not block it.
 
-**Technical:** Chisel is an open-source tunneling tool written in Go that creates TCP tunnels over WebSocket connections. In Portlama, the Chisel server runs on the droplet (binding `127.0.0.1:9090`) and the Chisel client runs on your Mac. The tunnel is established as a WebSocket upgrade inside a standard HTTPS connection, making it indistinguishable from normal web traffic to deep packet inspection (DPI) systems. The server uses approximately 20MB of RAM.
+**Technical:** Chisel is an open-source tunneling tool written in Go that creates TCP tunnels over WebSocket connections. In Portlama, the Chisel server runs on the droplet (binding `127.0.0.1:9090`) and the Chisel client runs on your machine (macOS or Linux). The tunnel is established as a WebSocket upgrade inside a standard HTTPS connection, making it indistinguishable from normal web traffic to deep packet inspection (DPI) systems. The server uses approximately 20MB of RAM.
 
 **Where it appears:**
 
 - Server binary: `/usr/local/bin/chisel`
 - Server systemd unit: `chisel.service`
 - Installed during onboarding provisioning
-- Client runs on your Mac (manual or via launchd plist)
+- Client runs on your machine (launchd on macOS, systemd on Linux)
 - Configured when tunnels are created through the panel
 
 ---
@@ -355,9 +355,9 @@ See also: [Client Certificate](#client-certificate), [CA](#ca-certificate-author
 
 ### Tunnel
 
-**Plain English:** A private passage between your Mac and the droplet. Web traffic travels through this passage so your local app is accessible from the internet, even though your Mac is behind a firewall.
+**Plain English:** A private passage between your machine and the droplet. Web traffic travels through this passage so your local app is accessible from the internet, even though your machine is behind a firewall.
 
-**Technical:** A reverse TCP tunnel established by the Chisel client connecting outbound from your Mac to the Chisel server on the droplet via a WebSocket-over-HTTPS connection. The "reverse" means the server-side port is forwarded to the client-side port. Each tunnel maps a subdomain (e.g., `myapp.example.com`) to a local port (e.g., `localhost:8001`). The tunnel is persistent — the Chisel client automatically reconnects on network interruptions.
+**Technical:** A reverse TCP tunnel established by the Chisel client connecting outbound from your machine to the Chisel server on the droplet via a WebSocket-over-HTTPS connection. The "reverse" means the server-side port is forwarded to the client-side port. Each tunnel maps a subdomain (e.g., `myapp.example.com`) to a local port (e.g., `localhost:8001`). The tunnel is persistent — the Chisel client automatically reconnects on network interruptions.
 
 **Where it appears:**
 
@@ -401,7 +401,7 @@ See also: [Client Certificate](#client-certificate), [CA](#ca-certificate-author
 
 **Plain English:** A persistent two-way communication channel between a browser (or program) and a server. Unlike normal web requests where you ask and get a response, a WebSocket stays open so both sides can send messages at any time.
 
-**Technical:** A protocol defined in RFC 6455 that provides full-duplex communication over a single TCP connection, initiated via an HTTP upgrade handshake. Portlama uses WebSockets in two places: (1) Chisel tunnels use WebSocket-over-HTTPS to carry TCP traffic between the Mac client and the droplet server, and (2) the panel server uses WebSockets for real-time features like live log streaming and provisioning progress. The key advantage of WebSocket-over-HTTPS for tunneling is that it is indistinguishable from normal web traffic, bypassing DPI and corporate firewalls.
+**Technical:** A protocol defined in RFC 6455 that provides full-duplex communication over a single TCP connection, initiated via an HTTP upgrade handshake. Portlama uses WebSockets in two places: (1) Chisel tunnels use WebSocket-over-HTTPS to carry TCP traffic between the local client and the droplet server, and (2) the panel server uses WebSockets for real-time features like live log streaming and provisioning progress. The key advantage of WebSocket-over-HTTPS for tunneling is that it is indistinguishable from normal web traffic, bypassing DPI and corporate firewalls.
 
 **Where it appears:**
 
@@ -454,7 +454,7 @@ See also: [Client Certificate](#client-certificate), [CA](#ca-certificate-author
 | [PKCS12](#pkcs12)                          | `.p12` file format for client certificate + key bundle     |
 | [Panel](#panel-panel-server--panel-client) | Admin UI (React SPA) + REST API (Fastify)                  |
 | [TOTP](#totp-time-based-one-time-password) | Six-digit codes from authenticator apps                    |
-| [Tunnel](#tunnel)                          | Reverse TCP tunnel from Mac to droplet via WebSocket       |
+| [Tunnel](#tunnel)                          | Reverse TCP tunnel from local machine to droplet via WebSocket |
 | [UFW](#ufw-uncomplicated-firewall)         | Firewall allowing only ports 22, 443, 9292                 |
 | [Vhost](#vhost-virtual-host)               | nginx server block routing by domain name                  |
 | [WebSocket](#websocket)                    | Full-duplex communication protocol (RFC 6455)              |

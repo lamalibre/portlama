@@ -216,22 +216,26 @@ export async function fetchHealth(panelUrlOrConfig, p12Path, p12Password) {
 }
 
 /**
- * Fetch the plist XML and metadata from the panel.
+ * Fetch the platform-agnostic agent config from the panel.
+ * Returns chiselArgs, domain, and tunnel metadata for any platform.
+ *
  * @param {string|object} panelUrlOrConfig
  * @param {string} [p12Path]
  * @param {string} [p12Password]
- * @returns {Promise<{ plist: string, instructions: object }>}
+ * @returns {Promise<{ domain: string, chiselServerUrl: string, chiselArgs: string[], tunnels: Array<{ port: number, subdomain: string }> }>}
  */
-export async function fetchPlist(panelUrlOrConfig, p12Path, p12Password) {
+export async function fetchAgentConfig(panelUrlOrConfig, p12Path, p12Password) {
   const panelUrl = resolvePanelUrl(panelUrlOrConfig);
-  const url = `${panelUrl}/api/tunnels/mac-plist?format=json`;
+  const url = `${panelUrl}/api/tunnels/agent-config`;
   try {
     const { stdout } = typeof panelUrlOrConfig === 'object'
       ? await curlAuthenticated(panelUrlOrConfig, [url])
       : await curlWithConfig(p12Path, p12Password, [url]);
     return JSON.parse(stdout);
   } catch (err) {
-    throw new Error(`Failed to fetch plist from panel. ` + `Details: ${err.stderr || err.message}`);
+    throw new Error(
+      `Failed to fetch agent config from panel. ` + `Details: ${err.stderr || err.message}`,
+    );
   }
 }
 

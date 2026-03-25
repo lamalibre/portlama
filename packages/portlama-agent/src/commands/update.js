@@ -1,22 +1,22 @@
 import { Listr } from 'listr2';
 import chalk from 'chalk';
-import { assertMacOS } from '../lib/platform.js';
+import { assertSupportedPlatform } from '../lib/platform.js';
 import { requireAgentConfig, saveAgentConfig } from '../lib/config.js';
-import { fetchPlist, fetchTunnels } from '../lib/panel-api.js';
-import { rewritePlist, writePlistFile } from '../lib/plist.js';
-import { isAgentLoaded, unloadAgent, loadAgent, getAgentPid } from '../lib/launchctl.js';
+import { fetchAgentConfig, fetchTunnels } from '../lib/panel-api.js';
+import { generateServiceConfig, writeServiceConfigFile } from '../lib/service-config.js';
+import { isAgentLoaded, unloadAgent, loadAgent, getAgentPid } from '../lib/service.js';
 
 /**
- * Re-fetch the plist from the panel and restart the agent.
+ * Re-fetch tunnel config from the panel and restart the agent.
  * Used after adding/removing tunnels on the panel.
  */
 export async function runUpdate() {
-  assertMacOS();
+  assertSupportedPlatform();
 
   const config = await requireAgentConfig();
 
   const ctx = {
-    plistXml: null,
+    serviceConfig: null,
     tunnels: [],
   };
 
@@ -25,8 +25,8 @@ export async function runUpdate() {
       {
         title: 'Fetching updated tunnel configuration',
         task: async (_ctx, task) => {
-          const data = await fetchPlist(config);
-          ctx.plistXml = data.plist;
+          const agentConfig = await fetchAgentConfig(config);
+          ctx.serviceConfig = generateServiceConfig(agentConfig.chiselArgs);
 
           const tunnelData = await fetchTunnels(config);
           ctx.tunnels = tunnelData.tunnels || [];
@@ -35,15 +35,9 @@ export async function runUpdate() {
         rendererOptions: { persistentOutput: true },
       },
       {
-        title: 'Rewriting plist paths',
+        title: 'Writing service config',
         task: async () => {
-          ctx.plistXml = rewritePlist(ctx.plistXml);
-        },
-      },
-      {
-        title: 'Writing plist file',
-        task: async () => {
-          await writePlistFile(ctx.plistXml);
+          await writeServiceConfigFile(ctx.serviceConfig);
         },
       },
       {

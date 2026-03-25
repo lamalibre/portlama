@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { Listr } from 'listr2';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { assertMacOS } from '../lib/platform.js';
+import { assertSupportedPlatform } from '../lib/platform.js';
 import { requireAgentConfig } from '../lib/config.js';
 import { fetchSites, fetchSiteFiles, deleteSiteFile, uploadSiteFiles } from '../lib/panel-api.js';
 import { formatBytes } from '../lib/format.js';
@@ -40,7 +40,7 @@ async function scanDirectory(dir, base = '') {
  * @param {string[]} args
  */
 export async function runDeploy(args) {
-  assertMacOS();
+  assertSupportedPlatform();
   const config = await requireAgentConfig();
 
   const target = args[0];

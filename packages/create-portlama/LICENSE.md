@@ -10,7 +10,7 @@ You may use, copy, modify, and distribute this software for any **noncommercial*
 
 ## Commercial Use
 
-Commercial use of this software requires a commercial license, available by contacting licence@codelama.com.tr.
+Commercial use of this software requires a commercial license, available by contacting license@codelama.com.tr.
 
 Commercial use includes, but is not limited to:
 

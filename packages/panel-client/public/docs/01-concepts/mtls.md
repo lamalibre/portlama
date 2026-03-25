@@ -95,7 +95,7 @@ If you lose access to the certificate and need a new one, you can rotate the cli
 
 ### Agent certificates
 
-When connecting a Mac to Portlama using `portlama-agent`, you should **not** use the admin certificate. Instead, generate a scoped agent certificate from the panel:
+When connecting a machine to Portlama using `portlama-agent`, you should **not** use the admin certificate. Instead, generate a scoped agent certificate from the panel:
 
 1. Open the Portlama panel → Certificates → Agent Certificates
 2. Click "Generate" and enter a label (e.g., `macbook-pro`)
@@ -117,7 +117,7 @@ Agent certificates have capability-based access. By default, a new agent can onl
 
 Capabilities are stored server-side, so changing what an agent can do does not require reissuing its certificate. Users, certificates, agent management, and logs always remain admin-only.
 
-If a Mac is compromised, the attacker is limited to whichever capabilities were assigned to that agent's certificate — and the admin can revoke or reduce capabilities at any time from the panel. The Mac agent will immediately lose access.
+If a machine is compromised, the attacker is limited to whichever capabilities were assigned to that agent's certificate — and the admin can revoke or reduce capabilities at any time from the panel. The agent will immediately lose access.
 
 ## For Developers
 
@@ -132,7 +132,7 @@ Portlama CA (self-signed, 10-year validity)
     │     └── Full panel access
     │
     └── Agent certificates (CN=agent:<label>, signed by CA, 2-year validity)
-          └── Capability-based access (one per Mac agent)
+          └── Capability-based access (one per agent)
 ```
 
 The CA (Certificate Authority) is self-signed because there is no need for external trust. The only party that needs to trust the CA is nginx on the same server. nginx is configured with the CA's public certificate and rejects any client certificate not signed by that CA.
@@ -406,7 +406,7 @@ if (alreadyProvisioned) {
 | ----------------------------------- | ----------- | -------- | ------------ | ----------------------------------- |
 | CA (`ca.crt`)                       | Self-signed | 10 years | 4096-bit RSA | Trust anchor for nginx              |
 | Admin (`client.crt`)                | CA          | 2 years  | 4096-bit RSA | Full panel access (browser)         |
-| Agent (`agents/<label>/client.crt`) | CA          | 2 years  | 4096-bit RSA | Capability-based access (Mac agent) |
+| Agent (`agents/<label>/client.crt`) | CA          | 2 years  | 4096-bit RSA | Capability-based access (agent)     |
 | Self-signed TLS                     | Self-signed | 10 years | 2048-bit RSA | HTTPS for IP access                 |
 
 ### File permissions

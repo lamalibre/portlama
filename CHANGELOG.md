@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-03-25
+
+### Added
+
+- Add Linux (Ubuntu) support to portlama-agent — systemd service management alongside existing macOS launchd support
+- Add platform-agnostic `GET /api/tunnels/agent-config` endpoint returning Chisel args, domain, and tunnel metadata for any platform
+- Add `service-config.js` module that generates plist (macOS) or systemd unit (Linux) from the same Chisel args
+- Add `service.js` unified service management abstraction dispatching to launchctl (macOS) or systemctl (Linux)
+- Add `cert-store.js` portable certificate storage — macOS Keychain (non-extractable) or Linux P12 file (mode 0600)
+- Add `PORTLAMA_ENROLLMENT_TOKEN` environment variable for token-based setup to avoid token exposure in process listings
+- Add `chisel-args.js` shared module on panel-server, extracting Chisel argument construction from plist generation for reuse
+
+### Changed
+
+- Update agent description from "Mac agent" to cross-platform "tunnel agent for Portlama"
+- Update all agent commands (`setup`, `update`, `status`, `uninstall`) to use platform-agnostic service and config abstractions
+- Update `fetchPlist` → `fetchAgentConfig` in agent panel-api module, consuming the new platform-agnostic endpoint
+- Update agent setup to detect platform and branch to Keychain import (macOS) or P12 file storage (Linux)
+- Update E2E test scripts and orchestrator for Linux agent provisioning
+
+### Security
+
+- Add Chisel argument validation in `service-config.js` — rejects control characters, enforces `127.0.0.1`-only tunnel bindings to prevent pivoting via compromised panel response
+
+**Affected packages:**
+
+- `@lamalibre/portlama-panel-server` 0.1.6 → 0.1.7
+- `@lamalibre/portlama-agent` 1.0.7 → 1.0.8
+
 ## [Unreleased] - 2026-03-24
 
 ### Added

@@ -62,19 +62,17 @@ cleanup() {
   # Stop HTTP server on agent
   agent_exec "pkill -f 'python3 -m http.server ${TUNNEL_PORT}' 2>/dev/null || true" 2>/dev/null || true
 
-  # Stop chisel client on agent
-  agent_exec "pkill -f 'chisel client' 2>/dev/null || true" 2>/dev/null || true
-
   # Remove /etc/hosts entry on agent
   agent_exec "sed -i '/${TUNNEL_FQDN}/d' /etc/hosts 2>/dev/null || true" 2>/dev/null || true
 
   # Remove test HTML file on agent
   agent_exec "rm -f /tmp/e2e-tunnel-index.html 2>/dev/null || true" 2>/dev/null || true
 
-  # Delete tunnel via API (if we have an ID)
+  # Delete tunnel via API (if we have an ID), then refresh agent
   if [ -n "$TUNNEL_ID" ] && [ "$TUNNEL_ID" != "null" ]; then
     host_api_delete "tunnels/${TUNNEL_ID}" 2>/dev/null || true
   fi
+  agent_exec "portlama-agent update 2>/dev/null || true" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -128,26 +126,21 @@ AGENT_HTTP_STATUS=$(agent_exec "curl -sf -o /dev/null -w '%{http_code}' --max-ti
 assert_eq "$AGENT_HTTP_STATUS" "200" "HTTP server running on agent at port ${TUNNEL_PORT}" || true
 
 # ---------------------------------------------------------------------------
-log_section "Start Chisel client on agent VM"
+log_section "Refresh agent config to pick up new tunnel"
 # ---------------------------------------------------------------------------
 
-# The chisel client connects to the tunnel endpoint on the host VM and creates
-# a reverse tunnel: remote port TUNNEL_PORT maps to agent's localhost:TUNNEL_PORT
-agent_exec "nohup chisel client --tls-skip-verify https://tunnel.${TEST_DOMAIN}:443 R:127.0.0.1:${TUNNEL_PORT}:127.0.0.1:${TUNNEL_PORT} &>/tmp/chisel-client.log & exit"
+# The portlama-agent manages the Chisel client as a systemd service.
+# Running 'update' fetches the latest tunnel config and restarts the service.
+agent_exec "portlama-agent update"
 
-# Wait for chisel to establish the tunnel
+# Wait for the tunnel to establish
 log_info "Waiting for Chisel tunnel to establish..."
 CHISEL_READY=false
 for i in $(seq 1 15); do
-  # Check if chisel process is still running and if the tunnel is established
-  CHISEL_RUNNING=$(agent_exec "pgrep -f 'chisel client' >/dev/null 2>&1 && echo yes || echo no")
-  if [ "$CHISEL_RUNNING" = "yes" ]; then
-    # Try to reach the tunneled port from the host VM directly (bypassing nginx/Authelia)
-    HOST_TUNNEL_CHECK=$(host_exec "curl -sf -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:${TUNNEL_PORT}/e2e-tunnel-index.html 2>/dev/null" || echo "000")
-    if [ "$HOST_TUNNEL_CHECK" = "200" ]; then
-      CHISEL_READY=true
-      break
-    fi
+  HOST_TUNNEL_CHECK=$(host_exec "curl -sf -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:${TUNNEL_PORT}/e2e-tunnel-index.html 2>/dev/null" || echo "000")
+  if [ "$HOST_TUNNEL_CHECK" = "200" ]; then
+    CHISEL_READY=true
+    break
   fi
   sleep 1
 done
@@ -156,8 +149,8 @@ if [ "$CHISEL_READY" = "true" ]; then
   log_pass "Chisel tunnel established (port ${TUNNEL_PORT} accessible on host)"
 else
   log_fail "Chisel tunnel failed to establish within 15 seconds"
-  CHISEL_LOG=$(agent_exec "cat /tmp/chisel-client.log 2>/dev/null || echo 'no log'")
-  log_info "Chisel client log: $CHISEL_LOG"
+  AGENT_LOG=$(agent_exec "tail -20 ~/.portlama/logs/chisel.log 2>/dev/null || echo 'no log'")
+  log_info "Chisel agent log: $AGENT_LOG"
 fi
 
 # ---------------------------------------------------------------------------

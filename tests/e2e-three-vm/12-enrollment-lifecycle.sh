@@ -22,7 +22,7 @@ require_commands multipass curl jq openssl
 # VM exec helpers
 # ---------------------------------------------------------------------------
 
-agent_exec() { multipass exec portlama-agent -- bash -c "$1"; }
+agent_exec() { multipass exec portlama-agent -- sudo bash -c "$1"; }
 
 # Use the vm-api-helper.sh on the host VM for reliable API calls.
 # It avoids quoting issues with multipass exec + sudo bash -c.
@@ -160,6 +160,34 @@ log_section "Enrolled agent in registry with hardware-bound method"
 AGENTS=$(host_api_get "certs/agent" || echo '{"agents":[]}')
 METHOD=$(echo "$AGENTS" | jq -r "[.agents[] | select(.label==\"${TOKEN_LABEL}\" and .revoked==false)] | last | .enrollmentMethod" 2>/dev/null || echo "unknown")
 assert_eq "$METHOD" "hardware-bound" "Agent shows enrollmentMethod: hardware-bound" || true
+
+# ---------------------------------------------------------------------------
+log_section "Verify portlama-agent status shows enrolled agent"
+# ---------------------------------------------------------------------------
+
+# The agent VM was enrolled during setup-agent.sh using portlama-agent setup --token.
+# Verify the portlama-agent CLI can report its status correctly.
+# Note: the agent may show "not loaded" if no tunnels are configured (chisel needs
+# at least one remote). We check for "Config: present" to confirm setup completed.
+AGENT_STATUS_OUTPUT=$(agent_exec "portlama-agent status 2>&1 || true")
+if echo "$AGENT_STATUS_OUTPUT" | grep -q "Config:.*present"; then
+  log_pass "portlama-agent status shows config present"
+else
+  log_fail "portlama-agent status does not show config present"
+  log_info "Status output: $AGENT_STATUS_OUTPUT"
+fi
+
+# Verify systemd service is enabled (it may not be active if no tunnels are configured)
+SYSTEMD_ENABLED=$(agent_exec "systemctl is-enabled portlama-chisel 2>/dev/null || echo disabled")
+if [ "$SYSTEMD_ENABLED" = "enabled" ]; then
+  log_pass "systemd service portlama-chisel is enabled"
+else
+  log_fail "systemd service portlama-chisel is $SYSTEMD_ENABLED (expected enabled)"
+fi
+
+# Verify agent config file exists
+CONFIG_EXISTS=$(agent_exec "test -f ~/.portlama/agent.json && echo yes || echo no")
+assert_eq "$CONFIG_EXISTS" "yes" "Agent config file exists after setup" || true
 
 # ---------------------------------------------------------------------------
 log_section "Clean up: revoke test agent"

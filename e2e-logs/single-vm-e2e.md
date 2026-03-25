@@ -1,6 +1,6 @@
 # Single-VM E2E Test Results
 
-> Run at `2026-03-24 09:37:16 UTC`
+> Run at `2026-03-25 09:20:45 UTC`
 
 
 ============================================================================
@@ -9,7 +9,7 @@
 
   BASE_URL:       https://127.0.0.1:9292
   SKIP_DNS_TESTS: 1
-  Date:           2026-03-24 09:37:16 UTC
+  Date:           2026-03-25 09:20:45 UTC
 
   Running: 01-fresh-install.sh
 
@@ -59,7 +59,7 @@
   [PASS] Request with untrusted cert rejected (HTTP 400)
 
 --- Certificate validity check ---
-  [PASS] Client certificate has valid expiry: notAfter=Mar 23 09:36:22 2028 GMT
+  [PASS] Client certificate has valid expiry: notAfter=Mar 24 09:19:35 2028 GMT
   [PASS] Client certificate is signed by the CA
 
 ============================================================================
@@ -101,13 +101,13 @@
   [PASS] Tunnel has an ID
   [PASS] Tunnel has an FQDN
   [PASS] Tunnel has a createdAt timestamp
-  [INFO] Created tunnel ID: 01934675-a03f-4662-9b62-a102c2172f1b
+  [INFO] Created tunnel ID: f988bf83-6180-47e1-bae7-899988a61f7c
 
 --- Verify tunnel in list ---
   [PASS] Tunnel appears in GET /api/tunnels
 
 --- Verify nginx configuration ---
-  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774345037
+  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774430445
   [PASS] nginx -t passes after tunnel creation
 
 --- Validation: reserved subdomain ---
@@ -294,17 +294,17 @@
 --- Pre-flight: check onboarding is complete ---
 
 --- Current cert fingerprint (before rotation) ---
-  [INFO] Current cert fingerprint: sha256 Fingerprint=D0:3F:4D:F8:82:52:EE:A3:41:4D:81:85:0B:93:C4:4C:D8:14:C0:20:97:90:88:9A:74:92:39:BE:DF:0E:0B:98
+  [INFO] Current cert fingerprint: sha256 Fingerprint=CF:46:1F:18:33:9D:EE:FC:12:37:06:21:42:60:6E:4A:2A:5D:6C:54:51:98:25:4E:98:83:4C:2D:A9:C3:BE:1D
 
 --- Rotate mTLS certificate ---
   [PASS] Rotation response contains p12 password
-  [PASS] Rotation response contains expiry: 2028-03-23T09:37:46.000Z
+  [PASS] Rotation response contains expiry: 2028-03-24T09:21:14.000Z
   [INFO] Rotation warning: Your current browser certificate is now invalid. Download and import the new certificate before closing this page.
 
 --- Download rotated certificate ---
   [PASS] Downloaded client.p12 (HTTP 200)
   [PASS] Downloaded file is a valid PKCS12
-  [INFO] New cert fingerprint: sha256 Fingerprint=1B:29:89:12:0D:87:4D:C7:2D:C9:C4:09:45:0E:0A:DA:BD:13:56:50:8C:AD:2B:15:1A:4B:C0:85:C7:D4:B0:5F
+  [INFO] New cert fingerprint: sha256 Fingerprint=75:8A:60:FD:9B:A8:DF:74:61:B9:73:08:E8:47:70:9A:28:A2:7D:F5:91:DE:A1:A3:76:AE:2B:6B:0F:75:96:92
   [PASS] New cert has different fingerprint than old cert
 
 --- Verify API access with current credentials ---
@@ -322,7 +322,7 @@
 
 
 --- Determine server IP ---
-  [INFO] Server IP: 192.168.2.217
+  [INFO] Server IP: 192.168.2.237
 
 --- Health endpoint via IP ---
   [PASS] Health endpoint accessible via IP:9292
@@ -524,7 +524,7 @@
   [PASS] Site has an ID
   [PASS] Site name matches
   [PASS] Site type is managed
-  [INFO] Created site: e2esite.test.portlama.local (ID: 1c960bde-1790-40cb-8de6-a25db598930c)
+  [INFO] Created site: e2esite.test.portlama.local (ID: a1e6600d-2767-4688-9cd7-b62641b6901c)
 
 --- Verify site in listing ---
   [PASS] Site appears in listing

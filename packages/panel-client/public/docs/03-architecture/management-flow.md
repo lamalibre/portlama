@@ -51,15 +51,11 @@ DELETE /api/tunnels/:id
   └─ response: { ok: true }
 ```
 
-**Mac Agent Integration:**
+**Agent Integration:**
 
-- "Download Mac Agent Config" button generates a launchd plist
-- Plist includes all current tunnel ports
-- Instructions shown for installing on Mac:
-  ```
-  cp portlama.plist ~/Library/LaunchAgents/
-  launchctl load ~/Library/LaunchAgents/portlama.plist
-  ```
+- `portlama-agent update` fetches the latest config via `GET /api/tunnels/agent-config` and restarts the service
+- On macOS, the agent writes a launchd plist; on Linux, a systemd unit
+- "Download Mac Agent Config" button generates a launchd plist for manual macOS setup
 
 ### Users (Authelia)
 
@@ -91,7 +87,7 @@ Track and manage all TLS certificates.
 1. **Let's Encrypt** — per-subdomain, auto-renewing via certbot
 2. **mTLS CA** — 10yr validity, internal
 3. **mTLS Admin** — 2yr validity, full panel access, importable to browser
-4. **mTLS Agent** — 2yr validity, capability-based access, issued per Mac agent
+4. **mTLS Agent** — 2yr validity, capability-based access, issued per agent
 
 **Actions:**
 
@@ -160,13 +156,14 @@ Host static websites directly on the Portlama server, served via nginx.
 
 ### Tunnel Management
 
-| Method | Path                     | Description                                    | Roles                          |
-| ------ | ------------------------ | ---------------------------------------------- | ------------------------------ |
-| GET    | `/api/tunnels`           | List all tunnels                               | admin, agent (`tunnels:read`)  |
-| POST   | `/api/tunnels`           | Add tunnel (triggers nginx + certbot + chisel) | admin, agent (`tunnels:write`) |
-| PATCH  | `/api/tunnels/:id`       | Toggle tunnel enabled/disabled                 | admin, agent (`tunnels:write`) |
-| DELETE | `/api/tunnels/:id`       | Remove tunnel                                  | admin, agent (`tunnels:write`) |
-| GET    | `/api/tunnels/mac-plist` | Download Mac launchd plist                     | admin, agent (`tunnels:read`)  |
+| Method | Path                          | Description                                    | Roles                          |
+| ------ | ----------------------------- | ---------------------------------------------- | ------------------------------ |
+| GET    | `/api/tunnels`                | List all tunnels                               | admin, agent                   |
+| POST   | `/api/tunnels`                | Add tunnel (triggers nginx + certbot + chisel) | admin, agent (`tunnels:write`) |
+| PATCH  | `/api/tunnels/:id`            | Toggle tunnel enabled/disabled                 | admin, agent (`tunnels:write`) |
+| DELETE | `/api/tunnels/:id`            | Remove tunnel                                  | admin, agent (`tunnels:write`) |
+| GET    | `/api/tunnels/agent-config`   | Platform-agnostic agent config                 | admin, agent (`tunnels:read`)  |
+| GET    | `/api/tunnels/mac-plist`      | Download Mac launchd plist                     | admin, agent                   |
 
 ### User Management
 

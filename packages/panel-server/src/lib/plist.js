@@ -1,3 +1,5 @@
+import { buildChiselArgs } from './chisel-args.js';
+
 /**
  * Generate a macOS launchd plist for the Chisel client.
  *
@@ -18,18 +20,12 @@ export function generatePlist(tunnels, domain) {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
 
+  const chiselArgs = buildChiselArgs(tunnels, domain);
+
   const programArgs = [
     '        <string>/usr/local/bin/chisel</string>',
-    '        <string>client</string>',
-    '        <string>--tls-skip-verify</string>',
-    `        <string>https://tunnel.${esc(domain)}:443</string>`,
+    ...chiselArgs.map((arg) => `        <string>${esc(arg)}</string>`),
   ];
-
-  for (const tunnel of tunnels) {
-    programArgs.push(
-      `        <string>R:127.0.0.1:${tunnel.port}:127.0.0.1:${tunnel.port}</string>`,
-    );
-  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

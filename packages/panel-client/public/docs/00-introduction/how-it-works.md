@@ -10,7 +10,7 @@ Now imagine you rent a tiny storefront on a busy street. You dig a private under
 
 That is Portlama in a nutshell:
 
-- **Your building** is your Mac (or any computer) running web apps behind a firewall.
+- **Your building** is your machine — a Mac or Linux box — running web apps behind a firewall.
 - **The storefront** is a $4/month DigitalOcean droplet with a public IP address.
 - **The underground passage** is an encrypted WebSocket tunnel (powered by Chisel).
 - **The attendant** is nginx, routing visitors to the right app.
@@ -22,7 +22,7 @@ The most unusual part: after you set up the storefront (a single command over SS
 
 You could rent a bigger server and deploy your apps there. But that means:
 
-- Paying for compute (your Mac is already sitting there, powered on)
+- Paying for compute (your machine is already sitting there, powered on)
 - Managing deployments, Docker, CI/CD pipelines
 - Migrating databases, file storage, environment configs
 - Losing access to local hardware (GPUs, attached drives, local network devices)
@@ -95,7 +95,7 @@ When someone visits `https://myapp.example.com`:
    ↓
 6. Chisel server sends it through the WebSocket tunnel
    ↓
-7. Chisel client on your Mac receives the request
+7. Chisel client on your machine receives the request
    ↓
 8. Chisel client forwards it to localhost:8001 (your app)
    ↓

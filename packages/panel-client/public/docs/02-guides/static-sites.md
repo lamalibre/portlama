@@ -296,7 +296,7 @@ As an alternative to the browser-based file management described above, you can 
 
 ### Prerequisites
 
-- The Portlama agent CLI installed on your Mac (see [Mac Client Setup](mac-client-setup.md))
+- The Portlama agent CLI installed on your machine (see [Mac Client Setup](mac-client-setup.md))
 - An agent certificate with `sites:read` and `sites:write` capabilities. Generate one from the panel: **Certificates** > **Agent Certificates** > **Generate**, and check the `sites:read` and `sites:write` capability boxes.
 - The agent certificate must have the target site listed in its **Site Access** configuration. The admin assigns sites to agents from **Panel** > **Certificates** > edit agent > **Site Access**.
 

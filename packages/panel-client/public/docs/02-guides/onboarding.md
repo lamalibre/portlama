@@ -104,7 +104,7 @@ The wizard displays a real-time progress view with six tasks:
 
 **Task 1 — Installing Chisel**
 
-Chisel is the tunneling engine. The provisioner downloads the Chisel binary, writes a systemd service configuration, and starts it. Chisel listens on `127.0.0.1:9090` for WebSocket connections from your Mac.
+Chisel is the tunneling engine. The provisioner downloads the Chisel binary, writes a systemd service configuration, and starts it. Chisel listens on `127.0.0.1:9090` for WebSocket connections from your machine.
 
 **Task 2 — Installing Authelia**
 

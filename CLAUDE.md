@@ -10,7 +10,7 @@ portlama/
 │   ├── create-portlama/       @lamalibre/create-portlama — zero-prompt installer CLI
 │   ├── panel-server/          @lamalibre/portlama-panel-server — Fastify REST API
 │   ├── panel-client/          @lamalibre/portlama-panel-client — React + Vite + Tailwind UI
-│   ├── portlama-agent/        @lamalibre/portlama-agent — Mac tunnel agent CLI
+│   ├── portlama-agent/        @lamalibre/portlama-agent — tunnel agent CLI (macOS & Linux)
 │   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop agent (service discovery, tunnel management)
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
 │   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
@@ -112,7 +112,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Plugins declare additional capabilities in their manifest (flat array or nested `{ agent: [...] }` — normalized to flat array internally); these are merged with base capabilities dynamically via `getValidCapabilities()`
 - Plugin management endpoints (install, enable, push install) are admin-only at the route level
 - Revoked certs tracked in `revoked.json`, rejected by middleware
-- Never give admin cert to Mac agents — generate scoped agent certs
+- Never give admin cert to agents — generate scoped agent certs
 
 **Plugin system:**
 
@@ -139,11 +139,12 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 ## Environment Variables
 
-| Variable          | Package      | Purpose                                                  |
-| ----------------- | ------------ | -------------------------------------------------------- |
-| `PORTLAMA_CONFIG` | panel-server | Path to panel.json (default: `/etc/portlama/panel.json`) |
-| `NODE_ENV`        | panel-server | `development` skips mTLS check                           |
+| Variable                    | Package        | Purpose                                                  |
+| --------------------------- | -------------- | -------------------------------------------------------- |
+| `PORTLAMA_CONFIG`           | panel-server   | Path to panel.json (default: `/etc/portlama/panel.json`) |
+| `NODE_ENV`                  | panel-server   | `development` skips mTLS check                           |
+| `PORTLAMA_ENROLLMENT_TOKEN` | portlama-agent | Enrollment token for `setup --token` (avoids process listing exposure) |
 
 ## License
 
-[Polyform Noncommercial 1.0.0](LICENSE.md). Commercial licensing: licence@codelama.com.tr
+[Polyform Noncommercial 1.0.0](LICENSE.md). Commercial licensing: license@codelama.com.tr

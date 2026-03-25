@@ -76,9 +76,6 @@ cleanup() {
   # Stop HTTP server on agent
   agent_exec "pkill -f 'python3 -m http.server ${TUNNEL_PORT}' 2>/dev/null || true" 2>/dev/null || true
 
-  # Stop chisel client on agent
-  agent_exec "pkill -f 'chisel client.*${TUNNEL_PORT}' 2>/dev/null || true" 2>/dev/null || true
-
   # Remove /etc/hosts entries on agent
   agent_exec "sed -i '/${TUNNEL_FQDN}/d' /etc/hosts 2>/dev/null || true" 2>/dev/null || true
 
@@ -89,10 +86,11 @@ cleanup() {
   visitor_exec "rm -f ${COOKIE_FILE} /tmp/e2e-journey-fake-cookies.txt 2>/dev/null || true" 2>/dev/null || true
   visitor_exec "sed -i '/${TUNNEL_FQDN}/d' /etc/hosts 2>/dev/null || true" 2>/dev/null || true
 
-  # Delete tunnel via API (if we have an ID)
+  # Delete tunnel via API (if we have an ID), then refresh agent
   if [ -n "$TUNNEL_ID" ] && [ "$TUNNEL_ID" != "null" ]; then
     host_api_delete "tunnels/${TUNNEL_ID}" 2>/dev/null || true
   fi
+  agent_exec "portlama-agent update 2>/dev/null || true" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -136,8 +134,8 @@ sleep 2
 AGENT_HTTP_STATUS=$(agent_exec "curl -sf -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:${TUNNEL_PORT}/e2e-journey-index.html 2>/dev/null" || echo "000")
 assert_eq "$AGENT_HTTP_STATUS" "200" "HTTP server running on agent at port ${TUNNEL_PORT}" || true
 
-# Start Chisel client on agent
-agent_exec "nohup chisel client --tls-skip-verify https://tunnel.${TEST_DOMAIN}:443 R:127.0.0.1:${TUNNEL_PORT}:127.0.0.1:${TUNNEL_PORT} &>/tmp/chisel-journey.log & exit"
+# Refresh agent config to pick up the new tunnel
+agent_exec "portlama-agent update"
 
 # Wait for tunnel to establish
 log_info "Waiting for Chisel tunnel to establish..."
@@ -155,8 +153,8 @@ if [ "$CHISEL_READY" = "true" ]; then
   log_pass "Chisel tunnel established (port ${TUNNEL_PORT} accessible on host)"
 else
   log_fail "Chisel tunnel failed to establish within 15 seconds"
-  CHISEL_LOG=$(agent_exec "cat /tmp/chisel-journey.log 2>/dev/null || echo 'no log'")
-  log_info "Chisel client log: $CHISEL_LOG"
+  AGENT_LOG=$(agent_exec "tail -20 ~/.portlama/logs/chisel.log 2>/dev/null || echo 'no log'")
+  log_info "Agent chisel log: $AGENT_LOG"
 fi
 
 # ---------------------------------------------------------------------------

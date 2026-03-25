@@ -55,7 +55,6 @@ begin_test "04 — Authelia Authentication (Three-VM)"
 cleanup() {
   log_info "Cleaning up test resources..."
   agent_exec "pkill -f 'python3 -m http.server ${TUNNEL_PORT}' 2>/dev/null || true" 2>/dev/null || true
-  agent_exec "pkill -f 'chisel client.*${TUNNEL_PORT}' 2>/dev/null || true" 2>/dev/null || true
   agent_exec "sed -i '/${TUNNEL_FQDN}/d' /etc/hosts 2>/dev/null || true" 2>/dev/null || true
   agent_exec "rm -f /tmp/e2e-auth-index.html 2>/dev/null || true" 2>/dev/null || true
   visitor_exec "rm -f /tmp/authelia-cookies-valid.txt /tmp/authelia-cookies-invalid.txt 2>/dev/null || true" 2>/dev/null || true
@@ -63,6 +62,7 @@ cleanup() {
   if [ -n "$TUNNEL_ID" ] && [ "$TUNNEL_ID" != "null" ]; then
     host_api_delete "tunnels/${TUNNEL_ID}" 2>/dev/null || true
   fi
+  agent_exec "portlama-agent update 2>/dev/null || true" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -101,8 +101,8 @@ agent_exec "echo '${MARKER}' > /tmp/e2e-auth-index.html"
 agent_exec "nohup python3 -m http.server ${TUNNEL_PORT} --bind 127.0.0.1 -d /tmp &>/dev/null & exit"
 sleep 2
 
-# Start Chisel client on agent
-agent_exec "nohup chisel client --tls-skip-verify https://tunnel.${TEST_DOMAIN}:443 R:127.0.0.1:${TUNNEL_PORT}:127.0.0.1:${TUNNEL_PORT} &>/tmp/chisel-auth.log & exit"
+# Refresh agent config to pick up the new tunnel
+agent_exec "portlama-agent update"
 
 # Wait for tunnel to establish
 log_info "Waiting for Chisel tunnel to establish..."
