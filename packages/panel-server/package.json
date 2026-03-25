@@ -1,6 +1,6 @@
 {
   "name": "@lamalibre/portlama-panel-server",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Portlama management panel backend",
   "private": true,
   "type": "module",
@@ -14,6 +14,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.0",
     "@fastify/multipart": "^9.4.0",
     "@fastify/static": "^8.0.0",

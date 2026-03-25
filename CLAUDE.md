@@ -86,7 +86,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 - Panel vhost: `ssl_verify_client optional` at server level, `if ($ssl_client_verify != SUCCESS) { return 496; }` at protected locations — public endpoints (`/api/enroll`, `/api/invite`) skip the check
 - All services bind `127.0.0.1` — nginx is the sole public-facing service
-- `https://<ip>:9292` always works (mTLS) — fallback if domain is lost
+- `https://<ip>:9292` always works (mTLS) — fallback if domain is lost. Exception: when panel 2FA is enabled, the IP vhost is disabled (domain-only access)
 - Secrets: `crypto.randomBytes`, never hardcoded
 - Onboarding endpoints: 410 Gone after completion
 - Management endpoints: 503 before onboarding completes
@@ -98,6 +98,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Dual auth: agent config `authMethod` is `'p12'` (default, backwards compatible) or `'keychain'`. Panel API functions accept both calling conventions.
 - Admin auth mode: panel.json `adminAuthMode` is `'p12'` (default) or `'hardware-bound'`. When hardware-bound, `GET /certs/mtls/download` and `POST /certs/mtls/rotate` return 410 Gone. Recovery: `sudo portlama-reset-admin` on the server (root-only CLI).
 - Admin upgrade: `POST /certs/admin/upgrade-to-hardware-bound` accepts CSR, signs with CA, revokes old admin cert, sets `adminAuthMode: 'hardware-bound'`. One-way operation — reversible only via DO root console.
+- Panel 2FA: opt-in TOTP two-factor authentication for admin panel (on top of mTLS). Config fields: `panel2fa: { enabled, secret, setupComplete }` and `sessionSecret` in `panel.json`. Agents bypass 2FA entirely (only admin cert holders need it). Enabling 2FA disables IP:9292 vhost (domain required). Session: HMAC-SHA256 signed cookie (`portlama_2fa_session`), 12h absolute expiry, 2h inactivity timeout, `HttpOnly`/`Secure`/`SameSite=Strict`. TOTP uses RFC 6238 with SHA-1, 30s period, +/-1 step drift window, replay protection. Rate limiting: 5 attempts / 2 min per IP, 5-min ban. Endpoints: `GET /settings/2fa` (status, exempt), `POST /settings/2fa/setup`, `POST /settings/2fa/confirm`, `POST /settings/2fa/verify` (exempt), `POST /settings/2fa/disable`. Recovery: `sudo portlama-reset-admin` clears 2FA, re-enables IP vhost, resets admin auth to P12. Middleware: `twofa-session.js` (Fastify plugin, runs after mTLS, before roleGuard). Dependency: `@fastify/cookie`.
 
 **Certificate scoping:**
 

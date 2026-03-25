@@ -1,11 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../lib/api.js';
 
 async function fetchOnboardingStatus() {
-  const response = await fetch('/api/onboarding/status');
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-  return response.json();
+  return apiFetch('/api/onboarding/status');
 }
 
 export function useOnboardingStatus() {

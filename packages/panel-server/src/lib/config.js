@@ -14,6 +14,12 @@ const ConfigSchema = z.object({
     .optional()
     .default(500 * 1024 * 1024),
   adminAuthMode: z.enum(['p12', 'hardware-bound']).optional().default('p12'),
+  panel2fa: z.object({
+    enabled: z.boolean(),
+    secret: z.string().nullable(),
+    setupComplete: z.boolean(),
+  }).optional().default({ enabled: false, secret: null, setupComplete: false }),
+  sessionSecret: z.string().nullable().optional().default(null),
   onboarding: z.object({
     status: z.enum(['FRESH', 'DOMAIN_SET', 'DNS_READY', 'PROVISIONING', 'COMPLETED']),
   }),
@@ -82,6 +88,8 @@ export async function updateConfig(patch) {
   for (const key of Object.keys(patch)) {
     if (key === 'onboarding' && typeof patch.onboarding === 'object' && patch.onboarding !== null) {
       merged.onboarding = { ...merged.onboarding, ...patch.onboarding };
+    } else if (key === 'panel2fa' && typeof patch.panel2fa === 'object' && patch.panel2fa !== null) {
+      merged.panel2fa = { ...merged.panel2fa, ...patch.panel2fa };
     } else {
       merged[key] = patch[key];
     }

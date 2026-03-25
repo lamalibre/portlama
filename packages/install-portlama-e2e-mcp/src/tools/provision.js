@@ -69,12 +69,21 @@ export const provisionHostTool = {
     const tarball = await packPackage('create-portlama');
     steps.push(`Packed installer: ${tarball}`);
 
-    // 2. Install npm on host
-    await mp.exec(VM_HOST, 'apt-get install -y npm', {
-      sudo: true,
-      timeout: 120_000,
-    });
-    steps.push('npm installed on host');
+    // 2. Ensure npm is available (NodeSource images ship with Node+npm)
+    const npmCheck = await mp.exec(VM_HOST, 'npm --version', { allowFailure: true });
+    if (npmCheck.exitCode !== 0) {
+      await mp.exec(VM_HOST, 'apt-get update', {
+        sudo: true,
+        timeout: 120_000,
+      });
+      await mp.exec(VM_HOST, 'apt-get install -y npm', {
+        sudo: true,
+        timeout: 120_000,
+      });
+      steps.push('npm installed on host');
+    } else {
+      steps.push(`npm already available (v${npmCheck.stdout.trim()})`);
+    }
 
     // 3. Transfer and install
     await mp.transfer(tarball, `${VM_HOST}:/tmp/create-portlama.tgz`);

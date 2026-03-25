@@ -21,12 +21,14 @@ Fastify Server (127.0.0.1:3100)
   │
   ├── Plugins
   │   ├── @fastify/cors
+  │   ├── @fastify/cookie
   │   ├── @fastify/multipart (50 MB limit)
   │   ├── @fastify/websocket
   │   └── @fastify/static (SPA serving)
   │
   ├── Middleware (onRequest hooks)
   │   ├── mtls.js          → Verify mTLS, check revocation, parse role
+  │   ├── twofa-session.js → Verify 2FA session cookie (after mTLS, before roleGuard)
   │   ├── role-guard.js    → Role-based access control (admin vs agent)
   │   └── onboarding-guard → Route access by onboarding state
   │
@@ -49,9 +51,9 @@ The server entry point follows a straightforward initialization sequence:
 
 ```
 1. loadConfig()          → Read and validate /etc/portlama/panel.json
-2. Register plugins      → CORS, multipart, websocket, static files
+2. Register plugins      → CORS, cookie, multipart, websocket, static files
 3. Register publicContext → Error handler + invite routes (no mTLS)
-4. Register protectedContext → mTLS + role-guard + error handler + health/onboarding/management routes
+4. Register protectedContext → mTLS + 2FA session + role-guard + error handler + health/onboarding/management routes
 5. Set 404 handler       → SPA fallback for non-API routes
 6. Listen on 127.0.0.1:3100
 7. Register shutdown handlers (SIGTERM, SIGINT)
@@ -68,7 +70,7 @@ The server entry point follows a straightforward initialization sequence:
 - `../../panel-client/dist` relative to server source (development)
 - `config.dataDir/panel-client/dist` as final fallback
 
-**CORS origin** is set to the domain-based panel URL if a domain is configured, otherwise the IP-based URL. This prevents cross-origin requests from unrelated domains.
+**CORS origin** includes the IP-based URL (`https://<ip>:9292`) always, plus the domain-based panel URL (`https://panel.<domain>`) when a domain is configured. This prevents cross-origin requests from unrelated domains.
 
 ## Middleware Pipeline
 
@@ -95,7 +97,22 @@ Registered as a global `onRequest` hook that runs on every request before route 
 
 - `GET /api/health` always bypasses mTLS verification (used by systemd, load balancers, and internal provisioning checks)
 
-In production, nginx's `ssl_verify_client on` directive rejects connections without a valid client certificate at the TLS level, before any HTTP request reaches the server. The middleware is a defense-in-depth measure that also performs revocation checking and role extraction.
+In production, nginx uses `ssl_verify_client optional` at the server level, with per-location enforcement via `if ($ssl_client_verify != SUCCESS) { return 496; }` on protected locations. Public endpoints (`/api/enroll`, `/api/invite`) skip this check. The server middleware is a defense-in-depth measure that also performs revocation checking and role extraction.
+
+### 2FA Session Guard (`middleware/twofa-session.js`)
+
+Registered as a Fastify plugin in the protected context, runs after mTLS verification and before the role guard. When built-in 2FA is enabled (`panel2fa.enabled` in `panel.json`), this middleware enforces that admin requests carry a valid session cookie.
+
+**Behavior:**
+
+- If 2FA is not enabled, the middleware is a no-op — all requests pass through
+- Agent requests (`request.certRole === 'agent'`) always bypass the 2FA check — agents authenticate via mTLS only
+- Health, 2FA status, and 2FA verification endpoints are exempt (`/api/health`, `/api/settings/2fa`, `/api/settings/2fa/verify`)
+- If an admin request lacks a valid session cookie, returns `401 { error: "2fa_required" }`
+- Session cookies are issued by the `POST /api/settings/2fa/verify` endpoint after a valid TOTP code is presented
+- Sessions are managed by `lib/session.js` using signed cookies (secret from `sessionSecret` in `panel.json`)
+
+The Fastify constructor sets `trustProxy: true` so that `X-Forwarded-*` headers from nginx are respected for secure cookie delivery.
 
 ### Onboarding Guard (`middleware/onboarding-guard.js`)
 
@@ -219,7 +236,12 @@ protectedContext (mTLS + role-guard):
         ├── GET    /api/certs/mtls/download
         ├── GET    /api/invitations
         ├── POST   /api/invitations
-        └── DELETE  /api/invitations/:id
+        ├── DELETE  /api/invitations/:id
+        ├── GET    /api/settings/2fa
+        ├── POST   /api/settings/2fa/setup
+        ├── POST   /api/settings/2fa/confirm
+        ├── POST   /api/settings/2fa/verify
+        └── POST   /api/settings/2fa/disable
 ```
 
 ### Onboarding Routes
@@ -264,6 +286,7 @@ export default async function managementRoutes(fastify, _opts) {
   await fastify.register(usersRoutes);
   await fastify.register(certsRoutes);
   await fastify.register(invitationRoutes);
+  await fastify.register(settingsRoutes);
 }
 ```
 
@@ -290,7 +313,13 @@ Config schema:
   maxSiteSize?: number,                            // Default: 500 MB
   onboarding: {
     status: "FRESH" | "DOMAIN_SET" | "DNS_READY" | "PROVISIONING" | "COMPLETED"
-  }
+  },
+  panel2fa?: {
+    enabled: boolean,                              // Default: false
+    secret: string | null,                         // TOTP secret (base32)
+    setupComplete: boolean                         // Default: false
+  },
+  sessionSecret?: string                           // HMAC key for signed session cookies
 }
 ```
 
@@ -330,6 +359,8 @@ Provides functions for writing, enabling, disabling, testing, and reloading ngin
 5. On success: `systemctl reload nginx`, delete backup
 6. On failure: restore backup, remove new file
 
+Additional functions `disableIpVhost()` and `enableIpVhost()` manage the IP-based panel vhost. When built-in 2FA is enabled, the IP vhost is disabled to prevent bypassing the domain-based 2FA session; disabling 2FA re-enables it.
+
 See [nginx-configuration.md](./nginx-configuration.md) for detailed coverage.
 
 ### chisel.js — Tunnel Server Management
@@ -344,7 +375,8 @@ See [nginx-configuration.md](./nginx-configuration.md) for detailed coverage.
 - Downloads Authelia binary from GitHub releases (`linux-amd64` tarball)
 - Writes YAML configuration (bcrypt cost 12, file-based users, TOTP, session cookies)
 - User CRUD: creates users with bcrypt-hashed passwords, reads/writes `users.yml`
-- TOTP generation: `crypto.randomBytes(20)` → base32-encoded secret → `otpauth://` URI
+- TOTP generation: `crypto.randomBytes(20)` → base32-encoded secret → `otpauth://` URI (parameterized `generateTotpSecret(username, { issuer })` — reused by panel 2FA via `lib/totp.js`)
+- `base32Decode()` utility for decoding base32 TOTP secrets into raw bytes
 - Manages service lifecycle
 
 ### certbot.js — Certificate Management
@@ -436,12 +468,14 @@ const shutdown = async (signal) => {
 | `packages/panel-server/src/middleware/mtls.js`               | mTLS verification, revocation check, role parsing              |
 | `packages/panel-server/src/middleware/role-guard.js`         | Role-based access control (admin vs agent capabilities)        |
 | `packages/panel-server/src/middleware/onboarding-guard.js`   | Route access control by onboarding state                       |
+| `packages/panel-server/src/middleware/twofa-session.js`      | 2FA session cookie verification (after mTLS, before roleGuard) |
 | `packages/panel-server/src/middleware/errors.js`             | Global error handler (Zod, AppError, 500)                      |
 | `packages/panel-server/src/routes/onboarding/index.js`       | Onboarding route registration + guard                          |
 | `packages/panel-server/src/routes/onboarding/provision.js`   | Provisioning POST + WebSocket stream                           |
 | `packages/panel-server/src/routes/invite.js`                 | Public invite acceptance routes (no mTLS)                      |
 | `packages/panel-server/src/routes/management.js`             | Management route registration + guard                          |
 | `packages/panel-server/src/routes/management/invitations.js` | Invitation CRUD (admin-only)                                   |
+| `packages/panel-server/src/routes/management/settings.js`    | 2FA settings: setup, confirm, verify, disable (admin-only)     |
 | `packages/panel-server/src/lib/config.js`                    | Config loading, validation (Zod), atomic update                |
 | `packages/panel-server/src/lib/state.js`                     | tunnels.json + sites.json + invitations.json atomic read/write |
 | `packages/panel-server/src/lib/revocation.js`                | Certificate revocation list management (revoked.json)          |
@@ -455,6 +489,8 @@ const shutdown = async (signal) => {
 | `packages/panel-server/src/lib/system-stats.js`              | CPU, memory, disk stats (cached)                               |
 | `packages/panel-server/src/lib/files.js`                     | Static site file operations with path validation               |
 | `packages/panel-server/src/lib/plist.js`                     | macOS launchd plist generator                                  |
+| `packages/panel-server/src/lib/totp.js`                      | TOTP code generation and verification                          |
+| `packages/panel-server/src/lib/session.js`                   | Signed session cookie creation and validation                  |
 | `packages/panel-server/src/lib/app-error.js`                 | Operational error class                                        |
 
 ## Design Decisions
@@ -473,7 +509,7 @@ At this scale (single admin, ~10 tunnels, ~5 users), JSON files provide faster a
 
 ### Why check mTLS in both nginx and the server?
 
-Defense-in-depth. nginx's `ssl_verify_client on` is the primary enforcement — it rejects connections at the TLS level before any HTTP processing. The server middleware is a secondary check in case nginx is misconfigured or bypassed. In development mode, the server middleware is the only check (and it is bypassed).
+Defense-in-depth. nginx's `ssl_verify_client optional` with per-location `if ($ssl_client_verify != SUCCESS) { return 496; }` is the primary enforcement — it rejects connections at the TLS level before any HTTP processing on protected locations. The server middleware is a secondary check in case nginx is misconfigured or bypassed. In development mode, the server middleware is the only check (and it is bypassed).
 
 ### Why does provisioning run in the background?
 

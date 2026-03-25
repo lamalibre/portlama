@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `cert-store.js` portable certificate storage — macOS Keychain (non-extractable) or Linux P12 file (mode 0600)
 - Add `PORTLAMA_ENROLLMENT_TOKEN` environment variable for token-based setup to avoid token exposure in process listings
 - Add `chisel-args.js` shared module on panel-server, extracting Chisel argument construction from plist generation for reuse
+- Add opt-in TOTP two-factor authentication for admin panel — setup, confirm, verify, and disable via Settings API
+- Add Settings page in panel UI with 2FA enable/disable toggle, QR code display, and verification modal
+- Add `twofa-session` Fastify middleware — runs after mTLS, before roleGuard, enforces 2FA session for admin cert holders
+- Add HMAC-SHA256 signed session cookie (`portlama_2fa_session`) with 12h absolute / 2h inactivity expiry
+- Add TOTP replay protection and +/-1 step drift window (RFC 6238, SHA-1, 30s period)
+- Add rate limiting on 2FA verify endpoint — 5 attempts per 2 minutes per IP, 5-minute ban
 
 ### Changed
 
@@ -24,14 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update `fetchPlist` → `fetchAgentConfig` in agent panel-api module, consuming the new platform-agnostic endpoint
 - Update agent setup to detect platform and branch to Keychain import (macOS) or P12 file storage (Linux)
 - Update E2E test scripts and orchestrator for Linux agent provisioning
+- Update `portlama-reset-admin` CLI to clear 2FA state and re-enable IP vhost on recovery
 
 ### Security
 
 - Add Chisel argument validation in `service-config.js` — rejects control characters, enforces `127.0.0.1`-only tunnel bindings to prevent pivoting via compromised panel response
+- Add IP:9292 vhost auto-disable when 2FA is enabled — forces domain-only access to prevent certificate-only bypass
+- Add agent cert (CN=agent:*) bypass for 2FA — agents never need a session cookie, only admin cert holders are challenged
 
 **Affected packages:**
 
-- `@lamalibre/portlama-panel-server` 0.1.6 → 0.1.7
+- `@lamalibre/portlama-panel-server` 0.1.6 → 0.1.8
+- `@lamalibre/portlama-panel-client` 0.1.4 → 0.1.6
 - `@lamalibre/portlama-agent` 1.0.7 → 1.0.8
 
 ## [Unreleased] - 2026-03-24

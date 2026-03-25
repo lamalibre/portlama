@@ -1,6 +1,6 @@
 # Portlama E2E: 07 — Certificate Renewal
 
-> Started at `2026-03-25 09:21:13 UTC`
+> Started at `2026-03-25 18:03:02 UTC`
 
 
 ## Pre-flight: check onboarding is complete
@@ -8,24 +8,24 @@
 
 ## List certificates
 
-✅ `09:21:13` GET /api/certs returns 6 certificates  
-✅ `09:21:13` Certificate has a type field  
-✅ `09:21:13` Certificate has a domain field  
-✅ `09:21:13` Certificate has an expiresAt field  
-✅ `09:21:13` Certificate has numeric daysUntilExpiry: 89  
+✅ `18:03:02` GET /api/certs returns 6 certificates  
+✅ `18:03:02` Certificate has a type field  
+✅ `18:03:02` Certificate has a domain field  
+✅ `18:03:02` Certificate has an expiresAt field  
+✅ `18:03:02` Certificate has numeric daysUntilExpiry: 89  
 
 ## Force renew certificate
 
-⏭️ `09:21:13` Certificate renewal requires real Let's Encrypt — skipping  
+⏭️ `18:03:02` Certificate renewal requires real Let's Encrypt — skipping  
 
 ## Renew nonexistent certificate
 
-⏭️ `09:21:13` Certbot test requires real infrastructure — skipping  
+⏭️ `18:03:02` Certbot test requires real infrastructure — skipping  
 
 ## Auto-renew timer status
 
-✅ `09:21:13` Certbot auto-renew timer is active  
-✅ `09:21:13` Auto-renew has a next run time  
+✅ `18:03:02` Certbot auto-renew timer is active  
+✅ `18:03:02` Auto-renew has a next run time  
 
 ---
 

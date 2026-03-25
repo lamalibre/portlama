@@ -156,7 +156,7 @@ async function main() {
   await unlink(`${PKI_DIR}/client.csr`).catch(() => {});
   await unlink(`${PKI_DIR}/ca.srl`).catch(() => {});
 
-  // 11. Set file permissions
+  // 12. Set file permissions
   await execa('chmod', ['600', `${PKI_DIR}/client.key`, `${PKI_DIR}/client.p12`]);
   await execa('chmod', ['644', `${PKI_DIR}/client.crt`]);
   await execa('chown', [
@@ -166,7 +166,7 @@ async function main() {
     `${PKI_DIR}/client.p12`,
   ]);
 
-  // 12. Revoke old cert (add to revocation list)
+  // 13. Revoke old cert (add to revocation list)
   if (oldSerial) {
     console.log('  Revoking old admin certificate...');
     const revocationPath = `${PKI_DIR}/revoked.json`;
@@ -189,7 +189,25 @@ async function main() {
     }
   }
 
-  // 13. Update config — set adminAuthMode back to p12
+  // 14. Clear 2FA if enabled
+  if (config.panel2fa && config.panel2fa.enabled) {
+    config.panel2fa = { enabled: false, secret: null, setupComplete: false };
+    config.sessionSecret = null;
+    console.log('  Two-factor authentication has been disabled.');
+  }
+
+  // 15. Re-enable IP vhost if it was disabled by 2FA
+  try {
+    const ipAvailable = '/etc/nginx/sites-available/portlama-panel-ip';
+    const ipEnabled = '/etc/nginx/sites-enabled/portlama-panel-ip';
+    await access(ipAvailable, constants.F_OK);
+    await execa('ln', ['-sf', ipAvailable, ipEnabled]);
+    console.log('  IP vhost re-enabled.');
+  } catch {
+    // IP vhost may not exist
+  }
+
+  // 16. Update config — set adminAuthMode back to p12
   console.log('  Updating panel configuration...');
   config.adminAuthMode = 'p12';
   const configTmp = `${CONFIG_PATH}.tmp`;
@@ -198,8 +216,9 @@ async function main() {
     mode: 0o640,
   });
   await rename(configTmp, CONFIG_PATH);
+  await execa('chown', ['portlama:portlama', CONFIG_PATH]);
 
-  // 14. Reload nginx
+  // 17. Reload nginx
   console.log('  Reloading nginx...');
   try {
     await execa('nginx', ['-t']);
@@ -210,10 +229,12 @@ async function main() {
     console.error('  You may need to restart nginx manually: systemctl restart nginx');
   }
 
-  // 15. Print result
+  // 18. Print result
   console.log('');
   console.log('  ============================================');
   console.log('  Admin certificate has been reset to P12.');
+  console.log('  Panel 2FA has been disabled (if it was on).');
+  console.log('  IP:9292 access has been restored.');
   console.log('');
   console.log(`  P12 Password: ${p12Password}`);
   console.log(`  P12 File:     ${PKI_DIR}/client.p12`);

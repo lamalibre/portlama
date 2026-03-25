@@ -42,6 +42,12 @@ export async function writePanelVhost(domain) {
   const config = `# Rate limit zone for public enrollment endpoint (5 requests/minute per IP)
 limit_req_zone $binary_remote_addr zone=enroll_domain:1m rate=5r/m;
 
+# WebSocket upgrade map — must be at http context level
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 443 ssl;
     server_name ${fqdn};
@@ -637,6 +643,34 @@ export async function disableAppVhost(subdomain) {
     throw new Error(`Nginx config test failed after disabling vhost ${name}: ${result.error}`);
   }
 
+  await reload();
+}
+
+/**
+ * Disable the IP-based panel vhost (used when 2FA is enabled).
+ * Tests nginx config before reloading; rolls back on failure.
+ */
+export async function disableIpVhost() {
+  await disableSite('portlama-panel-ip');
+  const result = await testConfig();
+  if (!result.valid) {
+    await enableSite('portlama-panel-ip');
+    throw new Error(`nginx test failed after disabling IP vhost: ${result.error}`);
+  }
+  await reload();
+}
+
+/**
+ * Re-enable the IP-based panel vhost (used when 2FA is disabled).
+ * Tests nginx config before reloading; rolls back on failure.
+ */
+export async function enableIpVhost() {
+  await enableSite('portlama-panel-ip');
+  const result = await testConfig();
+  if (!result.valid) {
+    await disableSite('portlama-panel-ip');
+    throw new Error(`nginx test failed after enabling IP vhost: ${result.error}`);
+  }
   await reload();
 }
 

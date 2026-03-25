@@ -32,6 +32,11 @@ The primary configuration file for the panel server. Created by the installer, u
 | `staticDir`         | string         | No       | —               | Path to panel-client dist directory                   |
 | `maxSiteSize`       | number         | No       | `524288000`     | Max static site upload size in bytes (500 MB)         |
 | `adminAuthMode`     | string         | No       | `"p12"`         | `"p12"` or `"hardware-bound"`. When `"hardware-bound"`, P12 download and rotation are disabled; admin authenticates via Keychain-backed certificate. |
+| `panel2fa`          | object         | No       | —               | Built-in TOTP 2FA configuration (see sub-fields below) |
+| `panel2fa.enabled`  | boolean        | No       | `false`         | Whether 2FA is active for admin panel access          |
+| `panel2fa.secret`   | string \| null | No       | `null`          | Base32-encoded TOTP secret                            |
+| `panel2fa.setupComplete` | boolean   | No       | `false`         | Whether the 2FA setup flow has been confirmed         |
+| `sessionSecret`     | string         | No       | —               | HMAC key for signing session cookies (auto-generated during 2FA setup) |
 | `onboarding.status` | enum           | Yes      | `FRESH`         | Current onboarding state                              |
 
 **Onboarding status values:**
@@ -72,6 +77,28 @@ The primary configuration file for the panel server. Created by the installer, u
   "onboarding": {
     "status": "COMPLETED"
   }
+}
+```
+
+**Example (with 2FA enabled):**
+
+```json
+{
+  "ip": "203.0.113.42",
+  "domain": "example.com",
+  "email": "admin@example.com",
+  "dataDir": "/etc/portlama",
+  "staticDir": "/opt/portlama/panel-client/dist",
+  "maxSiteSize": 524288000,
+  "onboarding": {
+    "status": "COMPLETED"
+  },
+  "panel2fa": {
+    "enabled": true,
+    "secret": "JBSWY3DPEHPK3PXP...",
+    "setupComplete": true
+  },
+  "sessionSecret": "a1b2c3d4..."
 }
 ```
 
@@ -283,9 +310,17 @@ Stores the randomly generated secrets used in the Authelia configuration. Backed
 
 ### `/etc/nginx/sites-available/portlama-panel-ip`
 
-The IP-based panel vhost. Created by the installer. Always active as a fallback.
+The IP-based panel vhost. Created by the installer. Active as a fallback unless panel 2FA is enabled, which disables it (domain-only access).
 
 ```nginx
+# Rate limit zone for public enrollment endpoint (5 requests/minute per IP)
+limit_req_zone $binary_remote_addr zone=enroll:1m rate=5r/m;
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 9292 ssl;
     server_name _;
@@ -305,22 +340,57 @@ server {
         internal;
     }
 
-    proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
-    proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-
+    # Protected locations — reject if client cert missing or invalid
     location / {
+        if ($ssl_client_verify != SUCCESS) {
+            return 496;
+        }
         proxy_pass http://127.0.0.1:3100;
+        proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
+        proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+        proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location /api {
+    # Public API paths — no mTLS check, cert headers cleared
+    location /api/enroll {
+        limit_req zone=enroll burst=5 nodelay;
         proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+        # ... standard proxy headers
+    }
+
+    location /api/invite {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+        # ... standard proxy headers
+    }
+
+    # API paths with WebSocket upgrade support (mTLS required)
+    location /api {
+        if ($ssl_client_verify != SUCCESS) {
+            return 496;
+        }
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
+        proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+        proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $connection_upgrade;
     }
 }
 ```
@@ -366,10 +436,10 @@ The mTLS configuration snippet included by all panel vhosts:
 
 ```nginx
 ssl_client_certificate /etc/portlama/pki/ca.crt;
-ssl_verify_client on;
+ssl_verify_client optional;
 ```
 
-This enforces client certificate verification at the TLS level. Connections without a valid client certificate signed by the Portlama CA are rejected before any HTTP processing occurs.
+This enables client certificate verification at the TLS level. The `optional` setting allows connections without a certificate (needed for public endpoints like `/api/enroll` and `/api/invite`). Protected locations enforce mTLS via `if ($ssl_client_verify != SUCCESS) { return 496; }` in each vhost's location blocks.
 
 ---
 

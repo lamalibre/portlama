@@ -1,6 +1,6 @@
 # Single-VM E2E Test Results
 
-> Run at `2026-03-25 09:20:45 UTC`
+> Run at `2026-03-25 18:02:33 UTC`
 
 
 ============================================================================
@@ -9,7 +9,7 @@
 
   BASE_URL:       https://127.0.0.1:9292
   SKIP_DNS_TESTS: 1
-  Date:           2026-03-25 09:20:45 UTC
+  Date:           2026-03-25 18:02:33 UTC
 
   Running: 01-fresh-install.sh
 
@@ -19,7 +19,7 @@
 
 
 --- Node.js installation ---
-  [PASS] Node.js installed: v20.20.1
+  [PASS] Node.js installed: v20.20.2
 
 --- Panel server service ---
   [PASS] portlama-panel service is active
@@ -59,7 +59,7 @@
   [PASS] Request with untrusted cert rejected (HTTP 400)
 
 --- Certificate validity check ---
-  [PASS] Client certificate has valid expiry: notAfter=Mar 24 09:19:35 2028 GMT
+  [PASS] Client certificate has valid expiry: notAfter=Mar 24 18:01:15 2028 GMT
   [PASS] Client certificate is signed by the CA
 
 ============================================================================
@@ -101,13 +101,13 @@
   [PASS] Tunnel has an ID
   [PASS] Tunnel has an FQDN
   [PASS] Tunnel has a createdAt timestamp
-  [INFO] Created tunnel ID: f988bf83-6180-47e1-bae7-899988a61f7c
+  [INFO] Created tunnel ID: 54ff055e-017f-4376-97b6-f3f4666c8c2a
 
 --- Verify tunnel in list ---
   [PASS] Tunnel appears in GET /api/tunnels
 
 --- Verify nginx configuration ---
-  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774430445
+  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774461754
   [PASS] nginx -t passes after tunnel creation
 
 --- Validation: reserved subdomain ---
@@ -294,17 +294,17 @@
 --- Pre-flight: check onboarding is complete ---
 
 --- Current cert fingerprint (before rotation) ---
-  [INFO] Current cert fingerprint: sha256 Fingerprint=CF:46:1F:18:33:9D:EE:FC:12:37:06:21:42:60:6E:4A:2A:5D:6C:54:51:98:25:4E:98:83:4C:2D:A9:C3:BE:1D
+  [INFO] Current cert fingerprint: sha256 Fingerprint=D3:04:73:AB:E6:13:51:83:8D:BD:DE:69:75:AB:BA:22:8E:73:0E:C9:72:C4:F6:C9:9D:94:9B:88:8B:F1:60:E7
 
 --- Rotate mTLS certificate ---
   [PASS] Rotation response contains p12 password
-  [PASS] Rotation response contains expiry: 2028-03-24T09:21:14.000Z
+  [PASS] Rotation response contains expiry: 2028-03-24T18:03:04.000Z
   [INFO] Rotation warning: Your current browser certificate is now invalid. Download and import the new certificate before closing this page.
 
 --- Download rotated certificate ---
   [PASS] Downloaded client.p12 (HTTP 200)
   [PASS] Downloaded file is a valid PKCS12
-  [INFO] New cert fingerprint: sha256 Fingerprint=75:8A:60:FD:9B:A8:DF:74:61:B9:73:08:E8:47:70:9A:28:A2:7D:F5:91:DE:A1:A3:76:AE:2B:6B:0F:75:96:92
+  [INFO] New cert fingerprint: sha256 Fingerprint=0A:9A:6E:F4:97:81:34:84:1D:3A:C0:C3:75:96:3F:4C:CF:2A:FB:83:66:1B:D2:73:6B:34:BE:FD:09:FF:F9:41
   [PASS] New cert has different fingerprint than old cert
 
 --- Verify API access with current credentials ---
@@ -322,7 +322,7 @@
 
 
 --- Determine server IP ---
-  [INFO] Server IP: 192.168.2.237
+  [INFO] Server IP: 192.168.2.8
 
 --- Health endpoint via IP ---
   [PASS] Health endpoint accessible via IP:9292
@@ -524,7 +524,7 @@
   [PASS] Site has an ID
   [PASS] Site name matches
   [PASS] Site type is managed
-  [INFO] Created site: e2esite.test.portlama.local (ID: a1e6600d-2767-4688-9cd7-b62641b6901c)
+  [INFO] Created site: e2esite.test.portlama.local (ID: 88e6afca-8fbe-454f-8d14-40d940b85ab6)
 
 --- Verify site in listing ---
   [PASS] Site appears in listing
@@ -725,6 +725,65 @@
   Results: 23 passed, 0 failed, 0 skipped (23 total)
 ============================================================================
 
+  Running: 17-panel-2fa.sh
+
+============================================================================
+ Portlama E2E: 17 — Panel Built-in TOTP 2FA
+============================================================================
+
+
+--- Pre-flight: check onboarding is complete ---
+
+--- Default state: 2FA disabled ---
+  [PASS] 2FA is disabled by default
+  [PASS] setupComplete is false by default
+
+--- Setup: generate TOTP secret ---
+  [PASS] Setup returns otpauth URI
+  [PASS] Setup returns manual key
+  [PASS] URI is valid otpauth format
+
+--- Confirm 2FA with valid code ---
+  [PASS] Generated TOTP code
+  [INFO] Generated TOTP code: 804530
+  [PASS] 2FA is now enabled
+  [PASS] Session cookie received on confirm
+  [PASS] Status shows enabled after confirm
+
+--- IP vhost disabled after enabling 2FA ---
+  [PASS] IP:9292 vhost is disabled (HTTP 000)
+
+--- Request without session returns 401 2fa_required ---
+  [PASS] Request without session cookie returns 401
+
+--- Authenticated request with session cookie ---
+  [PASS] Authenticated request with session cookie returns system stats
+
+--- Disable 2FA ---
+  [INFO] Waiting 29s for next TOTP window...
+  [PASS] 2FA disabled successfully
+
+--- IP vhost re-enabled after disabling 2FA ---
+  [PASS] IP:9292 vhost is re-enabled after disabling 2FA
+  [PASS] 2FA status is disabled
+
+--- Reset admin clears 2FA ---
+  [PASS] 2FA re-enabled for reset test
+
+  Download the P12 from the panel or copy it
+  manually from the server.
+  ============================================
+
+  [PASS] 2FA disabled after reset-admin
+  [PASS] IP vhost restored after reset-admin
+
+--- Rate limiting on wrong codes ---
+  [PASS] Rate limiting kicks in after 6 wrong attempts (HTTP 429)
+
+============================================================================
+  Results: 19 passed, 0 failed, 0 skipped (19 total)
+============================================================================
+
 
 ============================================================================
   Test Suite Summary
@@ -745,7 +804,8 @@
   [PASS] 13-site-lifecycle.sh
   [PASS] 15-plugin-lifecycle.sh
   [PASS] 16-enrollment-tokens.sh
+  [PASS] 17-panel-2fa.sh
 
-  Total: 15 tests — 15 passed, 0 failed
+  Total: 16 tests — 16 passed, 0 failed
 
   SUITE PASSED

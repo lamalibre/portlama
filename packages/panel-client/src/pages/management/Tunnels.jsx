@@ -13,42 +13,32 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../components/Toast.jsx';
 import { useOnboardingStatus } from '../../hooks/useOnboardingStatus.js';
+import { apiFetch, TWO_FA_REQUIRED_EVENT } from '../../lib/api.js';
 
 // --- API functions ---
 
 async function fetchTunnels() {
-  const res = await fetch('/api/tunnels');
-  if (!res.ok) throw new Error('Failed to fetch tunnels');
-  return res.json();
+  return apiFetch('/api/tunnels');
 }
 
 async function createTunnel(body) {
-  const res = await fetch('/api/tunnels', {
+  return apiFetch('/api/tunnels', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to create tunnel');
-  return data;
 }
 
 async function deleteTunnel(id) {
-  const res = await fetch(`/api/tunnels/${id}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to delete tunnel');
-  return data;
+  return apiFetch(`/api/tunnels/${id}`, { method: 'DELETE' });
 }
 
 async function toggleTunnel(id, enabled) {
-  const res = await fetch(`/api/tunnels/${id}`, {
+  return apiFetch(`/api/tunnels/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ enabled }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to toggle tunnel');
-  return data;
 }
 
 // --- Relative time helper ---
@@ -468,6 +458,15 @@ function MacConfigSection({ hasTunnels }) {
   const handleDownload = useCallback(async () => {
     try {
       const res = await fetch('/api/tunnels/mac-plist');
+      if (res.status === 401) {
+        try {
+          const body = await res.clone().json();
+          if (body.error === '2fa_required') {
+            window.dispatchEvent(new CustomEvent(TWO_FA_REQUIRED_EVENT));
+            return;
+          }
+        } catch { /* not JSON */ }
+      }
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

@@ -22,7 +22,7 @@ Things break. Domains expire, certificates lapse, services crash, and servers ru
 
 **Recovery:**
 
-1. **Access the panel via IP.** This is the key design principle of Portlama: `https://<ip>:9292` always works, regardless of DNS state. Open:
+1. **Access the panel via IP.** This is the key design principle of Portlama: `https://<ip>:9292` always works, regardless of DNS state (unless the optional panel 2FA is enabled, which disables the IP vhost — see Scenario 6 for recovery). Open:
 
 ```
 https://203.0.113.42:9292
@@ -264,9 +264,9 @@ scp root@203.0.113.42:/etc/portlama/pki/client.p12 .
 
 6. **Import into your browser** following the steps in [Certificate Management](certificate-management.md).
 
-### Scenario 6: Admin Certificate Lost (Hardware-Bound)
+### Scenario 6: Admin Certificate Lost (Hardware-Bound) or 2FA Locked Out
 
-**Symptoms:** You use hardware-bound admin authentication and have lost access due to machine failure, Keychain corruption, or macOS reinstall. The panel rejects your requests because the private key no longer exists.
+**Symptoms:** You use hardware-bound admin authentication and have lost access due to machine failure, Keychain corruption, or macOS reinstall. Or you enabled the optional panel 2FA and lost your authenticator device. The panel rejects your requests because the private key no longer exists or you cannot provide the TOTP code.
 
 **Recovery:**
 
@@ -278,9 +278,16 @@ scp root@203.0.113.42:/etc/portlama/pki/client.p12 .
 sudo portlama-reset-admin
 ```
 
-This generates a new P12 admin certificate, reverts the panel to P12 auth mode, and prints the new certificate password. Download the `.p12` file via SCP and import it into your browser.
+This command performs a full admin access reset:
 
-3. **Optionally re-enroll with hardware-bound auth** from the panel once you have access again.
+- Generates a new P12 admin certificate and reverts to P12 auth mode
+- **Clears any panel 2FA configuration** (disables the TOTP requirement)
+- **Re-enables the IP-based vhost** (`https://<IP>:9292`) if it was disabled by 2FA
+- Prints the new certificate password
+
+Download the `.p12` file via SCP and import it into your browser.
+
+3. **Optionally re-enroll with hardware-bound auth and/or re-enable panel 2FA** from the panel once you have access again.
 
 ### Scenario 7: SSH Fallback (Last Resort)
 
@@ -346,7 +353,7 @@ nginx -t
 
 Portlama is architected for recovery:
 
-- **IP:9292 always works.** The IP-based panel vhost uses a self-signed certificate with 10-year validity and is independent of DNS or Let's Encrypt. Even if every domain-based service fails, the admin panel is accessible.
+- **IP:9292 always works (unless panel 2FA is enabled).** The IP-based panel vhost uses a self-signed certificate with 10-year validity and is independent of DNS or Let's Encrypt. Even if every domain-based service fails, the admin panel is accessible. When the optional panel 2FA is enabled, the IP vhost is disabled (domain-only access). Running `sudo portlama-reset-admin` clears 2FA and re-enables the IP vhost.
 - **Systemd restarts.** All services (`portlama-panel`, `chisel`, `authelia`) have `Restart=always` and `RestartSec=5` in their systemd units. A single crash is invisible to the user.
 - **Atomic writes.** Configuration files (`panel.json`, `tunnels.json`, `sites.json`, `users.yml`) are written atomically (write to temp file, fsync, rename). A crash during write leaves the previous version intact.
 - **State in flat files.** No database means no database corruption. JSON files and YAML files are human-readable and easy to repair manually.
@@ -384,6 +391,7 @@ When multiple things are broken, fix in this order:
 | Memory issues         | Check Dashboard, restart services     | Maybe       |
 | mTLS cert expired     | Generate new cert via SSH             | Yes         |
 | HW-bound admin lost   | `sudo portlama-reset-admin` via DO console | Yes    |
+| Panel 2FA locked out  | `sudo portlama-reset-admin` via DO console | Yes    |
 | Panel unreachable     | SSH in, check systemd status          | Yes         |
 
 | Emergency Command                    | What It Does                         |
@@ -400,7 +408,7 @@ When multiple things are broken, fix in this order:
 
 | Design Principle | Implementation                                              |
 | ---------------- | ----------------------------------------------------------- |
-| IP fallback      | `https://<ip>:9292` with self-signed TLS (10-year validity) |
+| IP fallback      | `https://<ip>:9292` with self-signed TLS (10-year validity); disabled when panel 2FA is on |
 | Auto-restart     | `Restart=always` in all systemd units                       |
 | Atomic writes    | Write to `.tmp`, then `rename()`                            |
 | Memory safety    | bcrypt (not argon2id), 1 GB swap                            |

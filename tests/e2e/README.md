@@ -21,6 +21,9 @@ This directory contains end-to-end tests that verify the complete Portlama syste
 | 11  | `11-input-validation.sh` | Input validation across all API endpoints                                      |      No       |
 | 12  | `12-user-invitations.sh` | User invitation flow: create, accept, token validation                         |      No       |
 | 13  | `13-site-lifecycle.sh`   | Static site CRUD, file upload/delete, settings, input validation               |      No       |
+| 15  | `15-plugin-lifecycle.sh` | Plugin management, push-install endpoints, enable/disable, policy CRUD         |      No       |
+| 16  | `16-enrollment-tokens.sh`| Hardware-bound cert enrollment: token creation, public enrollment, registry     |      No       |
+| 17  | `17-panel-2fa.sh`        | Built-in TOTP 2FA: setup, verify, session cookies, IP vhost toggle, reset      |      No       |
 
 ## Prerequisites
 

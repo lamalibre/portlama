@@ -1,105 +1,105 @@
 # Portlama E2E: 15 — Plugin Lifecycle
 
-> Started at `2026-03-25 09:21:33 UTC`
+> Started at `2026-03-25 18:03:23 UTC`
 
 
 ## Pre-flight: check onboarding is complete
 
-✅ `09:21:33` Onboarding is complete  
+✅ `18:03:23` Onboarding is complete  
 
 ## Empty initial plugin list
 
-✅ `09:21:33` Initial plugin list is empty  
+✅ `18:03:23` Initial plugin list is empty  
 
 ## Plugin install validation
 
-✅ `09:21:33` Non-@lamalibre package rejected (HTTP 400)  
-✅ `09:21:33` Empty package name rejected (HTTP 400)  
+✅ `18:03:23` Non-@lamalibre package rejected (HTTP 400)  
+✅ `18:03:23` Empty package name rejected (HTTP 400)  
 
 ## Plugin detail for non-existent plugin
 
-✅ `09:21:33` GET non-existent plugin returns 404  
+✅ `18:03:23` GET non-existent plugin returns 404  
 
 ## Enable/disable non-existent plugin
 
-✅ `09:21:33` Enable non-existent plugin returns 404  
-✅ `09:21:33` Disable non-existent plugin returns 404  
+✅ `18:03:23` Enable non-existent plugin returns 404  
+✅ `18:03:23` Disable non-existent plugin returns 404  
 
 ## Uninstall non-existent plugin
 
-✅ `09:21:33` Uninstall non-existent plugin returns 404  
+✅ `18:03:23` Uninstall non-existent plugin returns 404  
 
 ## Push install config defaults
 
-✅ `09:21:33` Push install is disabled by default  
-✅ `09:21:33` Default policy ID is 'default'  
-✅ `09:21:33` At least one push install policy exists (count: 1)  
+✅ `18:03:23` Push install is disabled by default  
+✅ `18:03:23` Default policy ID is 'default'  
+✅ `18:03:23` At least one push install policy exists (count: 1)  
 
 ## Push install config update
 
-✅ `09:21:33` PATCH push-install config returned ok: true  
-✅ `09:21:33` Push install is now enabled  
+✅ `18:03:23` PATCH push-install config returned ok: true  
+✅ `18:03:23` Push install is now enabled  
 
 ## Create a push install policy
 
-✅ `09:21:33` Policy creation returned ok: true  
-✅ `09:21:33` Policy ID matches  
+✅ `18:03:23` Policy creation returned ok: true  
+✅ `18:03:23` Policy ID matches  
 
 ## Verify policy in listing
 
-✅ `09:21:33` Created policy appears in listing  
+✅ `18:03:23` Created policy appears in listing  
 
 ## Update the push install policy
 
-✅ `09:21:33` Policy update returned ok: true  
-✅ `09:21:33` Description updated  
+✅ `18:03:24` Policy update returned ok: true  
+✅ `18:03:24` Description updated  
 
 ## Cannot delete the default push install policy
 
-✅ `09:21:33` Cannot delete the default policy (HTTP 400)  
+✅ `18:03:24` Cannot delete the default policy (HTTP 400)  
 
 ## Delete the e2e-pi-test policy
 
-✅ `09:21:33` Policy deletion returned ok: true  
-✅ `09:21:33` Deleted policy no longer in listing  
+✅ `18:03:24` Policy deletion returned ok: true  
+✅ `18:03:24` Deleted policy no longer in listing  
 
 ## Push install policy validation
 
-✅ `09:21:33` POST policy with empty name rejected (HTTP 400)  
-✅ `09:21:33` POST policy with duplicate ID rejected (HTTP 409)  
-✅ `09:21:33` PATCH non-existent policy returns 404  
-✅ `09:21:33` DELETE non-existent policy returns 404  
+✅ `18:03:24` POST policy with empty name rejected (HTTP 400)  
+✅ `18:03:24` POST policy with duplicate ID rejected (HTTP 409)  
+✅ `18:03:24` PATCH non-existent policy returns 404  
+✅ `18:03:24` DELETE non-existent policy returns 404  
 
 ## Push install enable/disable for agent
 
-ℹ️ `09:21:33` Found agent: test-agent  
-✅ `09:21:33` Push install enable for agent returned ok: true  
-✅ `09:21:33` pushInstallEnabledUntil is set  
-✅ `09:21:33` Push install disable for agent returned ok: true  
+ℹ️ `18:03:24` Found agent: test-agent  
+✅ `18:03:24` Push install enable for agent returned ok: true  
+✅ `18:03:24` pushInstallEnabledUntil is set  
+✅ `18:03:24` Push install disable for agent returned ok: true  
 
 ## Push install without global toggle
 
-✅ `09:21:33` Cannot enable push install when globally disabled (HTTP 400)  
+✅ `18:03:24` Cannot enable push install when globally disabled (HTTP 400)  
 
 ## Push install sessions audit log
 
-✅ `09:21:33` GET push-install sessions returns a sessions array  
+✅ `18:03:24` GET push-install sessions returns a sessions array  
 
 ## Push install input validation
 
-✅ `09:21:33` POST enable with durationMinutes: 0 rejected (HTTP 400)  
-✅ `09:21:33` POST enable with durationMinutes: 9999 rejected (HTTP 400)  
-✅ `09:21:33` PATCH config with non-existent defaultPolicy rejected (HTTP 400)  
-✅ `09:21:33` POST enable for non-existent agent returns 404  
-✅ `09:21:33` DELETE enable for non-existent agent returns 404  
-✅ `09:21:33` POST enable with invalid label format rejected (HTTP 400)  
-✅ `09:21:33` GET plugin with invalid name rejected (HTTP 400)  
+✅ `18:03:24` POST enable with durationMinutes: 0 rejected (HTTP 400)  
+✅ `18:03:24` POST enable with durationMinutes: 9999 rejected (HTTP 400)  
+✅ `18:03:24` PATCH config with non-existent defaultPolicy rejected (HTTP 400)  
+✅ `18:03:24` POST enable for non-existent agent returns 404  
+✅ `18:03:24` DELETE enable for non-existent agent returns 404  
+✅ `18:03:24` POST enable with invalid label format rejected (HTTP 400)  
+✅ `18:03:24` GET plugin with invalid name rejected (HTTP 400)  
 
 ## Cleanup
 
-✅ `09:21:33` Push install disabled globally for cleanup  
-✅ `09:21:33` Push install is disabled after cleanup  
-✅ `09:21:33` Cleanup complete — plugin state restored  
+✅ `18:03:24` Push install disabled globally for cleanup  
+✅ `18:03:24` Push install is disabled after cleanup  
+✅ `18:03:24` Cleanup complete — plugin state restored  
 
 ---
 

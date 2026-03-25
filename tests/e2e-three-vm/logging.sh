@@ -250,7 +250,7 @@ run_cmd() {
   fi
 
   local tmp_out
-  tmp_out=$(mktemp /tmp/run_cmd_XXXXXX.log)
+  tmp_out=$(mktemp /tmp/run_cmd_XXXXXX)
 
   local rc=0
   "$@" > "${tmp_out}" 2>&1 || rc=$?

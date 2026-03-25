@@ -18,55 +18,40 @@ import {
 import { useToast } from '../../components/Toast.jsx';
 import { useOnboardingStatus } from '../../hooks/useOnboardingStatus.js';
 import FileBrowser from '../../components/FileBrowser.jsx';
+import { apiFetch } from '../../lib/api.js';
 
 // --- API functions ---
 
 async function fetchSites() {
-  const res = await fetch('/api/sites');
-  if (!res.ok) throw new Error('Failed to fetch sites');
-  return res.json();
+  return apiFetch('/api/sites');
 }
 
 async function createSite(body) {
-  const res = await fetch('/api/sites', {
+  return apiFetch('/api/sites', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to create site');
-  return data;
 }
 
 async function deleteSite(id) {
-  const res = await fetch(`/api/sites/${id}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to delete site');
-  return data;
+  return apiFetch(`/api/sites/${id}`, { method: 'DELETE' });
 }
 
 async function updateSite(id, body) {
-  const res = await fetch(`/api/sites/${id}`, {
+  return apiFetch(`/api/sites/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to update site');
-  return data;
 }
 
 async function fetchUsers() {
-  const res = await fetch('/api/users');
-  if (!res.ok) throw new Error('Failed to fetch users');
-  return res.json();
+  return apiFetch('/api/users');
 }
 
 async function verifyDns(id) {
-  const res = await fetch(`/api/sites/${id}/verify-dns`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'DNS verification failed');
-  return data;
+  return apiFetch(`/api/sites/${id}/verify-dns`, { method: 'POST' });
 }
 
 // --- Helpers ---

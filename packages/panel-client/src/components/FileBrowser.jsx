@@ -2,14 +2,13 @@ import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ChevronRight, File, Folder, Trash2, Upload, Loader2, Home } from 'lucide-react';
 import { useToast } from './Toast.jsx';
+import { apiFetch } from '../lib/api.js';
 
 // --- API functions ---
 
 async function fetchFiles(siteId, dirPath) {
   const params = dirPath && dirPath !== '.' ? `?path=${encodeURIComponent(dirPath)}` : '';
-  const res = await fetch(`/api/sites/${siteId}/files${params}`);
-  if (!res.ok) throw new Error('Failed to fetch files');
-  return res.json();
+  return apiFetch(`/api/sites/${siteId}/files${params}`);
 }
 
 async function uploadFiles(siteId, dirPath, files) {
@@ -18,24 +17,18 @@ async function uploadFiles(siteId, dirPath, files) {
     formData.append('files', file);
   }
   const params = dirPath && dirPath !== '.' ? `?path=${encodeURIComponent(dirPath)}` : '';
-  const res = await fetch(`/api/sites/${siteId}/files${params}`, {
+  return apiFetch(`/api/sites/${siteId}/files${params}`, {
     method: 'POST',
     body: formData,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Upload failed');
-  return data;
 }
 
 async function deleteFileApi(siteId, filePath) {
-  const res = await fetch(`/api/sites/${siteId}/files`, {
+  return apiFetch(`/api/sites/${siteId}/files`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: filePath }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Delete failed');
-  return data;
 }
 
 // --- Helpers ---

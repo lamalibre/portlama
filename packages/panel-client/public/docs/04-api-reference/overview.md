@@ -52,9 +52,19 @@ In development mode (`NODE_ENV=development`), the mTLS check is bypassed. A warn
 }
 ```
 
-### No Session Tokens
+### No Session Tokens (with One Exception)
 
-There are no login endpoints, no cookies, no bearer tokens. The client certificate is the sole authentication mechanism. If the certificate is valid, every request is authorized. This is the same model used by LXD.
+The client certificate is the primary authentication mechanism — there are no login endpoints and no bearer tokens. If the certificate is valid, every request is authorized. This is the same model used by LXD.
+
+The one exception is the optional **two-factor authentication (2FA)** feature. When 2FA is enabled, admin requests must also carry a valid `portlama_2fa_session` cookie. This cookie is issued by `POST /api/settings/2fa/verify` after the admin presents a correct TOTP code, and it is HMAC-SHA256 signed, HttpOnly, Secure, SameSite=Strict with a 12-hour absolute expiry and 2-hour inactivity timeout. If a request arrives with a valid mTLS certificate but without a valid 2FA session cookie, the API returns:
+
+```json
+{
+  "error": "2fa_required"
+}
+```
+
+with HTTP 401. The 2FA status and verification endpoints are themselves exempt from the 2FA session requirement so that the admin can check status and submit a code without already having a session.
 
 ## Content Type
 
@@ -119,6 +129,7 @@ Common status codes:
 | Code | Meaning                             | Example                                      |
 | ---- | ----------------------------------- | -------------------------------------------- |
 | 400  | Bad request / validation failed     | Invalid subdomain format                     |
+| 401  | 2FA session required                | Valid mTLS cert but no 2FA session cookie    |
 | 403  | mTLS certificate missing or invalid | No client cert presented                     |
 | 404  | Resource not found                  | Tunnel ID does not exist                     |
 | 409  | Conflict                            | Username already exists                      |
@@ -178,12 +189,12 @@ Each state transition is triggered by a specific API call and validated server-s
 
 ## CORS Policy
 
-Cross-Origin Resource Sharing is configured to accept requests from a single origin — the panel UI:
+Cross-Origin Resource Sharing is configured to accept requests from the panel UI origins:
 
 - **Before domain setup:** `https://<droplet-ip>:9292`
-- **After domain setup:** `https://panel.<domain>`
+- **After domain setup:** both `https://<droplet-ip>:9292` and `https://panel.<domain>`
 
-Only one origin is active at a time (determined by whether a domain is configured). Requests from other origins are rejected by the CORS policy.
+Requests from other origins are rejected by the CORS policy.
 
 ## WebSocket Connections
 
@@ -240,7 +251,9 @@ The server accepts multipart file uploads up to 50 MB per file, used by the stat
 
 ## Rate Limiting
 
-There is no application-level rate limiting. The mTLS requirement means only authenticated administrators can reach the API, and the expected number of concurrent users is one or two. If you are self-hosting and want rate limits, configure them in nginx.
+There is no general application-level rate limiting. The mTLS requirement means only authenticated administrators can reach the API, and the expected number of concurrent users is one or two. If you are self-hosting and want rate limits, configure them in nginx.
+
+The exception is the **2FA endpoints** (`/confirm`, `/verify`, `/disable`), which enforce per-IP rate limiting: 5 attempts per 2-minute window, with a 5-minute ban once the limit is exceeded. This protects against brute-force TOTP guessing even though the caller already holds a valid mTLS certificate.
 
 ## Quick Reference
 
@@ -305,6 +318,11 @@ There is no application-level rate limiting. The mTLS requirement means only aut
 | POST   | `/api/certs/agent/enroll`                 | Management | Generate enrollment token              |
 | POST   | `/api/certs/admin/upgrade-to-hardware-bound` | Management | Upgrade admin to hardware-bound     |
 | GET    | `/api/certs/admin/auth-mode`              | Management | Get admin auth mode                    |
+| GET    | `/api/settings/2fa`                       | Management | Get 2FA status                         |
+| POST   | `/api/settings/2fa/setup`                 | Management | Generate TOTP secret                   |
+| POST   | `/api/settings/2fa/confirm`               | Management | Confirm initial code, enable 2FA       |
+| POST   | `/api/settings/2fa/verify`                | Management | Verify code, issue session cookie      |
+| POST   | `/api/settings/2fa/disable`               | Management | Disable 2FA                            |
 | GET    | `/api/services`                           | Management | List service statuses                  |
 | POST   | `/api/services/:name/:action`             | Management | Control a service (start/stop/restart) |
 | WS     | `/api/services/:name/logs`                | Management | Stream service logs                    |

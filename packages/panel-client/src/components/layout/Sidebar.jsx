@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import SidebarLink from './SidebarLink.jsx';
+import { apiFetch } from '../../lib/api.js';
 
 const iconMap = {
   activity: Activity,
@@ -73,14 +74,13 @@ const baseNavItems = [
   { type: 'link', to: '/certificates', icon: ShieldCheck, label: 'Certificates' },
   { type: 'link', to: '/services', icon: Server, label: 'Services' },
   { type: 'link', to: '/plugins', icon: Package, label: 'Plugins' },
+  { type: 'link', to: '/settings', icon: Settings, label: 'Settings' },
   { type: 'link', to: '/docs', icon: BookOpen, label: 'Documentation' },
 ];
 
 async function fetchEnabledPlugins() {
   try {
-    const res = await fetch('/api/plugins');
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await apiFetch('/api/plugins');
     return (data.plugins || []).filter(
       (p) => p.status === 'enabled' && (p.panel?.label || p.panel?.pages?.length),
     );

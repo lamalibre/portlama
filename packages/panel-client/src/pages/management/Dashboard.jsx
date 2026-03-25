@@ -1,17 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Cpu, HardDrive, Clock, Activity, Database } from 'lucide-react';
 import { formatBytes, formatUptime } from '../../lib/formatters.js';
+import { apiFetch } from '../../lib/api.js';
 
 async function fetchSystemStats() {
-  const res = await fetch('/api/system/stats');
-  if (!res.ok) throw new Error('Failed to fetch system stats');
-  return res.json();
+  return apiFetch('/api/system/stats');
 }
 
 async function fetchServices() {
-  const res = await fetch('/api/services');
-  if (!res.ok) throw new Error('Failed to fetch services');
-  return res.json();
+  return apiFetch('/api/services');
 }
 
 function StatsCard({ icon: Icon, label, value, isLoading, isError }) {

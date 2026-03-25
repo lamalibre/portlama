@@ -99,6 +99,7 @@ TEST_SCRIPTS=(
   "09-agent-site-deploy.sh"
   "11-plugin-lifecycle.sh"
   "12-enrollment-lifecycle.sh"
+  "13-panel-2fa.sh"
 )
 
 PASSED=0

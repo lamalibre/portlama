@@ -227,10 +227,17 @@ if [ "$SKIP_SETUP" = "false" ]; then
   # -----------------------------------------------------------------------
   # 2b: Install npm on host VM and run the installer
   # -----------------------------------------------------------------------
-  log_step "Installing npm on ${VM_HOST}..."
-  run_cmd "apt install npm on ${VM_HOST}" \
-    multipass exec "${VM_HOST}" -- sudo apt-get install -y npm || \
-    log_fatal "npm installation failed on ${VM_HOST}"
+  log_step "Checking npm on ${VM_HOST}..."
+  if multipass exec "${VM_HOST}" -- bash -c 'command -v npm >/dev/null 2>&1 && npm --version' &>/dev/null; then
+    log_ok "npm already available on ${VM_HOST}"
+  else
+    run_cmd "apt-get update on ${VM_HOST}" \
+      multipass exec "${VM_HOST}" -- sudo apt-get update || \
+      log_fatal "apt-get update failed on ${VM_HOST}"
+    run_cmd "apt install npm on ${VM_HOST}" \
+      multipass exec "${VM_HOST}" -- sudo apt-get install -y npm || \
+      log_fatal "npm installation failed on ${VM_HOST}"
+  fi
 
   log_step "Transferring installer tarball to ${VM_HOST}..."
   multipass transfer "${TARBALL}" "${VM_HOST}:/tmp/create-portlama.tgz"

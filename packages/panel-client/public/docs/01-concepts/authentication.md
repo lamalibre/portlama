@@ -14,14 +14,17 @@ Think of it this way: the admin panel is your house's back door, opened only by 
 
 These two systems are completely independent. Admin certificate holders do not automatically get access to tunneled apps, and Authelia users cannot access the admin panel.
 
+There is also an **optional built-in 2FA layer** for the admin panel itself. When enabled, the admin must present their client certificate *and* enter a TOTP code to access the panel. This adds a second factor on top of mTLS, protecting against scenarios where the certificate file is compromised. Agents are exempt from this requirement — they authenticate with mTLS only.
+
 ## For Users
 
 ### Who uses what
 
-| Person          | Accesses                                | Authentication method           |
-| --------------- | --------------------------------------- | ------------------------------- |
-| You (the admin) | Management panel at `https://<IP>:9292` | Client certificate (mTLS)       |
-| Your users      | Tunneled apps at `myapp.example.com`    | Username + password + TOTP code |
+| Person          | Accesses                                | Authentication method                          |
+| --------------- | --------------------------------------- | ---------------------------------------------- |
+| You (the admin) | Management panel at `https://<IP>:9292` | Client certificate (mTLS), optionally + TOTP   |
+| Your users      | Tunneled apps at `myapp.example.com`    | Username + password + TOTP code                |
+| Agents          | Panel API                               | Client certificate (mTLS) — 2FA does not apply |
 
 ### Managing users
 
@@ -76,6 +79,28 @@ Session duration is 12 hours, with a 2-hour inactivity timeout. After that, the 
 ### What happens when a user loses their authenticator
 
 If a user loses their phone or uninstalls their authenticator app, you (the admin) can reset their TOTP from the Users page. This generates a new TOTP secret and displays a new QR code for them to scan.
+
+### Optional panel 2FA (admin only)
+
+You can enable a built-in TOTP 2FA layer for admin panel access. This is separate from Authelia (which protects tunneled apps) and adds a second factor on top of the mTLS client certificate.
+
+**How it works:**
+
+1. Enable 2FA from the panel settings. A QR code is displayed for your authenticator app.
+2. On subsequent visits, after mTLS succeeds, a TOTP prompt appears. Enter the 6-digit code to proceed.
+3. A session cookie (`portlama_2fa_session`) is set with a 12-hour absolute expiry and a 2-hour inactivity timeout. The cookie is HMAC-SHA256 signed using a `sessionSecret` stored in `panel.json`, and is marked `HttpOnly`, `Secure`, and `SameSite=Strict`.
+
+**Important behavior changes when 2FA is enabled:**
+
+- The IP-based vhost (`https://<IP>:9292`) is **disabled**. Panel access is domain-only. This prevents session cookies from being scoped to an IP address.
+- Rate limiting applies: 5 failed TOTP attempts within 2 minutes trigger a 5-minute ban.
+- Agents are **not affected** — they authenticate via mTLS only and bypass the 2FA check entirely.
+
+**TOTP parameters:** RFC 6238, SHA-1, 30-second period, 6 digits, +/-1 step clock drift tolerance, replay protection (each code can only be used once).
+
+**Configuration:** Panel 2FA state is stored in `panel.json` under `panel2fa: { enabled, secret, setupComplete }`. The session signing key is stored as `sessionSecret` in the same file, generated with `crypto.randomBytes` on first 2FA setup.
+
+**Recovery:** If you lose your authenticator, run `sudo portlama-reset-admin` on the server. This clears 2FA, re-enables the IP-based vhost, and reverts to standard mTLS-only admin access. See [Disaster Recovery](../02-guides/disaster-recovery.md) for details.
 
 ## For Developers
 
@@ -236,15 +261,18 @@ TOTP secrets are generated using `crypto.randomBytes` and encoded as base32:
 
 ```javascript
 // From packages/panel-server/src/lib/authelia.js
-export function generateTotpSecret(username) {
+export function generateTotpSecret(username, opts) {
+  const issuer = opts?.issuer ?? 'Portlama';
   const secretBytes = crypto.randomBytes(20);
   const secret = base32Encode(secretBytes);
   const uri =
-    `otpauth://totp/Portlama:${encodeURIComponent(username)}?` +
-    `secret=${secret}&issuer=Portlama&algorithm=SHA1&digits=6&period=30`;
+    `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(username)}?` +
+    `secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
   return { secret, uri };
 }
 ```
+
+This function is also reused by the panel 2FA feature (`lib/totp.js`) with `{ issuer: 'Portlama Panel' }` to generate a distinct TOTP entry for admin panel access.
 
 The `otpauth://` URI follows the [Google Authenticator Key URI format](https://github.com/google/google-authenticator/wiki/Key-Uri-Format). This URI is rendered as a QR code in the panel client.
 
@@ -351,19 +379,24 @@ The panel server API prevents deleting the last Authelia user. If only one user 
 
 | File                                                   | Purpose                                        |
 | ------------------------------------------------------ | ---------------------------------------------- |
-| `packages/panel-server/src/lib/authelia.js`            | Install, configure, user CRUD, TOTP generation |
-| `packages/panel-server/src/routes/management/users.js` | User management API endpoints                  |
-| `packages/panel-server/src/lib/nginx.js`               | App vhost with Authelia forward-auth block     |
-| `packages/panel-server/src/lib/certbot.js`             | TLS cert for `auth.example.com` subdomain      |
+| `packages/panel-server/src/lib/authelia.js`               | Install, configure, user CRUD, TOTP generation       |
+| `packages/panel-server/src/routes/management/users.js`    | User management API endpoints                        |
+| `packages/panel-server/src/lib/nginx.js`                  | App vhost with Authelia forward-auth block           |
+| `packages/panel-server/src/lib/certbot.js`                | TLS cert for `auth.example.com` subdomain            |
+| `packages/panel-server/src/lib/totp.js`                   | Panel 2FA TOTP verification and replay protection    |
+| `packages/panel-server/src/lib/session.js`                | HMAC-SHA256 session cookie signing and validation    |
+| `packages/panel-server/src/middleware/twofa-session.js`   | Fastify plugin enforcing 2FA session for admin certs |
+| `packages/panel-server/src/routes/management/settings.js` | Panel 2FA setup, verify, and disable endpoints       |
 
 ## Quick Reference
 
 ### Two authentication systems
 
-| System   | Protects      | Method             | Session                   |
-| -------- | ------------- | ------------------ | ------------------------- |
-| mTLS     | Admin panel   | Client certificate | Permanent (cert-based)    |
-| Authelia | Tunneled apps | Password + TOTP    | 12h expiry, 2h inactivity |
+| System         | Protects      | Method                            | Session                   |
+| -------------- | ------------- | --------------------------------- | ------------------------- |
+| mTLS           | Admin panel   | Client certificate                | Permanent (cert-based)    |
+| Panel 2FA      | Admin panel   | mTLS + TOTP (opt-in, admin only)  | 12h absolute, 2h inactivity (`portlama_2fa_session`) |
+| Authelia        | Tunneled apps | Password + TOTP                   | 12h expiry, 2h inactivity |
 
 ### Authelia service
 

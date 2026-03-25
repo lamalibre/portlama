@@ -2,43 +2,30 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Power, PowerOff, Trash2, Download, AlertCircle } from 'lucide-react';
 import { useToast } from '../../components/Toast.jsx';
+import { apiFetch } from '../../lib/api.js';
 
 async function fetchPlugins() {
-  const res = await fetch('/api/plugins');
-  if (!res.ok) throw new Error('Failed to fetch plugins');
-  return res.json();
+  return apiFetch('/api/plugins');
 }
 
 async function installPlugin(packageName) {
-  const res = await fetch('/api/plugins/install', {
+  return apiFetch('/api/plugins/install', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ packageName }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to install plugin');
-  return data;
 }
 
 async function enablePlugin(name) {
-  const res = await fetch(`/api/plugins/${name}/enable`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to enable plugin');
-  return data;
+  return apiFetch(`/api/plugins/${name}/enable`, { method: 'POST' });
 }
 
 async function disablePlugin(name) {
-  const res = await fetch(`/api/plugins/${name}/disable`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to disable plugin');
-  return data;
+  return apiFetch(`/api/plugins/${name}/disable`, { method: 'POST' });
 }
 
 async function uninstallPlugin(name) {
-  const res = await fetch(`/api/plugins/${name}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to uninstall plugin');
-  return data;
+  return apiFetch(`/api/plugins/${name}`, { method: 'DELETE' });
 }
 
 function StatusBadge({ status }) {

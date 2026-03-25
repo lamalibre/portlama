@@ -15,75 +15,60 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
+import { apiFetch } from '../lib/api.js';
 
 // --- API helpers ---
 
 async function fetchUsers() {
-  const res = await fetch('/api/users');
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch users');
-  return res.json();
+  return apiFetch('/api/users');
 }
 
 async function createUser(body) {
-  const res = await fetch('/api/users', {
+  return apiFetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to create user');
-  return res.json();
 }
 
 async function updateUser({ username, ...body }) {
-  const res = await fetch(`/api/users/${encodeURIComponent(username)}`, {
+  return apiFetch(`/api/users/${encodeURIComponent(username)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to update user');
-  return res.json();
 }
 
 async function deleteUser(username) {
-  const res = await fetch(`/api/users/${encodeURIComponent(username)}`, {
+  return apiFetch(`/api/users/${encodeURIComponent(username)}`, {
     method: 'DELETE',
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to delete user');
-  return res.json();
 }
 
 async function resetTotp(username) {
-  const res = await fetch(`/api/users/${encodeURIComponent(username)}/reset-totp`, {
+  return apiFetch(`/api/users/${encodeURIComponent(username)}/reset-totp`, {
     method: 'POST',
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to reset TOTP');
-  return res.json();
 }
 
 // --- Invitation API helpers ---
 
 async function fetchInvitations() {
-  const res = await fetch('/api/invitations');
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch invitations');
-  return res.json();
+  return apiFetch('/api/invitations');
 }
 
 async function createInvitation(body) {
-  const res = await fetch('/api/invitations', {
+  return apiFetch('/api/invitations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to create invitation');
-  return res.json();
 }
 
 async function revokeInvitation(id) {
-  const res = await fetch(`/api/invitations/${encodeURIComponent(id)}`, {
+  return apiFetch(`/api/invitations/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
-  if (!res.ok) throw new Error((await res.json()).error || 'Failed to revoke invitation');
-  return res.json();
 }
 
 // --- Modal backdrop ---

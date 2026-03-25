@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, TWO_FA_REQUIRED_EVENT } from '../../lib/api.js';
 import {
   ShieldCheck,
   RefreshCw,
@@ -22,81 +23,66 @@ import { useToast } from '../../components/Toast.jsx';
 // --- API helpers ---
 
 async function fetchCerts() {
-  const res = await fetch('/api/certs');
-  if (!res.ok) throw new Error('Failed to fetch certificates');
-  return res.json();
+  return apiFetch('/api/certs');
 }
 
 async function fetchAutoRenewStatus() {
-  const res = await fetch('/api/certs/auto-renew-status');
-  if (!res.ok) throw new Error('Failed to fetch auto-renew status');
-  return res.json();
+  return apiFetch('/api/certs/auto-renew-status');
 }
 
 async function renewCert(domain) {
-  const res = await fetch(`/api/certs/${domain}/renew`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.details || data.error || 'Renewal failed');
-  return data;
+  return apiFetch(`/api/certs/${domain}/renew`, { method: 'POST' });
 }
 
 async function rotateMtls() {
-  const res = await fetch('/api/certs/mtls/rotate', { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Rotation failed');
-  return data;
+  return apiFetch('/api/certs/mtls/rotate', { method: 'POST' });
 }
 
 // --- Agent certificate API helpers ---
 
 async function fetchAgentCerts() {
-  const res = await fetch('/api/certs/agent');
-  if (!res.ok) throw new Error('Failed to fetch agent certificates');
-  return res.json();
+  return apiFetch('/api/certs/agent');
 }
 
 async function generateAgentCert({ label, capabilities, allowedSites }) {
-  const res = await fetch('/api/certs/agent', {
+  return apiFetch('/api/certs/agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ label, capabilities, allowedSites }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to generate agent certificate');
-  return data;
 }
 
 async function updateAgentCaps(label, capabilities) {
-  const res = await fetch(`/api/certs/agent/${encodeURIComponent(label)}/capabilities`, {
+  return apiFetch(`/api/certs/agent/${encodeURIComponent(label)}/capabilities`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ capabilities }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to update capabilities');
-  return data;
 }
 
 async function updateAgentAllowedSites(label, allowedSites) {
-  const res = await fetch(`/api/certs/agent/${encodeURIComponent(label)}/allowed-sites`, {
+  return apiFetch(`/api/certs/agent/${encodeURIComponent(label)}/allowed-sites`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ allowedSites }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to update allowed sites');
-  return data;
 }
 
 async function revokeAgentCert(label) {
-  const res = await fetch(`/api/certs/agent/${encodeURIComponent(label)}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to revoke agent certificate');
-  return data;
+  return apiFetch(`/api/certs/agent/${encodeURIComponent(label)}`, { method: 'DELETE' });
 }
 
 async function downloadAgentP12(label) {
   const res = await fetch(`/api/certs/agent/${encodeURIComponent(label)}/download`);
+  if (res.status === 401) {
+    try {
+      const body = await res.clone().json();
+      if (body.error === '2fa_required') {
+        window.dispatchEvent(new CustomEvent(TWO_FA_REQUIRED_EVENT));
+        return;
+      }
+    } catch { /* not JSON */ }
+  }
   if (!res.ok) throw new Error('Download failed');
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -108,20 +94,19 @@ async function downloadAgentP12(label) {
 }
 
 async function generateEnrollmentToken({ label, capabilities, allowedSites }) {
-  const res = await fetch('/api/certs/agent/enroll', {
+  return apiFetch('/api/certs/agent/enroll', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ label, capabilities, allowedSites }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to generate enrollment token');
-  return data;
 }
 
 async function fetchAdminAuthMode() {
-  const res = await fetch('/api/certs/admin/auth-mode');
-  if (!res.ok) return { adminAuthMode: 'p12' };
-  return res.json();
+  try {
+    return await apiFetch('/api/certs/admin/auth-mode');
+  } catch {
+    return { adminAuthMode: 'p12' };
+  }
 }
 
 // --- Sub-components ---
@@ -472,7 +457,7 @@ function AgentGenerateModal({ onClose }) {
 
   const { data: sitesData } = useQuery({
     queryKey: ['sites'],
-    queryFn: () => fetch('/api/sites').then((r) => r.json()),
+    queryFn: () => apiFetch('/api/sites'),
   });
 
   const generateMutation = useMutation({
@@ -820,7 +805,7 @@ function AgentEditSitesModal({ agent, onClose }) {
 
   const { data: sitesData } = useQuery({
     queryKey: ['sites'],
-    queryFn: () => fetch('/api/sites').then((r) => r.json()),
+    queryFn: () => apiFetch('/api/sites'),
   });
 
   const updateMutation = useMutation({
@@ -922,7 +907,7 @@ function AgentEnrollTokenModal({ onClose }) {
 
   const { data: sitesData } = useQuery({
     queryKey: ['sites'],
-    queryFn: () => fetch('/api/sites').then((r) => r.json()),
+    queryFn: () => apiFetch('/api/sites'),
   });
 
   const enrollMutation = useMutation({
@@ -1424,9 +1409,32 @@ function RotationModal({ onClose }) {
     }
   }, [rotationResult, addToast]);
 
-  const handleDownload = useCallback(() => {
-    window.open('/api/certs/mtls/download', '_blank');
-  }, []);
+  const handleDownload = useCallback(async () => {
+    try {
+      const res = await fetch('/api/certs/mtls/download');
+      if (res.status === 401) {
+        try {
+          const body = await res.clone().json();
+          if (body.error === '2fa_required') {
+            window.dispatchEvent(new CustomEvent(TWO_FA_REQUIRED_EVENT));
+            return;
+          }
+        } catch { /* not JSON */ }
+      }
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portlama-admin.p12';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      addToast(err.message || 'Download failed', 'error');
+    }
+  }, [addToast]);
 
   const handleDone = useCallback(() => {
     if (!confirmDone) {

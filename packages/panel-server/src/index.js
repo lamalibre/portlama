@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
@@ -7,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.js';
 import mtlsMiddleware from './middleware/mtls.js';
+import twofaSession from './middleware/twofa-session.js';
 import roleGuard from './middleware/role-guard.js';
 import errorHandler from './middleware/errors.js';
 import healthRoutes from './routes/health.js';
@@ -34,7 +36,12 @@ async function start() {
     // Plugin registry may not exist yet — ignore on first boot
   }
 
-  const server = Fastify({ logger: true });
+  const server = Fastify({
+    logger: true,
+    // Behind nginx: trust exactly one proxy hop so request.ip reflects the real client IP
+    // from nginx's $remote_addr, not a spoofed X-Forwarded-For value from upstream.
+    trustProxy: 1,
+  });
 
   // --- Plugins ---
   const ipOrigin = `https://${config.ip}:9292`;
@@ -46,6 +53,7 @@ async function start() {
       fileSize: 50 * 1024 * 1024, // 50MB per file
     },
   });
+  await server.register(cookie);
   await server.register(websocket);
 
   // Resolve static file root for the panel client SPA
@@ -75,6 +83,7 @@ async function start() {
   // --- Protected routes (mTLS + onboarding guard) ---
   server.register(async function protectedContext(app) {
     app.register(mtlsMiddleware);
+    app.register(twofaSession);
     app.register(roleGuard);
     app.register(errorHandler);
     app.register(healthRoutes, { prefix: '/api' });

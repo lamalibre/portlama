@@ -719,16 +719,47 @@ export function base32Encode(buffer) {
 }
 
 /**
+ * Decode a base32-encoded string (RFC 4648) to a Buffer.
+ *
+ * @param {string} encoded - The base32-encoded string
+ * @returns {Buffer}
+ */
+export function base32Decode(encoded) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const stripped = encoded.replace(/=+$/, '').toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const output = [];
+
+  for (let i = 0; i < stripped.length; i++) {
+    const idx = alphabet.indexOf(stripped[i]);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+
+  return Buffer.from(output);
+}
+
+/**
  * Generate a TOTP secret and otpauth URI for a user.
  *
  * @param {string} username - The username to generate TOTP for
+ * @param {object} [opts] - Options
+ * @param {string} [opts.issuer] - Issuer name (default: 'Portlama')
  * @returns {{ secret: string, uri: string }} The base32 secret and otpauth URI
  */
-export function generateTotpSecret(username) {
+export function generateTotpSecret(username, opts) {
+  const issuer = opts?.issuer || 'Portlama';
   const secretBytes = crypto.randomBytes(20);
   const secret = base32Encode(secretBytes);
   const encodedUsername = encodeURIComponent(username);
-  const uri = `otpauth://totp/Portlama:${encodedUsername}?secret=${secret}&issuer=Portlama&algorithm=SHA1&digits=6&period=30`;
+  const encodedIssuer = encodeURIComponent(issuer);
+  const uri = `otpauth://totp/${encodedIssuer}:${encodedUsername}?secret=${secret}&issuer=${encodedIssuer}&algorithm=SHA1&digits=6&period=30`;
   return { secret, uri };
 }
 

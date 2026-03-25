@@ -1,50 +1,50 @@
 # Portlama E2E: 11 — Plugin Lifecycle (Three-VM)
 
-> Started at `2026-03-25 09:24:43 UTC`
+> Started at `2026-03-25 18:07:22 UTC`
 
 
 ## Pre-flight: check onboarding is complete
 
-✅ `09:24:43` Onboarding is complete  
+✅ `18:07:22` Onboarding is complete  
 
 ## Plugin list is initially empty
 
-✅ `09:24:44` Initial plugin list is empty on host VM  
+✅ `18:07:23` Initial plugin list is empty on host VM  
 
 ## Push-install config defaults
 
-✅ `09:24:44` Push install is disabled by default  
-✅ `09:24:44` Default policy is 'default'  
+✅ `18:07:23` Push install is disabled by default  
+✅ `18:07:23` Default policy is 'default'  
 
 ## Create push install policy
 
-✅ `09:24:44` Policy creation returned ok: true  
-✅ `09:24:44` Policy ID matches  
+✅ `18:07:23` Policy creation returned ok: true  
+✅ `18:07:23` Policy ID matches  
 
 ## Delete test policy
 
-✅ `09:24:44` Policy deletion returned ok: true  
+✅ `18:07:23` Policy deletion returned ok: true  
 
 ## Push install for agent
 
-ℹ️ `09:24:44` Found agent: test-agent  
-✅ `09:24:44` Push install enabled for agent  
-✅ `09:24:44` pushInstallEnabledUntil is set  
-ℹ️ `09:24:44` Agent status response: {"pushInstallEnabled":false}  
-✅ `09:24:44` Push install disabled for agent  
+ℹ️ `18:07:23` Found agent: test-agent  
+✅ `18:07:23` Push install enabled for agent  
+✅ `18:07:23` pushInstallEnabledUntil is set  
+ℹ️ `18:07:23` Agent status response: {"pushInstallEnabled":false}  
+✅ `18:07:23` Push install disabled for agent  
 
 ## Push install guard: global toggle off
 
-✅ `09:24:45` Cannot enable push install when globally disabled  
+✅ `18:07:24` Cannot enable push install when globally disabled  
 
 ## Sessions audit log
 
-✅ `09:24:45` Push install sessions is an array  
+✅ `18:07:24` Push install sessions is an array  
 
 ## Cleanup
 
-✅ `09:24:45` Push install disabled globally for cleanup  
-✅ `09:24:45` Cleanup complete — plugin state restored  
+✅ `18:07:24` Push install disabled globally for cleanup  
+✅ `18:07:24` Cleanup complete — plugin state restored  
 
 ---
 
@@ -57,4 +57,4 @@
 | **Skipped** | `0` |
 | **Total** | `14` |
 
-🔵 `09:24:45` **Running: 12-enrollment-lifecycle.sh**  
+🔵 `18:07:24` **Running: 12-enrollment-lifecycle.sh**  

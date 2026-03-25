@@ -25,7 +25,7 @@ Only four ports are open on your VPS:
 | 22/tcp   | SSH     | You, during installation only                                      |
 | 80/tcp   | HTTP    | Let's Encrypt HTTP-01 challenge (certificate issuance and renewal) |
 | 443/tcp  | HTTPS   | Everyone (domains)                                                 |
-| 9292/tcp | HTTPS   | You (admin panel via IP)                                           |
+| 9292/tcp | HTTPS   | You (admin panel via IP; disabled when panel 2FA is enabled)       |
 
 Every other port is blocked. A port scan of your VPS shows only these four services.
 
@@ -100,6 +100,20 @@ mTLS is stronger than a login page because:
 #### 6. TOTP 2FA for app access
 
 Visitors to your tunneled apps authenticate through Authelia with a password and a TOTP code from their phone. See [Authentication](authentication.md) for full details.
+
+#### 6b. Optional panel 2FA (admin only)
+
+The admin can optionally enable a built-in TOTP 2FA layer for the panel itself. When enabled, the admin must present their mTLS client certificate **and** enter a TOTP code. Agents are exempt and continue to authenticate with mTLS only.
+
+Key details:
+
+- **Session cookie:** `portlama_2fa_session`, HMAC-SHA256 signed, with 12-hour absolute expiry and 2-hour inactivity timeout. Cookie flags: `HttpOnly`, `Secure`, `SameSite=Strict`
+- **Rate limiting:** 5 failed attempts within 2 minutes trigger a 5-minute ban
+- **TOTP standard:** RFC 6238, SHA-1, 30-second period, +/-1 step clock drift, replay protection
+- **IP vhost disabled:** When panel 2FA is enabled, the IP-based vhost (`https://<IP>:9292`) is disabled and access is domain-only. This is necessary because session cookies require a domain scope.
+- **Recovery:** `sudo portlama-reset-admin` clears 2FA settings and re-enables the IP vhost
+
+See [Authentication](authentication.md) for setup details.
 
 #### 7. Service isolation
 
@@ -402,9 +416,12 @@ The `mv` command is atomic on the same filesystem — the file appears at its fi
 | `packages/create-portlama/src/tasks/mtls.js`   | PKI generation, file permissions   |
 | `packages/create-portlama/src/tasks/nginx.js`  | mTLS snippet, self-signed cert     |
 | `packages/panel-server/src/lib/authelia.js`    | bcrypt hashing, atomic writes      |
-| `packages/panel-server/src/lib/mtls.js`        | Certificate rotation with rollback |
-| `packages/panel-server/src/lib/nginx.js`       | Vhost write-with-rollback pattern  |
-| `packages/panel-server/src/middleware/mtls.js` | Request-level mTLS check           |
+| `packages/panel-server/src/lib/mtls.js`               | Certificate rotation with rollback              |
+| `packages/panel-server/src/lib/nginx.js`              | Vhost write-with-rollback pattern               |
+| `packages/panel-server/src/middleware/mtls.js`        | Request-level mTLS check                        |
+| `packages/panel-server/src/lib/totp.js`               | Panel 2FA TOTP verification and replay protection |
+| `packages/panel-server/src/lib/session.js`            | HMAC-SHA256 session cookie signing              |
+| `packages/panel-server/src/middleware/twofa-session.js` | 2FA session enforcement (after mTLS, before roleGuard) |
 
 ## Quick Reference
 
@@ -417,6 +434,7 @@ The `mv` command is atomic on the same filesystem — the file appears at its fi
 | SSH hardening        | sshd_config                 | Password-based SSH access          |
 | TLS encryption       | Let's Encrypt / self-signed | Traffic interception and tampering |
 | Admin auth           | mTLS client certificates    | Unauthorized admin access          |
+| Admin 2FA (optional) | Built-in TOTP               | Stolen certificate abuse           |
 | App auth             | Authelia TOTP 2FA           | Unauthorized app access            |
 | Service isolation    | `127.0.0.1` binding         | Direct access to internal services |
 | File permissions     | `chmod 600`                 | Unauthorized secret access         |

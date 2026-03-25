@@ -2,18 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Play, Square, RotateCw, Server } from 'lucide-react';
 import { useToast } from '../../components/Toast.jsx';
+import { apiFetch } from '../../lib/api.js';
 
 async function fetchServices() {
-  const res = await fetch('/api/services');
-  if (!res.ok) throw new Error('Failed to fetch services');
-  return res.json();
+  return apiFetch('/api/services');
 }
 
 async function executeAction({ name, action }) {
-  const res = await fetch(`/api/services/${name}/${action}`, { method: 'POST' });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Failed to ${action} ${name}`);
-  return data;
+  return apiFetch(`/api/services/${name}/${action}`, { method: 'POST' });
 }
 
 function StatusBadge({ status }) {

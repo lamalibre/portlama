@@ -67,6 +67,7 @@ TEST_SCRIPTS=(
   "13-site-lifecycle.sh"
   "15-plugin-lifecycle.sh"
   "16-enrollment-tokens.sh"
+  "17-panel-2fa.sh"
 )
 
 PASSED=0
