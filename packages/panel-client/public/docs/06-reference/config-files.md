@@ -16,6 +16,8 @@
 | `/etc/portlama/tickets.json`             | JSON       | portlama:portlama | 0600 | Ticket and session store      |
 | `/etc/nginx/sites-available/portlama-*`  | nginx conf | root:root         | 0644 | Vhost configurations          |
 | `/etc/nginx/snippets/portlama-mtls.conf` | nginx conf | root:root         | 0644 | mTLS snippet                  |
+| `~/.portlama/servers.json`               | JSON       | user              | 0600 | Desktop app server registry   |
+| `~/.portlama/agent.json`                | JSON       | user              | 0600 | Legacy single-server config   |
 
 ---
 
@@ -430,6 +432,66 @@ Stores the randomly generated secrets used in the Authelia configuration. Backed
 
 ---
 
+## Client-Side Configuration
+
+### `~/.portlama/servers.json`
+
+Stores the server registry for the desktop app's multi-server support. Created by cloud provisioning or manual server addition. When this file exists and contains an active entry, `load_effective_config()` uses it instead of `agent.json`.
+
+**Schema:** Array of server entry objects.
+
+| Field              | Type           | Description                                          |
+| ------------------ | -------------- | ---------------------------------------------------- |
+| `id`               | string         | UUID                                                 |
+| `label`            | string         | Display name (typically the domain)                  |
+| `panelUrl`         | string         | Panel URL (e.g., `https://203.0.113.42:9292`)        |
+| `ip`               | string         | Server IP address                                    |
+| `provider`         | string \| null | Cloud provider name (e.g., `digitalocean`)           |
+| `providerId`       | string \| null | Provider-specific resource ID (e.g., droplet ID)     |
+| `region`           | string \| null | Provider region slug                                 |
+| `createdAt`        | string         | ISO 8601 timestamp                                   |
+| `active`           | boolean        | Whether this is the currently active server          |
+| `authMethod`       | string         | `"p12"` or `"keychain"`                              |
+| `keychainIdentity` | string \| null | Keychain identity name (when `authMethod` is `"keychain"`) |
+| `p12Path`          | string \| null | Path to P12 file (when `authMethod` is `"p12"`)      |
+
+**Example:**
+
+```json
+[
+  {
+    "id": "d4e5f6a7-b8c9-0123-defg-456789012345",
+    "label": "example.com",
+    "panelUrl": "https://203.0.113.42:9292",
+    "ip": "203.0.113.42",
+    "provider": "digitalocean",
+    "providerId": "123456789",
+    "region": "fra1",
+    "createdAt": "2026-03-27T10:00:00.000Z",
+    "active": true,
+    "authMethod": "p12",
+    "p12Path": "/Users/admin/.portlama/servers/d4e5f6a7/client.p12",
+    "keychainIdentity": null
+  }
+]
+```
+
+**P12 password:** Not stored in the JSON file. Retrieved from the OS credential store (`com.portlama.server` service, keyed by server UUID).
+
+**Cloud API token:** Not stored in this file. Retrieved from the OS credential store (`com.portlama.cloud` service).
+
+**Write pattern:** Atomic — temp file with mode 0600, `fsync()`, then `rename()`.
+
+**Config resolution:** `load_effective_config()` checks `servers.json` first for an active entry, then falls back to `agent.json`.
+
+---
+
+### `~/.portlama/agent.json`
+
+Legacy single-server configuration. Created by `npx @lamalibre/portlama-agent setup`. If `servers.json` exists with an active entry, this file is not used.
+
+---
+
 ## nginx Vhost Patterns
 
 ### `/etc/nginx/sites-available/portlama-panel-ip`
@@ -593,6 +655,9 @@ This enables client certificate verification at the TLS level. The `optional` se
 | `/opt/portlama/`                        | portlama:portlama | 0755 | Install directory    |
 | `/var/www/portlama/`                    | www-data:www-data | 0755 | Static site files    |
 | `/etc/sudoers.d/portlama`               | root:root         | 0440 | Sudo rules           |
+| `~/.portlama/servers.json`              | user              | 0600 | Server registry      |
+| `~/.portlama/agent.json`               | user              | 0600 | Legacy agent config  |
+| `~/.portlama/services.json`            | user              | 0600 | Service registry     |
 
 ## Quick Reference
 

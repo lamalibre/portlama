@@ -33,6 +33,8 @@ Portlama solves the problem of exposing local services to the internet securely.
 
 **How setup works:**
 
+**Option A: Manual setup (SSH)**
+
 1. Create a fresh Ubuntu 24.04 droplet on DigitalOcean
 2. SSH in once and run `npx @lamalibre/create-portlama`
 3. Download the client certificate it prints
@@ -42,6 +44,17 @@ Portlama solves the problem of exposing local services to the internet securely.
 7. Create tunnels, add users, manage everything from the browser
 8. Disconnect SSH. You never need it again.
 
+**Option B: Desktop app cloud provisioning**
+
+1. Install the desktop app (`npx @lamalibre/install-portlama-desktop`)
+2. Go to the Servers tab and click "Create a new server"
+3. Enter your DigitalOcean API token — the app validates scopes and stores it securely in your OS credential store
+4. Pick a region (the app measures latency to each) and a domain name
+5. Click "Provision" — the app creates the droplet, installs Portlama, downloads your certificate, and connects automatically
+6. Manage everything from the desktop app or the browser panel
+
+See the [Cloud Provisioning guide](../02-guides/cloud-provisioning.md) for a detailed walkthrough.
+
 **Key design choices:**
 
 - The admin panel always works via IP address (`:9292`), even if your domain goes down
@@ -50,7 +63,7 @@ Portlama solves the problem of exposing local services to the internet securely.
 
 ## For Developers
 
-Portlama is a monorepo with five packages:
+Portlama is a monorepo with several packages:
 
 | Package                    | Technology                 | Purpose                              |
 | -------------------------- | -------------------------- | ------------------------------------ |
@@ -58,8 +71,10 @@ Portlama is a monorepo with five packages:
 | `panel-server`             | Fastify 5, Node.js ESM     | REST API + WebSocket backend         |
 | `panel-client`             | React 18, Vite, Tailwind   | Management UI (SPA)                  |
 | `portlama-agent`           | Node.js ESM                | Tunnel agent CLI (macOS & Linux)     |
-| `portlama-desktop`         | Tauri v2 (Rust + React)    | Desktop agent with service discovery |
+| `portlama-desktop`         | Tauri v2 (Rust + React)    | Desktop app with service discovery, multi-server & cloud provisioning |
 | `install-portlama-desktop` | Node.js ESM                | npx installer for the desktop app    |
+| `portlama-tickets`         | TypeScript, undici          | SDK for agent-to-agent authorization |
+| `portlama-cloud`           | TypeScript, undici          | Cloud provider abstraction for server provisioning |
 
 **Architecture summary:**
 

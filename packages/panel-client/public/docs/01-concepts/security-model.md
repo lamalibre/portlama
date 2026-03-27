@@ -148,6 +148,17 @@ Your VPS has only 512MB of RAM. This matters for security because some password 
 
 Portlama uses bcrypt instead. Bcrypt uses ~4KB per hash — over 23,000 times less memory — while still providing strong protection against brute-force attacks. The cost factor is set to 12, meaning each hash computation takes roughly 250ms, making large-scale password cracking impractical.
 
+### Cloud provisioning security
+
+When using the desktop app to create servers on DigitalOcean, the app enforces several safeguards:
+
+- **Custom-scoped tokens** — the app requires 4 DigitalOcean resource groups (account, droplet, regions, ssh_key) and rejects tokens with dangerous permissions (`database:delete`, `kubernetes:create`, `account:write`, etc.)
+- **Credential storage** — API tokens and P12 passwords are stored in the OS credential store (macOS Keychain / Linux libsecret), never in plaintext files or CLI arguments
+- **`portlama:managed` tag** — the app tags droplets it creates and refuses to destroy untagged droplets
+- **Ephemeral SSH keys** — temporary ed25519 keys are generated for installation, then securely deleted afterward
+
+**If you have other infrastructure on DigitalOcean, create a dedicated DigitalOcean team for Portlama.** API tokens are account-wide — a token with `droplet:delete` can delete any droplet in the account, not just ones created by Portlama. A separate team provides true resource-level isolation at no extra cost. See the [Cloud Provisioning guide](../02-guides/cloud-provisioning.md) for setup instructions.
+
 ### What is NOT included
 
 Portlama does not include:

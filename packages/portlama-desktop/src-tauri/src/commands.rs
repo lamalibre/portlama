@@ -1,6 +1,15 @@
 use crate::api::{curl_panel, curl_panel_binary};
 use crate::chisel;
 use crate::config;
+use crate::plugins::url_encode;
+use crate::tray;
+
+// --- Tray ---
+
+#[tauri::command]
+pub fn set_tray_state(app_handle: tauri::AppHandle, state: String, tooltip: String) {
+    tray::update_tray_state(&app_handle, &state, &tooltip);
+}
 
 // --- Status ---
 
@@ -15,7 +24,7 @@ pub struct AppStatus {
 
 #[tauri::command]
 pub fn get_status() -> AppStatus {
-    let config_result = config::load_config();
+    let config_result = config::load_effective_config();
     let configured = config_result.is_ok();
     let chisel_status = chisel::get_chisel_status();
 
@@ -40,7 +49,7 @@ pub fn get_status() -> AppStatus {
 
 #[tauri::command]
 pub fn get_config() -> Result<config::AgentConfig, String> {
-    config::load_config()
+    config::load_effective_config()
 }
 
 // --- Tunnels ---
@@ -62,7 +71,7 @@ struct TunnelsResponse {
 
 #[tauri::command]
 pub async fn get_tunnels() -> Result<Vec<TunnelInfo>, String> {
-    let cfg = config::load_config()?;
+    let cfg = config::load_effective_config()?;
     let body = curl_panel(&cfg, "GET", "/api/tunnels", None)?;
     let data: TunnelsResponse = serde_json::from_str(&body)
         .map_err(|e| format!("Failed to parse tunnels: {} — body: {}", e, body))?;
@@ -75,7 +84,7 @@ pub async fn create_tunnel(
     port: u32,
     description: String,
 ) -> Result<TunnelInfo, String> {
-    let cfg = config::load_config()?;
+    let cfg = config::load_effective_config()?;
     let json_body = serde_json::json!({
         "subdomain": subdomain,
         "port": port,
@@ -97,17 +106,17 @@ pub async fn create_tunnel(
 
 #[tauri::command]
 pub async fn toggle_tunnel(id: String, enabled: bool) -> Result<String, String> {
-    let cfg = config::load_config()?;
+    let cfg = config::load_effective_config()?;
     let json_body = serde_json::json!({ "enabled": enabled }).to_string();
-    let path = format!("/api/tunnels/{}", id);
+    let path = format!("/api/tunnels/{}", url_encode(&id));
     curl_panel(&cfg, "PATCH", &path, Some(&json_body))?;
     Ok(if enabled { "Tunnel enabled".to_string() } else { "Tunnel disabled".to_string() })
 }
 
 #[tauri::command]
 pub async fn delete_tunnel(id: String) -> Result<String, String> {
-    let cfg = config::load_config()?;
-    let path = format!("/api/tunnels/{}", id);
+    let cfg = config::load_effective_config()?;
+    let path = format!("/api/tunnels/{}", url_encode(&id));
     curl_panel(&cfg, "DELETE", &path, None)?;
     Ok("Tunnel deleted".to_string())
 }
@@ -415,7 +424,7 @@ pub async fn download_certificate() -> Result<String, String> {
 
 #[tauri::command]
 pub fn get_panel_url() -> Result<String, String> {
-    let cfg = config::load_config()?;
+    let cfg = config::load_effective_config()?;
     Ok(cfg.panel_url)
 }
 

@@ -11,11 +11,12 @@ portlama/
 │   ├── panel-server/          @lamalibre/portlama-panel-server — Fastify REST API
 │   ├── panel-client/          @lamalibre/portlama-panel-client — React + Vite + Tailwind UI
 │   ├── portlama-agent/        @lamalibre/portlama-agent — tunnel agent CLI (macOS & Linux)
-│   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop agent (service discovery, tunnel management)
+│   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop app (service discovery, tunnel management, multi-server & cloud provisioning)
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
 │   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
 │   ├── install-portlama-e2e-mcp/ @lamalibre/install-portlama-e2e-mcp — npx installer + MCP server for E2E test infrastructure
-│   └── portlama-tickets/      @lamalibre/portlama-tickets — SDK for ticket system (agent-to-agent authorization)
+│   ├── portlama-tickets/      @lamalibre/portlama-tickets — SDK for ticket system (agent-to-agent authorization)
+│   └── portlama-cloud/        @lamalibre/portlama-cloud — cloud provider abstraction for server provisioning
 ├── tests/
 │   ├── e2e/                   Single-VM end-to-end tests
 │   └── e2e-three-vm/          Three-VM integration tests (Multipass)
@@ -46,6 +47,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 | TLS            | Let's Encrypt / certbot                     |
 | Panel auth     | mTLS client certificates                    |
 | Ticket SDK     | TypeScript, undici (mTLS HTTP client)        |
+| Cloud SDK      | TypeScript, undici (DO REST API, provider abstraction) |
 | State          | JSON files + YAML (no database)             |
 | Target OS      | Ubuntu 24.04 LTS                            |
 
@@ -54,7 +56,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 **JavaScript / Node.js:**
 
 - ES Modules everywhere (`import`, not `require`)
-- `execa` for shell commands with array arguments — never `child_process` or string interpolation
+- `execa` (or `child_process.execFile` in minimal-dependency packages) for shell commands with array arguments — never string interpolation
 - Zod schemas for all API input validation at route level
 - Routes handle HTTP only — business logic in `lib/`
 - Fastify logger, never `console.log` in library code
@@ -71,9 +73,13 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 - Shared HTTP helpers in `api.rs` — all panel API calls go through `curl_panel`
 - Service discovery in `services.rs` — detection via `which`/`pgrep`/`lsof`/TCP probe, Docker via `docker ps`
-- `tokio::task::spawn_blocking` for subprocess calls — never block the Tauri event loop
+- Cloud provisioning in `cloud.rs` — bridges React UI to `@lamalibre/portlama-cloud` Node.js CLI
+- OS credential storage in `credentials.rs` — macOS `security` CLI, Linux `secret-tool`
+- `config.rs` `load_effective_config()` — reads `servers.json` (active entry), falls back to `agent.json`
+- `tokio::task::spawn_blocking` for subprocess calls and file I/O — never block the Tauri event loop
 - Service registry persisted as JSON at `~/.portlama/services.json`
-- Atomic file writes (temp → rename) for registry and config
+- Server registry persisted as JSON at `~/.portlama/servers.json`
+- Atomic file writes (temp → fsync → rename) for registry and config
 
 **TypeScript (Ticket SDK):**
 
@@ -81,6 +87,21 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - undici for HTTP — use undici's `fetch` export (not global) for type-safe `dispatcher` support
 - Response shape validation — `assertObject` checks before type assertions
 - No runtime dependencies beyond `undici`
+
+**Cloud SDK (portlama-cloud):**
+
+- TypeScript, same conventions as portlama-tickets (strict, ESM, verbatimModuleSyntax)
+- `undici` for HTTP — direct REST API calls to cloud providers, no heavy SDKs
+- `child_process.execFile` for SSH/SCP/openssl commands (array args only)
+- Provider abstraction: `CloudProvider` interface, each provider (DigitalOcean, etc.) implements it
+- Token scope validation: reject over-scoped tokens, require minimum necessary permissions
+- NDJSON progress protocol on stdout for Rust/Tauri integration
+- SSH via `ssh-keygen`/`ssh`/`scp` commands — temporary ed25519 keys, secure-deleted after use. SSH TOFU accepted risk: first connection uses `accept-new`, pinned in per-session `known_hosts` for subsequent commands; DigitalOcean does not expose host fingerprints via API
+- Credential storage: macOS Keychain (`security-framework` crate, no CLI) / Linux libsecret (`secret-tool` with stdin) — never plaintext, never in process args. Two services: `com.portlama.cloud` (API tokens), `com.portlama.server` (P12 passwords, keyed by server UUID)
+- Token passed to Node.js via `PORTLAMA_CLOUD_TOKEN` env var (never CLI args)
+- Server registry: `~/.portlama/servers.json` with atomic writes (tmp → 0600 → fsync → rename)
+- Droplet safety: only operate on droplets tagged `portlama:managed`
+- Cleanup stack: each resource creation registers a rollback; on failure, cleanup runs in reverse
 
 **Installer:**
 
@@ -176,6 +197,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 | `PORTLAMA_CONFIG`           | panel-server   | Path to panel.json (default: `/etc/portlama/panel.json`) |
 | `NODE_ENV`                  | panel-server   | `development` skips mTLS check                           |
 | `PORTLAMA_ENROLLMENT_TOKEN` | portlama-agent | Enrollment token for `setup --token` (avoids process listing exposure) |
+| `PORTLAMA_CLOUD_TOKEN`      | portlama-cloud | Cloud provider API token (never CLI args)                |
 
 ## License
 

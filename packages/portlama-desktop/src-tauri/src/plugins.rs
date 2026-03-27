@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 // --- URL encoding helper ---
 
 /// Percent-encode a string for safe use in URL path segments.
-fn url_encode(s: &str) -> String {
+pub(crate) fn url_encode(s: &str) -> String {
     let mut encoded = String::with_capacity(s.len());
     for byte in s.bytes() {
         match byte {

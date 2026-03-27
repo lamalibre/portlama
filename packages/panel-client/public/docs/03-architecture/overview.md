@@ -263,6 +263,23 @@ portlama/
 │   │           ├── files.js          ← Static site file operations (upload, delete, list)
 │   │           └── app-error.js      ← Operational error class (AppError)
 │   │
+│   ├── portlama-tickets/              ← Agent-to-agent authorization SDK (mTLS, undici)
+│   │   └── src/
+│   │       ├── index.ts              ← Client + types
+│   │       └── ...
+│   │
+│   ├── portlama-cloud/                ← Cloud provider abstraction for server provisioning
+│   │   ├── bin/portlama-cloud.js     ← CLI entry point (NDJSON progress on stdout)
+│   │   └── src/
+│   │       ├── index.ts              ← Provider exports
+│   │       ├── provider.ts           ← CloudProvider interface
+│   │       ├── provisioner.ts        ← Provisioning orchestrator (create → install → configure)
+│   │       ├── registry.ts           ← Server registry (servers.json, atomic writes)
+│   │       ├── ssh.ts                ← SSH/SCP with temporary ed25519 keys
+│   │       ├── types.ts              ← Shared types
+│   │       ├── errors.ts             ← Error types
+│   │       └── digitalocean/         ← DigitalOcean provider implementation
+│   │
 │   └── panel-client/                  ← React 18 + Vite + Tailwind SPA
 │       └── src/
 │           ├── App.jsx               ← Mode detection, routing, provider wrappers
@@ -432,3 +449,5 @@ Phase 4: Recovery (if needed)
 | `/etc/portlama/push-install-config.json`     | Push install configuration and policies              |
 | `/etc/portlama/push-install-sessions.json`   | Push install session audit log                       |
 | `/etc/sudoers.d/portlama`                    | Scoped sudo rules for portlama user                  |
+| `~/.portlama/servers.json`                   | Desktop app server registry (multi-server support)   |
+| `~/.portlama/services.json`                  | Desktop app service discovery registry               |

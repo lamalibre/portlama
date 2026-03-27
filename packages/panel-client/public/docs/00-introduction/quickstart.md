@@ -10,6 +10,8 @@ Think of it as three steps: rent a storefront (create a droplet), set up the sto
 
 ## For Users
 
+> **Alternative:** If you prefer a graphical experience, the [Desktop App](../02-guides/desktop-app-setup.md) can provision a DigitalOcean droplet and set up everything automatically — no SSH required. See the [Cloud Provisioning guide](../02-guides/cloud-provisioning.md) for a step-by-step walkthrough. The guide below covers the manual SSH approach.
+
 ### Prerequisites
 
 Before you start, make sure you have:

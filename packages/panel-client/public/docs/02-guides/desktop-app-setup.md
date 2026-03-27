@@ -9,6 +9,8 @@ The Portlama Desktop app is a native application (built with Tauri) that replace
 - **Discovers local services automatically** — it scans your machine for well-known services (Ollama, ComfyUI, PostgreSQL, Redis, Docker containers, etc.) and shows them in a marketplace-style UI
 - **Creates tunnels with one click** — select a detected service, click "Expose," and the app creates the tunnel, updates the Chisel config, and reloads the connection
 - **Manages everything visually** — start/stop Chisel, view logs, manage tunnels, rotate certificates, all from a native window with a system tray icon
+- **Provisions servers from the app** — create a DigitalOcean droplet, install Portlama, and connect automatically without ever touching SSH
+- **Manages multiple servers** — switch between servers, add existing servers manually, or remove servers from the registry
 
 ## Prerequisites
 
@@ -47,13 +49,21 @@ The app is not code-signed with an Apple Developer certificate. On first launch:
 
 ## Initial Setup
 
-After the app launches, it shows a setup screen prompting you to run the agent setup:
+After the app launches, it shows a setup screen with two options:
+
+**Option A: Connect to an existing server**
+
+Run the agent setup command:
 
 ```bash
 npx @lamalibre/portlama-agent setup
 ```
 
 This command connects to your VPS panel using the agent certificate and configures the local Chisel client. During setup, the client certificate and key are extracted from the P12 bundle for mTLS client authentication. Once setup completes, the app detects the configuration and switches to the main interface.
+
+**Option B: Create a new server**
+
+Click "Create a new server" on the setup screen. This opens the Servers tab where you can provision a DigitalOcean droplet directly from the app. See the [Servers](#servers) section below for details.
 
 ## Using the App
 
@@ -98,6 +108,19 @@ The marketplace-style service discovery page:
 | Elasticsearch          | 9200         | Database   |
 
 Docker containers with exposed ports are also detected and can be individually exposed.
+
+### Servers
+
+The multi-server management page:
+
+- **Cloud provisioning** — create a DigitalOcean droplet with Portlama pre-installed. The wizard validates your API token scopes, measures latency to each region, provisions the droplet, installs Portlama, downloads the certificate, and connects the app automatically
+- **Add existing server** — connect to a server you already set up manually by providing the panel URL and certificate
+- **Server switching** — switch the active server; the app reloads configuration and reconnects
+- **Server removal** — remove a server from the registry (cloud-provisioned servers can also be destroyed)
+
+**Cloud provider tokens** are stored in your OS credential store (macOS Keychain or Linux libsecret) — never in plaintext files or process arguments. P12 passwords for each server are also stored in the credential store.
+
+**Server registry** is persisted at `~/.portlama/servers.json`. When this file exists and contains an active entry, it takes precedence over the legacy `~/.portlama/agent.json` configuration.
 
 ### Logs
 
@@ -147,14 +170,18 @@ rm -rf ~/.portlama/
 | **Update**           | `npx @lamalibre/install-portlama-desktop` |
 | **Agent setup**      | `npx @lamalibre/portlama-agent setup`     |
 | **App location**     | `/Applications/Portlama.app` (macOS)      |
-| **Config**           | `~/.portlama/agent.json`                  |
+| **Config (legacy)**  | `~/.portlama/agent.json`                  |
+| **Server registry**  | `~/.portlama/servers.json`                |
 | **Service registry** | `~/.portlama/services.json`               |
 | **Download cache**   | `~/.portlama/desktop/`                    |
 | **Chisel logs**      | `~/.portlama/logs/chisel.log`             |
+| **Cloud tokens**     | OS credential store (`com.portlama.cloud`) |
+| **P12 passwords**    | OS credential store (`com.portlama.server`) |
 | **npm package**      | `@lamalibre/install-portlama-desktop`     |
 
 ### Related Documentation
 
+- [Cloud Provisioning](cloud-provisioning.md) — step-by-step guide to creating a server from the desktop app
 - [Mac Client Setup](mac-client-setup.md) — manual CLI-based Chisel setup (alternative)
 - [Certificate Management](certificate-management.md) — generating agent certificates
 - [First Tunnel](first-tunnel.md) — creating tunnels via the panel UI

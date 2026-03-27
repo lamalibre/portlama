@@ -7,9 +7,20 @@ use tauri::{
 
 use crate::config;
 
+fn icon_for_state(state: &str) -> Image<'static> {
+    match state {
+        "online" => Image::from_bytes(include_bytes!("../icons/tray-green.png")),
+        "offline" => Image::from_bytes(include_bytes!("../icons/tray-red.png")),
+        "checking" => Image::from_bytes(include_bytes!("../icons/tray-amber.png")),
+        _ => Image::from_bytes(include_bytes!("../icons/tray-gray.png")),
+    }
+    .expect("failed to load tray icon")
+}
+
 pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let configured = config::config_path().exists();
 
+    let initial_state = if configured { "checking" } else { "unconfigured" };
     let status_text = if configured {
         "Portlama: Checking..."
     } else {
@@ -34,12 +45,9 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .item(&quit_item)
         .build()?;
 
-    let icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
-        .expect("failed to load tray icon");
-
     let _tray = TrayIconBuilder::with_id("main")
-        .icon(icon)
-        .icon_as_template(true)
+        .icon(icon_for_state(initial_state))
+        .icon_as_template(false)
         .tooltip("Portlama")
         .menu(&menu)
         .on_menu_event(move |app, event| {
@@ -73,4 +81,13 @@ pub fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .build(app)?;
 
     Ok(())
+}
+
+/// Update the tray icon and tooltip based on server state.
+/// Called from the frontend via `set_tray_state` command.
+pub fn update_tray_state(app: &tauri::AppHandle, state: &str, tooltip: &str) {
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_icon(Some(icon_for_state(state)));
+        let _ = tray.set_tooltip(Some(tooltip));
+    }
 }

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,8 +12,9 @@ pub struct AgentConfig {
     /// Path to P12 file (used when auth_method is "p12")
     #[serde(default)]
     pub p12_path: Option<String>,
-    /// P12 password (used when auth_method is "p12")
-    #[serde(default)]
+    /// P12 password (used when auth_method is "p12").
+    /// skip_serializing: password should be in the OS credential store, not JSON.
+    #[serde(default, skip_serializing)]
     pub p12_password: Option<String>,
     /// Keychain identity name (used when auth_method is "keychain")
     #[serde(default)]
@@ -56,6 +58,76 @@ pub fn services_registry_path() -> PathBuf {
     agent_dir().join("services.json")
 }
 
+pub fn servers_registry_path() -> PathBuf {
+    agent_dir().join("servers.json")
+}
+
+/// Minimal typed struct for entries in `servers.json`.
+/// Only the fields needed for `load_effective_config`; unknown fields are ignored.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerRegistryEntry {
+    #[serde(default)]
+    id: Option<String>,
+    #[serde(default)]
+    active: bool,
+    panel_url: String,
+    #[serde(default = "default_auth_method")]
+    auth_method: String,
+    #[serde(default)]
+    p12_path: Option<String>,
+    #[serde(default)]
+    p12_password: Option<String>,
+    #[serde(default)]
+    keychain_identity: Option<String>,
+    #[serde(default)]
+    label: Option<String>,
+    #[serde(default)]
+    created_at: Option<String>,
+}
+
+/// Load the effective agent configuration.
+///
+/// If `servers.json` exists and has an active entry, construct an `AgentConfig`
+/// from that entry. Otherwise, fall back to `agent.json` (backward compatible).
+pub fn load_effective_config() -> Result<AgentConfig, String> {
+    let registry_path = servers_registry_path();
+    if registry_path.exists() {
+        let content = std::fs::read_to_string(&registry_path)
+            .map_err(|e| format!("Failed to read servers.json: {}", e))?;
+        let servers: Vec<ServerRegistryEntry> = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse servers.json: {}", e))?;
+
+        if let Some(active) = servers.iter().find(|s| s.active) {
+            // If p12_password is not in the JSON (migrated to credential store),
+            // retrieve it using the server ID.
+            let mut p12_password = active.p12_password.clone();
+            if p12_password.is_none() && active.auth_method == "p12" {
+                if let Some(ref id) = active.id {
+                    if let Ok(Some(pw)) = crate::credentials::get_server_credential(id) {
+                        p12_password = Some(pw);
+                    }
+                }
+            }
+            return Ok(AgentConfig {
+                panel_url: active.panel_url.clone(),
+                auth_method: active.auth_method.clone(),
+                p12_path: active.p12_path.clone(),
+                p12_password,
+                keychain_identity: active.keychain_identity.clone(),
+                agent_label: None,
+                domain: active.label.clone(),
+                chisel_version: None,
+                setup_at: active.created_at.clone(),
+                updated_at: None,
+            });
+        }
+    }
+
+    // Fall back to agent.json
+    load_config()
+}
+
 pub fn plist_path() -> PathBuf {
     #[cfg(target_os = "macos")]
     {
@@ -92,8 +164,15 @@ pub fn save_config(config: &AgentConfig) -> Result<(), String> {
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
 
     let tmp_path = path.with_extension("json.tmp");
-    std::fs::write(&tmp_path, &json)
-        .map_err(|e| format!("Failed to write temp config: {}", e))?;
+
+    {
+        let mut file = std::fs::File::create(&tmp_path)
+            .map_err(|e| format!("Failed to create temp config: {}", e))?;
+        file.write_all(json.as_bytes())
+            .map_err(|e| format!("Failed to write temp config: {}", e))?;
+        file.sync_all()
+            .map_err(|e| format!("Failed to fsync temp config: {}", e))?;
+    }
 
     // Set restrictive permissions before rename
     #[cfg(unix)]

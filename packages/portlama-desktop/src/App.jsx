@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
@@ -11,10 +11,12 @@ import {
   Settings,
   AlertTriangle,
   ExternalLink,
+  Cloud,
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard.jsx';
 import Tunnels from './pages/Tunnels.jsx';
 import Services from './pages/Services.jsx';
+import Servers from './pages/Servers.jsx';
 import Logs from './pages/Logs.jsx';
 import SettingsPage from './pages/Settings.jsx';
 
@@ -22,11 +24,12 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity },
   { id: 'tunnels', label: 'Tunnels', icon: Network },
   { id: 'services', label: 'Services', icon: Compass },
+  { id: 'servers', label: 'Servers', icon: Cloud },
   { id: 'logs', label: 'Logs', icon: ScrollText },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-function SetupRequired({ message }) {
+function SetupRequired({ message, onCreateServer }) {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 p-8">
       <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-8 max-w-md text-center">
@@ -39,7 +42,19 @@ function SetupRequired({ message }) {
         <div className="rounded bg-zinc-950 border border-zinc-700 p-4 font-mono text-sm text-cyan-400 select-all mb-4">
           npx @lamalibre/portlama-agent setup
         </div>
-        <p className="text-zinc-500 text-xs">
+        <div className="border-t border-zinc-800 pt-4 mt-4">
+          <p className="text-zinc-500 text-xs mb-3">
+            Don&apos;t have a server yet?
+          </p>
+          <button
+            onClick={onCreateServer}
+            className="text-sm px-4 py-2 rounded bg-cyan-400/10 text-cyan-400 hover:bg-cyan-400/20 inline-flex items-center gap-2"
+          >
+            <Cloud size={14} />
+            Create a new server
+          </button>
+        </div>
+        <p className="text-zinc-500 text-xs mt-4">
           The app will automatically detect the configuration once setup is complete.
         </p>
       </div>
@@ -49,6 +64,7 @@ function SetupRequired({ message }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [skipSetup, setSkipSetup] = useState(false);
 
   const statusQuery = useQuery({
     queryKey: ['status'],
@@ -58,8 +74,33 @@ export default function App() {
 
   const status = statusQuery.data;
 
-  if (status && !status.configured) {
-    return <SetupRequired message={status.setupMessage} />;
+  // Sync tray icon with connection state
+  useEffect(() => {
+    if (!status) return;
+    let state, tooltip;
+    if (!status.configured) {
+      state = 'unconfigured';
+      tooltip = 'Portlama: Not configured';
+    } else if (status.chisel?.running) {
+      state = 'online';
+      tooltip = 'Portlama: Connected';
+    } else {
+      state = 'offline';
+      tooltip = 'Portlama: Disconnected';
+    }
+    invoke('set_tray_state', { state, tooltip }).catch(() => {});
+  }, [status?.configured, status?.chisel?.running]);
+
+  if (status && !status.configured && !skipSetup) {
+    return (
+      <SetupRequired
+        message={status.setupMessage}
+        onCreateServer={() => {
+          setSkipSetup(true);
+          setActiveTab('servers');
+        }}
+      />
+    );
   }
 
   const handleOpenPanel = async () => {
@@ -79,6 +120,8 @@ export default function App() {
         return <Tunnels />;
       case 'services':
         return <Services />;
+      case 'servers':
+        return <Servers />;
       case 'logs':
         return <Logs />;
       case 'settings':

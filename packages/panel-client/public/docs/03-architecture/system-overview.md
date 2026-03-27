@@ -55,7 +55,14 @@
 │                              ▲ WebSocket tunnel (wss://)             │
 │  ┌───────────────────────────┴────────────────────────────────────┐  │
 │  │  Mac Studio (or any machine behind NAT/firewall)               │  │
-│  │   └─ Chisel client (launchd daemon, auto-reconnect)            │  │
+│  │                                                                │  │
+│  │   Portlama Desktop (Tauri v2)                                  │  │
+│  │    ├─ Service discovery + tunnel management UI                 │  │
+│  │    ├─ Multi-server registry (~/.portlama/servers.json)         │  │
+│  │    ├─ Cloud provisioning (DigitalOcean via portlama-cloud)     │  │
+│  │    └─ Credential storage (macOS Keychain / Linux libsecret)   │  │
+│  │                                                                │  │
+│  │   Chisel client (launchd daemon, auto-reconnect)               │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
 ```

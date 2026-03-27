@@ -45,9 +45,13 @@ Those are great tools. Portlama differs in a few ways:
 
 Portlama has three phases of life: installation, onboarding, and daily operation.
 
-**Phase 1: Installation (5 minutes, SSH)**
+**Phase 1: Installation (5 minutes)**
 
-You SSH into a fresh Ubuntu droplet and run one command:
+There are two ways to get a Portlama server running:
+
+**Option A: SSH (manual)**
+
+SSH into a fresh Ubuntu droplet and run one command:
 
 ```bash
 apt install -y npm
@@ -55,6 +59,10 @@ npx @lamalibre/create-portlama
 ```
 
 This installs everything the relay needs: nginx, Node.js, firewall rules, certificates, and the management panel. At the end, it prints a client certificate file and password. You download the certificate, import it into your browser, and disconnect SSH. You never SSH in again.
+
+**Option B: Desktop app (cloud provisioning)**
+
+Install the desktop app (`npx @lamalibre/install-portlama-desktop`) and use the Servers tab to create a DigitalOcean droplet. The app handles everything — droplet creation, Portlama installation, certificate download, and connection — without you ever touching SSH. Cloud API tokens are stored in your OS credential store (macOS Keychain or Linux libsecret), never in plaintext. See the [Cloud Provisioning guide](../02-guides/cloud-provisioning.md) for a step-by-step walkthrough.
 
 **Phase 2: Onboarding (10 minutes, browser)**
 
@@ -166,6 +174,13 @@ Here is every piece of software running on the droplet after onboarding:
 │  │  auto-reconnect) │       │ localhost:3000 (dashboard)       │ │
 │  └──────────────────┘       │ localhost:5173 (dev server)      │ │
 │                             └──────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ Portlama Desktop (Tauri v2)                                  │ │
+│  │  ├─ Service discovery + tunnel management                    │ │
+│  │  ├─ Multi-server registry (~/.portlama/servers.json)         │ │
+│  │  ├─ Cloud provisioning (DigitalOcean)                        │ │
+│  │  └─ Credential storage (macOS Keychain / Linux libsecret)   │ │
+│  └──────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
 

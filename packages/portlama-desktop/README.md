@@ -1,6 +1,6 @@
 # @lamalibre/portlama-desktop
 
-Tauri v2 desktop application for managing Portlama tunnels on macOS and Ubuntu.
+Tauri v2 desktop application for managing Portlama servers and tunnels on macOS and Ubuntu. Supports multi-server management, cloud provisioning (DigitalOcean), and service discovery.
 
 ## Install
 
@@ -12,14 +12,17 @@ Downloads the latest release from GitHub, installs to `/Applications` (macOS) or
 
 ## What It Does
 
-The desktop agent provides a native GUI for managing Portlama tunnels with:
+The desktop app provides a native GUI for managing Portlama with:
 
 - **mTLS authentication** — connects to the panel using agent-scoped certificates
 - **Tunnel management** — start, stop, and monitor Chisel tunnels
 - **Service discovery** — auto-detects local services (Ollama, ComfyUI, PostgreSQL, Redis, etc.) and Docker containers, with one-click tunnel creation
 - **Custom services** — user-defined service definitions persisted in `~/.portlama/services.json`
+- **Multi-server support** — manage multiple Portlama servers from a single app, switch between them, persisted in `~/.portlama/servers.json`
+- **Cloud provisioning** — create DigitalOcean droplets with Portlama pre-installed directly from the app (token scope validation, region latency measurement, automatic certificate download)
+- **Secure credential storage** — cloud API tokens and P12 passwords stored in the OS credential store (macOS Keychain via `security-framework` crate, Linux libsecret via `secret-tool`)
 - **System tray** — background operation with status indicator
-- **IPC** — Rust backend handles mTLS and Chisel; React frontend handles UI
+- **IPC** — Rust backend handles mTLS, Chisel, cloud provisioning, and credential storage; React frontend handles UI
 
 ## Tech Stack
 

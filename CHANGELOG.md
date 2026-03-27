@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-03-28
+
+### Added
+
+- Add cloud provisioning via DigitalOcean — create, monitor, and destroy servers directly from the desktop app without SSH or terminal commands
+- Add `@lamalibre/portlama-cloud` package — cloud provider abstraction with DigitalOcean implementation, token scope validation, SSH provisioning, and NDJSON progress protocol
+- Add Create Server wizard with 6-step flow: Overview → Token → Region → Size → Label → Create
+- Add droplet size selection — curated list of Basic tier sizes filtered by region, with 512MB ($4/mo) as recommended default
+- Add region latency probing via DigitalOcean Spaces endpoints (replaces decommissioned `speedtest-*.digitalocean.com`)
+- Add token scope validation with dangerous-scope rejection — tokens with `database:delete`, `kubernetes:create`, etc. are blocked
+- Add probe-based validation fallback when `account:read` scope is absent
+- Add Overview/disclaimer step with risks, security measures, DO team isolation recommendation, documentation links, and "do not show again" persistence
+- Add onboarding domain and email fields to the wizard — optionally sets domain on the panel during provisioning
+- Add real-time provisioning progress with braille spinner and running command display in the wizard
+- Add `provision-progress` Tauri event for live step-by-step progress updates from Rust backend to React frontend
+- Add multi-server management — register, switch, health-monitor, and destroy servers from the Servers tab
+- Add "Add Existing Server" flow for manually provisioned servers
+- Add OS credential storage module — macOS Keychain (`security-framework` crate) and Linux libsecret (`secret-tool`) for API tokens and P12 passwords
+- Add server registry at `~/.portlama/servers.json` with atomic writes and `load_effective_config()` fallback from active server to legacy `agent.json`
+- Add cloud provisioning guide with step-by-step DO token setup, team isolation recommendation, and troubleshooting reference
+- Add state-colored tray icon — green (connected), red (disconnected), amber (checking), gray (not configured)
+- Add `set_tray_state` Tauri command for frontend-driven tray icon updates synced with connection status
+
+### Changed
+
+- Update app icon to llama-only silhouette on transparent background (removed white square and "CODELAMA" text)
+- Update tray icon to match new llama silhouette
+- Remove duplicate tray icon caused by both `tauri.conf.json` and `tray.rs` creating separate instances
+- Update documentation across 10+ files for cloud provisioning, multi-server support, and credential storage
+
+### Security
+
+- Add token scope validation — reject overly broad DO tokens, require minimum 5 resource groups (account, droplet, regions, ssh_key, tag)
+- Add `portlama:managed` tag safety check — refuse to destroy droplets without the tag
+- Add credential storage via OS keychain — tokens and P12 passwords never stored in plaintext files or passed as CLI arguments
+- Add temporary SSH key lifecycle — ed25519 keypair generated per provisioning session, securely deleted after use
+- Add cloud-init wait before apt operations — prevents cache corruption from concurrent background processes on fresh droplets
+- Add panel health check via SSH before certificate enrollment — bypasses nginx mTLS requirement on `/api/` routes
+
+**Affected packages:**
+
+- `@lamalibre/portlama-desktop` 0.1.3 → 0.1.5
+- `@lamalibre/portlama-cloud` 0.1.0 (new package)
+- `@lamalibre/portlama-panel-client` 0.1.8 (docs only)
+
 ## [Unreleased] - 2026-03-26
 
 ### Added
