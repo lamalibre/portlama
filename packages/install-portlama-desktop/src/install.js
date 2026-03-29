@@ -29,8 +29,8 @@ function detectPlatformSuffix() {
 async function getLatestRelease() {
   const url = `https://api.github.com/repos/${REPO}/releases?per_page=10`;
   const body = await fetchJson(url);
-  const release = body.find((r) => r.tag_name && r.tag_name.startsWith('desktop-v'));
-  if (!release) throw new Error('No desktop release found');
+  const release = body.find((r) => r.tag_name && r.tag_name.startsWith('desktop-v') && r.assets && r.assets.length > 0);
+  if (!release) throw new Error('No desktop release with assets found');
   return release;
 }
 
