@@ -8,6 +8,20 @@ One-command setup for secure reverse tunnels with a management dashboard.
 
 ## Quick Start
 
+### Desktop App (Recommended)
+
+```bash
+npx @lamalibre/install-portlama-desktop
+```
+
+The desktop app lets you create a DigitalOcean server, manage agents, and configure tunnels — all from a native GUI. It handles cloud provisioning (including DNS setup), certificate management, and service discovery automatically.
+
+1. Install the desktop app with the command above
+2. Click **Create Server** and follow the wizard — select a region, optionally pick a domain, and the app provisions a droplet with Portlama fully configured
+3. The admin certificate is imported automatically — the server dashboard is ready immediately
+
+### CLI (Alternative)
+
 ```bash
 apt install -y npm
 npx @lamalibre/create-portlama
