@@ -26,12 +26,22 @@ function detectPlatformSuffix() {
   return { os, cpu, suffix };
 }
 
+function parseVersion(tag) {
+  const m = tag.replace('desktop-v', '').match(/^(\d+)\.(\d+)\.(\d+)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+}
+
 async function getLatestRelease() {
   const url = `https://api.github.com/repos/${REPO}/releases?per_page=10`;
   const body = await fetchJson(url);
-  const release = body.find((r) => r.tag_name && r.tag_name.startsWith('desktop-v') && r.assets && r.assets.length > 0);
-  if (!release) throw new Error('No desktop release with assets found');
-  return release;
+  const candidates = body.filter((r) => r.tag_name && r.tag_name.startsWith('desktop-v') && r.assets && r.assets.length > 0);
+  if (candidates.length === 0) throw new Error('No desktop release with assets found');
+  candidates.sort((a, b) => {
+    const va = parseVersion(a.tag_name);
+    const vb = parseVersion(b.tag_name);
+    return vb[0] - va[0] || vb[1] - va[1] || vb[2] - va[2];
+  });
+  return candidates[0];
 }
 
 function fetchJson(url) {
