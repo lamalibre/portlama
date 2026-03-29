@@ -209,6 +209,11 @@ if [ "$SKIP_SETUP" = "false" ]; then
   # -----------------------------------------------------------------------
   # 2a: Build installer tarball locally
   # -----------------------------------------------------------------------
+  log_step "Bundling vendor into create-portlama..."
+  node "${REPO_ROOT}/packages/create-portlama/scripts/bundle-vendor.js" || \
+    log_fatal "bundle-vendor.js failed"
+  log_ok "Vendor bundled"
+
   log_step "Packing create-portlama tarball..."
   TARBALL=$(cd "${REPO_ROOT}/packages/create-portlama" && npm pack --pack-destination /tmp 2>/dev/null | tail -1)
   TARBALL="/tmp/${TARBALL}"

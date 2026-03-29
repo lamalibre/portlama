@@ -675,3 +675,84 @@ export async function curlPostUnauthenticated(url, body) {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Agent panel tunnel operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Execute an authenticated curl command and parse JSON response.
+ * Exported so panel-api-routes.js can proxy requests to the panel server.
+ *
+ * @param {object} config - Agent config with auth credentials
+ * @param {string[]} curlArgs - Curl arguments
+ * @returns {Promise<object>}
+ */
+export async function curlAuthenticatedJson(config, curlArgs) {
+  const { stdout } = await curlAuthenticated(config, curlArgs);
+  return JSON.parse(stdout);
+}
+
+/**
+ * Request the panel server to expose the agent's management panel.
+ * Creates a panel tunnel with mTLS nginx vhost.
+ *
+ * @param {object} config - Agent config
+ * @param {number} port - Local panel server port
+ * @returns {Promise<object>}
+ */
+export async function exposePanelTunnel(config, port) {
+  const url = `${config.panelUrl}/api/tunnels/expose-panel`;
+  try {
+    const { stdout } = await curlAuthenticated(config, [
+      '-X', 'POST',
+      '-H', 'Content-Type: application/json',
+      '-d', JSON.stringify({ port }),
+      url,
+    ]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to expose panel tunnel. Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Request the panel server to retract (remove) the agent's panel tunnel.
+ *
+ * @param {object} config - Agent config
+ * @returns {Promise<object>}
+ */
+export async function retractPanelTunnel(config) {
+  const url = `${config.panelUrl}/api/tunnels/retract-panel`;
+  try {
+    const { stdout } = await curlAuthenticated(config, [
+      '-X', 'DELETE',
+      url,
+    ]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to retract panel tunnel. Details: ${err.stderr || err.message}`,
+    );
+  }
+}
+
+/**
+ * Check the status of the agent's panel tunnel.
+ *
+ * @param {object} config - Agent config
+ * @returns {Promise<{ enabled: boolean, fqdn: string | null, port: number | null }>}
+ */
+export async function fetchPanelTunnelStatus(config) {
+  const url = `${config.panelUrl}/api/tunnels/agent-panel-status`;
+  try {
+    const { stdout } = await curlAuthenticated(config, [url]);
+    return JSON.parse(stdout);
+  } catch (err) {
+    throw new Error(
+      `Failed to fetch panel tunnel status. Details: ${err.stderr || err.message}`,
+    );
+  }
+}

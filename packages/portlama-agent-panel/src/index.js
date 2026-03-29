@@ -11,5 +11,8 @@ export { default as AgentServicesPage } from './pages/Services.jsx';
 export { default as AgentLogsPage } from './pages/Logs.jsx';
 export { default as AgentSettingsPage } from './pages/Settings.jsx';
 
+// Web client
+export { createWebAgentClient } from './lib/web-agent-client.js';
+
 // Utilities
 export { cn } from './lib/cn.js';

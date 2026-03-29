@@ -57,6 +57,8 @@ fn main() {
             agents::get_agent_tunnels,
             agents::get_agent_logs,
             agents::get_agent_config,
+            agents::get_panel_expose_status,
+            agents::toggle_panel_expose,
             cloud::store_cloud_token,
             cloud::get_cloud_token,
             cloud::delete_cloud_token,

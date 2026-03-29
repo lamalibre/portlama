@@ -43,6 +43,7 @@ ${b('COMMANDS')}
   ${c('sites')}           List, create, or delete static sites
   ${c('deploy')}          Deploy a local directory to a static site
   ${c('plugin')}          Manage agent plugins (install, uninstall, update, status)
+  ${c('panel')}           Manage agent web panel (--enable, --disable, --status)
   ${c('list')}            List all configured agents
   ${c('switch')}          Set the default agent
 
@@ -152,6 +153,13 @@ export async function main() {
       const { resolveLabel } = await import('./lib/registry.js');
       const resolved = await resolveLabel(label);
       await runPlugin(args.slice(1), { label: resolved });
+      break;
+    }
+    case 'panel': {
+      const { runPanel } = await import('./commands/panel.js');
+      const { resolveLabel } = await import('./lib/registry.js');
+      const resolved = await resolveLabel(label);
+      await runPanel(args.slice(1), { label: resolved });
       break;
     }
     case 'list': {

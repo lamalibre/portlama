@@ -75,8 +75,9 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 - Host-agnostic React component libraries — pages use context hooks (`useAdminClient()`, `useAgentClient()`) instead of direct API/Tauri calls
 - Each consumer provides its own client implementation: desktop app via Tauri `invoke()`, web panel via `apiFetch()`
-- `AgentClientContext` interface: `getStatus`, `startAgent`, `stopAgent`, `restartAgent`, `updateAgent`, `getTunnels`, `createTunnel`, `deleteTunnel`, `toggleTunnel`, `scanServices`, `addCustomService`, `removeCustomService`, `getLogs`, `getConfig`, `getPanelUrl`, `rotateCertificate`, `downloadCertificate`, `uninstallAgent`, `openExternal`
-- Desktop agent client factory: `createDesktopAgentClient(label)` returns label-bound client (multi-agent support)
+- `AgentClientContext` interface: `getStatus`, `startAgent`, `stopAgent`, `restartAgent`, `updateAgent`, `getTunnels`, `createTunnel`, `deleteTunnel`, `toggleTunnel`, `scanServices`, `addCustomService`, `removeCustomService`, `getLogs`, `getConfig`, `getPanelUrl`, `rotateCertificate`, `downloadCertificate`, `getPanelExposeStatus`, `togglePanelExpose`, `uninstallAgent`, `openExternal`
+- Three client implementations: desktop via Tauri `invoke()` (`createDesktopAgentClient(label)`), web via `apiFetch()` (`createWebAgentClient()`), agent REST API in `portlama-agent`
+- Web SPA build: `npm run build:web` in agent-panel, output at `dist-web/`, copied to `portlama-agent/panel-dist/` via root `build:agent-panel-web` script
 - Pages exported with `Agent` prefix to avoid collision with admin-panel: `AgentDashboardPage`, `AgentTunnelsPage`, etc.
 
 **Rust / Tauri (Desktop):**
@@ -93,6 +94,19 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Server registry persisted as JSON at `~/.portlama/servers.json`
 - Agent registry persisted as JSON at `~/.portlama/agents.json` — multi-agent support with per-agent data directories
 - Atomic file writes (temp → fsync → rename) for registry and config
+- Agent panel expose: `get_panel_expose_status(label)` and `toggle_panel_expose(label, enabled)` Tauri commands shell out to `portlama-agent panel --status/--enable/--disable`
+
+**Agent Web Panel:**
+
+- Agents can expose their management panel at `agent-<label>.<domain>` via a tunnelled subdomain
+- Requires `panel:expose` capability (admin grants per-agent)
+- Separate Fastify HTTP server in `portlama-agent` serves SPA (`panel-dist/`) + REST API (`/api/*`)
+- Runs as independent system service: `com.portlama.panel-<label>` (macOS) / `portlama-panel-<label>` (Linux)
+- Default port 9393, configurable via `--port`
+- mTLS nginx vhost (same CA as main panel) — agent panel server validates cert CN is `agent:<label>` (owning agent) or `admin`
+- Tunnel type `panel` in `tunnels.json` — auto-created by `POST /api/tunnels/expose-panel`, removed by `DELETE /api/tunnels/retract-panel`
+- `agent-` subdomain prefix reserved for panel tunnels — regular tunnels cannot use it
+- CLI: `portlama-agent panel --enable [--port 9393]`, `--disable`, `--status [--json]`
 
 **TypeScript (Ticket SDK):**
 
@@ -153,6 +167,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
   - `services:read` / `services:write` — service status and control
   - `system:read` — system stats
   - `sites:read` / `sites:write` — static site file browsing and deployment (site CRUD is admin-only)
+  - `panel:expose` — expose agent management panel at `agent-<label>.<domain>` via mTLS-protected vhost
   - `allowedSites: string[]` — per-site scoping; agent sees and can deploy to only listed sites
 - Plugins and ticket scopes declare additional capabilities; these are merged with base capabilities dynamically via `getValidCapabilities()` (base + plugin + ticket scope). Plugin capabilities come from manifest (flat array or nested `{ agent: [...] }` — normalized to flat array internally); ticket scope capabilities come from scope declarations registered via `/api/tickets/scopes`
 - Plugin management endpoints (install, enable, push install) are admin-only at the route level

@@ -5,6 +5,7 @@ import { Listr } from 'listr2';
 import chalk from 'chalk';
 import { assertSupportedPlatform, AGENT_DIR, isLinux, serviceConfigPath, agentDataDir } from '../lib/platform.js';
 import { isAgentLoaded, unloadAgent } from '../lib/service.js';
+import { isPanelLoaded, unloadPanelService, removePanelServiceConfig } from '../lib/panel-service.js';
 import { listAgents, removeAgent, loadRegistry } from '../lib/registry.js';
 
 /**
@@ -56,6 +57,17 @@ async function uninstallSingle(label) {
 
   const tasks = new Listr(
     [
+      {
+        title: `Stopping panel server "${label}"`,
+        skip: async () => {
+          const loaded = await isPanelLoaded(label);
+          return !loaded && 'Panel not running';
+        },
+        task: async () => {
+          await unloadPanelService(label);
+          await removePanelServiceConfig(label);
+        },
+      },
       {
         title: `Unloading agent "${label}"`,
         skip: async () => {
@@ -131,6 +143,18 @@ async function uninstallAll() {
 
   const tasks = new Listr(
     [
+      // Stop all panel services
+      ...agents.map((agent) => ({
+        title: `Stopping panel server "${agent.label}"`,
+        skip: async () => {
+          const loaded = await isPanelLoaded(agent.label);
+          return !loaded && 'Panel not running';
+        },
+        task: async () => {
+          await unloadPanelService(agent.label);
+          await removePanelServiceConfig(agent.label);
+        },
+      })),
       // Unload all agents
       ...agents.map((agent) => ({
         title: `Unloading agent "${agent.label}"`,

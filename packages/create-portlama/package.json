@@ -1,6 +1,6 @@
 {
   "name": "@lamalibre/create-portlama",
-  "version": "1.0.36",
+  "version": "1.0.37",
   "description": "One-command setup for secure reverse tunnels with a management dashboard",
   "type": "module",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -15,8 +15,9 @@
     "vendor"
   ],
   "scripts": {
+    "build": "node scripts/bundle-vendor.js",
     "lint": "eslint .",
-    "prepublishOnly": "npm run lint && node scripts/bundle-vendor.js"
+    "prepublishOnly": "npm run lint && npm run build"
   },
   "repository": {
     "type": "git",

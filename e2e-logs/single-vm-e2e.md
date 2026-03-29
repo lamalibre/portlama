@@ -1,6 +1,6 @@
 # Single-VM E2E Test Results
 
-> Run at `2026-03-28 22:38:23 UTC`
+> Run at `2026-03-29 07:35:02 UTC`
 
 
 ============================================================================
@@ -9,7 +9,7 @@
 
   BASE_URL:       https://127.0.0.1:9292
   SKIP_DNS_TESTS: 1
-  Date:           2026-03-28 22:38:23 UTC
+  Date:           2026-03-29 07:35:02 UTC
 
   Running: 01-fresh-install.sh
 
@@ -59,7 +59,7 @@
   [PASS] Request with untrusted cert rejected (HTTP 400)
 
 --- Certificate validity check ---
-  [PASS] Client certificate has valid expiry: notAfter=Mar 27 22:37:03 2028 GMT
+  [PASS] Client certificate has valid expiry: notAfter=Mar 28 07:33:34 2028 GMT
   [PASS] Client certificate is signed by the CA
 
 ============================================================================
@@ -101,13 +101,13 @@
   [PASS] Tunnel has an ID
   [PASS] Tunnel has an FQDN
   [PASS] Tunnel has a createdAt timestamp
-  [INFO] Created tunnel ID: b43f4e22-d1c9-42b5-a893-9abeaae1770e
+  [INFO] Created tunnel ID: f1be362b-1c97-4c03-b9cd-421c65668e13
 
 --- Verify tunnel in list ---
   [PASS] Tunnel appears in GET /api/tunnels
 
 --- Verify nginx configuration ---
-  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774737503
+  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774769703
   [PASS] nginx -t passes after tunnel creation
 
 --- Validation: reserved subdomain ---
@@ -294,17 +294,17 @@
 --- Pre-flight: check onboarding is complete ---
 
 --- Current cert fingerprint (before rotation) ---
-  [INFO] Current cert fingerprint: sha256 Fingerprint=86:76:FD:FC:3B:EE:D8:E5:6F:E1:06:C3:D6:03:4F:07:5D:9A:D6:88:B1:41:CC:1B:BB:AC:6D:95:DA:7B:F4:7B
+  [INFO] Current cert fingerprint: sha256 Fingerprint=EA:A2:23:C1:BB:1F:2E:6A:67:92:D0:55:4E:9B:26:8F:7D:F2:06:14:AB:BB:C3:4C:C8:E2:2D:30:82:C2:36:1C
 
 --- Rotate mTLS certificate ---
   [PASS] Rotation response contains p12 password
-  [PASS] Rotation response contains expiry: 2028-03-27T22:38:53.000Z
+  [PASS] Rotation response contains expiry: 2028-03-28T07:35:32.000Z
   [INFO] Rotation warning: Your current browser certificate is now invalid. Download and import the new certificate before closing this page.
 
 --- Download rotated certificate ---
   [PASS] Downloaded client.p12 (HTTP 200)
   [PASS] Downloaded file is a valid PKCS12
-  [INFO] New cert fingerprint: sha256 Fingerprint=34:7E:2C:E5:1B:C7:F5:3D:24:A3:8D:5D:93:09:4D:84:8F:9E:2E:BA:62:D6:27:90:3E:A9:BE:5E:54:3B:95:AA
+  [INFO] New cert fingerprint: sha256 Fingerprint=F9:33:0C:A9:78:1E:5B:4A:1B:5E:42:7E:2B:25:0C:7C:F2:21:A6:5B:18:18:F7:85:20:D4:20:28:B5:F4:21:53
   [PASS] New cert has different fingerprint than old cert
 
 --- Verify API access with current credentials ---
@@ -322,7 +322,7 @@
 
 
 --- Determine server IP ---
-  [INFO] Server IP: 192.168.2.9
+  [INFO] Server IP: 192.168.2.12
 
 --- Health endpoint via IP ---
   [PASS] Health endpoint accessible via IP:9292
@@ -524,7 +524,7 @@
   [PASS] Site has an ID
   [PASS] Site name matches
   [PASS] Site type is managed
-  [INFO] Created site: e2esite.test.portlama.local (ID: 8bb484c8-aeab-41d6-b114-bb520c3e8e89)
+  [INFO] Created site: e2esite.test.portlama.local (ID: 602c4242-3446-4697-9120-3fed10f49c40)
 
 --- Verify site in listing ---
   [PASS] Site appears in listing
@@ -745,7 +745,7 @@
 
 --- Confirm 2FA with valid code ---
   [PASS] Generated TOTP code
-  [INFO] Generated TOTP code: 844303
+  [INFO] Generated TOTP code: 124970
   [PASS] 2FA is now enabled
   [PASS] Session cookie received on confirm
   [PASS] Status shows enabled after confirm
@@ -760,7 +760,7 @@
   [PASS] Authenticated request with session cookie returns system stats
 
 --- Disable 2FA ---
-  [INFO] Waiting 11s for next TOTP window...
+  [INFO] Waiting 2s for next TOTP window...
   [PASS] 2FA disabled successfully
 
 --- IP vhost re-enabled after disabling 2FA ---
@@ -799,8 +799,8 @@
 
 --- Complete event validation ---
   [PASS] Exactly one complete event emitted
-  [PASS] Server IP present: 192.168.2.9
-  [PASS] Panel URL present and uses HTTPS: https://192.168.2.9:9292
+  [PASS] Server IP present: 192.168.2.12
+  [PASS] Panel URL present and uses HTTPS: https://192.168.2.12:9292
   [PASS] P12 path within expected directory: /etc/portlama/pki/client.p12
   [PASS] P12 password path within expected directory: /etc/portlama/pki/.p12-password
 
@@ -815,7 +815,92 @@
   Results: 10 passed, 0 failed, 0 skipped (10 total)
 ============================================================================
 
+  Running: 19-panel-expose.sh
 
+============================================================================
+ Portlama E2E: 19 — Panel Expose Lifecycle
+============================================================================
+
+
+--- Pre-flight: check onboarding is complete ---
+
+--- Verify panel:expose is a valid capability ---
+  [PASS] Agent cert with panel:expose created successfully
+  [PASS] Agent cert has a p12 password
+  [INFO] Created agent cert: panel-e2e-1774769780
+  [PASS] Extracted PEM cert and key from .p12
+
+--- Expose panel: check agent-panel-status before expose ---
+  [PASS] Panel not exposed initially
+  [PASS] No FQDN before expose
+
+--- Expose panel: POST /api/tunnels/expose-panel ---
+  [PASS] Expose panel returned ok: true
+  [PASS] Panel tunnel has an ID
+  [PASS] Panel tunnel type is 'panel'
+  [PASS] Panel subdomain matches agent-<label>
+  [PASS] Panel tunnel port matches
+  [PASS] Panel tunnel has an FQDN
+  [PASS] Panel tunnel has a createdAt timestamp
+  [PASS] Panel tunnel agentLabel matches
+  [INFO] Exposed panel tunnel: agent-panel-e2e-1774769780.test.portlama.local (ID: e0774ebe-ed5d-4a5f-b91c-ee962d9ffaa9)
+
+--- Verify panel tunnel in tunnel listing ---
+  [PASS] Panel tunnel shows type 'panel' in listing
+  [PASS] Panel tunnel shows correct agentLabel in listing
+
+--- Verify nginx mTLS vhost created (not app vhost) ---
+  [PASS] mTLS panel vhost exists at /etc/nginx/sites-enabled/portlama-agent-panel-agent-panel-e2e-1774769780
+  [PASS] No app vhost created (correct — panel uses mTLS vhost)
+  [PASS] nginx -t passes after panel expose
+
+--- Verify agent-panel-status after expose ---
+  [PASS] Panel shows as enabled after expose
+  [PASS] Panel status FQDN matches
+  [PASS] Panel status port matches
+
+--- Duplicate expose returns 409 ---
+  [PASS] Duplicate panel expose returns 409 Conflict
+
+--- Validation: agent- prefix reserved for non-panel tunnels ---
+  [PASS] agent- prefix rejected for non-panel tunnel (HTTP 400)
+
+--- Capability check: agent without panel:expose gets 403 ---
+  [PASS] Agent cert without panel:expose created
+  [PASS] Expose panel returns 403 without panel:expose capability
+  [PASS] Agent panel status returns 403 without panel:expose capability
+  [PASS] Retract panel returns 403 without panel:expose capability
+
+--- Capability check: PATCH panel tunnel requires panel:expose ---
+  [PASS] PATCH panel tunnel returns 403 without panel:expose
+
+--- Capability check: DELETE panel tunnel requires panel:expose ---
+  [PASS] DELETE panel tunnel returns 403 without panel:expose
+
+--- Cross-agent spoofing: generic POST /api/tunnels with type=panel ---
+  [PASS] Cross-agent panel tunnel spoofing rejected (HTTP 403)
+
+--- Retract panel: DELETE /api/tunnels/retract-panel ---
+  [PASS] Retract panel returned ok: true
+  [PASS] Panel tunnel no longer in list after retract
+  [PASS] mTLS panel vhost removed after retract
+  [PASS] nginx -t passes after panel retract
+
+--- Verify agent-panel-status after retract ---
+  [PASS] Panel shows as disabled after retract
+
+--- Retract nonexistent panel returns 404 ---
+  [PASS] Retract nonexistent panel returns 404
+
+--- Validation: expose-panel with invalid port ---
+  [PASS] Port below 1024 rejected (HTTP 400)
+
+============================================================================
+  Results: 37 passed, 0 failed, 0 skipped (37 total)
+============================================================================
+
+  [INFO] Cleaning up test resources...
+{"error":"No panel tunnel found for this agent"}{"ok":true,"label":"panel-e2e-1774769780"}{"ok":true,"label":"nopanel-e2e"}
 ============================================================================
   Test Suite Summary
 ============================================================================
@@ -837,7 +922,8 @@
   [PASS] 16-enrollment-tokens.sh
   [PASS] 17-panel-2fa.sh
   [PASS] 18-json-installer.sh
+  [PASS] 19-panel-expose.sh
 
-  Total: 17 tests — 17 passed, 0 failed
+  Total: 18 tests — 18 passed, 0 failed
 
   SUITE PASSED

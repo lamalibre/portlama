@@ -1,6 +1,6 @@
 # Portlama E2E: 04 — Authelia Authentication (Three-VM)
 
-> Started at `2026-03-28 22:41:00 UTC`
+> Started at `2026-03-29 07:37:37 UTC`
 
 
 ## Pre-flight: verify onboarding is complete
@@ -8,38 +8,38 @@
 
 ## Create tunnel and establish connection
 
-✅ `22:41:03` Tunnel creation returned ok: true  
-✅ `22:41:03` Tunnel has an ID  
-ℹ️ `22:41:03` Created tunnel ID: 5ae82cab-2822-4ef1-889a-97eeb8075295  
-ℹ️ `22:41:12` Waiting for Chisel tunnel to establish...  
-✅ `22:41:12` Chisel tunnel established  
+✅ `07:37:40` Tunnel creation returned ok: true  
+✅ `07:37:40` Tunnel has an ID  
+ℹ️ `07:37:40` Created tunnel ID: 7dd38ea8-d7f5-48a5-84e6-2b5b49af42b3  
+ℹ️ `07:37:50` Waiting for Chisel tunnel to establish...  
+✅ `07:37:50` Chisel tunnel established  
 
 ## Test: unauthenticated access is redirected (from visitor VM)
 
-✅ `22:41:12` Unauthenticated request redirected/rejected (HTTP 302)  
-✅ `22:41:13` Redirect points to Authelia portal (auth.test.portlama.local)  
+✅ `07:37:50` Unauthenticated request redirected/rejected (HTTP 302)  
+✅ `07:37:50` Redirect points to Authelia portal (auth.test.portlama.local)  
 
 ## Test: authenticated access succeeds (from visitor VM)
 
-✅ `22:41:13` TOTP reset returned otpauth URI  
-✅ `22:41:13` Extracted TOTP secret from otpauth URI  
-✅ `22:41:16` Authelia first factor authentication succeeded  
+✅ `07:37:50` TOTP reset returned otpauth URI  
+✅ `07:37:50` Extracted TOTP secret from otpauth URI  
+✅ `07:37:53` Authelia first factor authentication succeeded  
 
 ## Second factor authentication (TOTP) from visitor VM
 
-ℹ️ `22:41:16` Generated TOTP code: 294443  
-✅ `22:41:16` Second factor authentication succeeded (TOTP accepted)  
-✅ `22:41:16` Authenticated request returns tunnel content  
-✅ `22:41:16` Authenticated request returns HTTP 200  
+ℹ️ `07:37:54` Generated TOTP code: 068333  
+✅ `07:37:54` Second factor authentication succeeded (TOTP accepted)  
+✅ `07:37:54` Authenticated request returns tunnel content  
+✅ `07:37:54` Authenticated request returns HTTP 200  
 
 ## Test: invalid auth cookie is rejected (from visitor VM)
 
-✅ `22:41:17` Invalid auth cookie rejected (HTTP 302)  
-✅ `22:41:17` Invalid auth cookie does not return tunnel content  
+✅ `07:37:54` Invalid auth cookie rejected (HTTP 302)  
+✅ `07:37:54` Invalid auth cookie does not return tunnel content  
 
 ## Test: Authelia portal is accessible (from visitor VM)
 
-✅ `22:41:17` Authelia portal accessible at https://auth.test.portlama.local (HTTP 200)  
+✅ `07:37:54` Authelia portal accessible at https://auth.test.portlama.local (HTTP 200)  
 
 ---
 
@@ -52,5 +52,5 @@
 | **Skipped** | `0` |
 | **Total** | `14` |
 
-ℹ️ `22:41:17` Cleaning up test resources...  
-🔵 `22:41:22` **Running: 05-admin-journey.sh**  
+ℹ️ `07:37:54` Cleaning up test resources...  
+🔵 `07:38:00` **Running: 05-admin-journey.sh**  

@@ -114,6 +114,7 @@ Agent certificates have capability-based access. By default, a new agent can onl
 | `system:read`    | View system stats (CPU, RAM, disk)        |
 | `sites:read`     | List sites and browse files               |
 | `sites:write`    | Upload and delete files on assigned sites |
+| `panel:expose`   | Expose agent management panel at `agent-<label>.<domain>` via mTLS-protected subdomain |
 
 Capabilities are stored server-side, so changing what an agent can do does not require reissuing its certificate. Users, certificates, agent management, and logs always remain admin-only.
 

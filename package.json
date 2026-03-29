@@ -11,6 +11,7 @@
     "dev:client": "npm run dev -w packages/panel-client",
     "docs:dev": "npm --prefix website run dev",
     "docs:build": "npm --prefix website run build",
+    "build:agent-panel-web": "npm run build:web -w packages/portlama-agent-panel && cp -r packages/portlama-agent-panel/dist-web/. packages/portlama-agent/panel-dist/",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

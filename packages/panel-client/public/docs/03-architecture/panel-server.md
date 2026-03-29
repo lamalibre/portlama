@@ -220,6 +220,9 @@ protectedContext (mTLS + role-guard):
         ├── PATCH  /api/tunnels/:id
         ├── DELETE  /api/tunnels/:id
         ├── GET    /api/tunnels/mac-plist
+        ├── GET    /api/tunnels/agent-panel-status
+        ├── POST   /api/tunnels/expose-panel
+        ├── DELETE /api/tunnels/retract-panel
         ├── GET    /api/sites
         ├── POST   /api/sites
         ├── PATCH  /api/sites/:id
@@ -455,7 +458,7 @@ See [nginx-configuration.md](./nginx-configuration.md) for detailed coverage.
 - Manages the agent registry: create, list, revoke, update capabilities and allowed sites
 - Provides the PKCS12 download path for the certs API
 - Manages dynamic capability sets: base capabilities + plugin capabilities + ticket scope capabilities via `getValidCapabilities()`
-- Base capabilities: `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`
+- Base capabilities: `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`, `panel:expose`
 
 ### tickets.js — Ticket System
 

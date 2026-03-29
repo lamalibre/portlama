@@ -264,6 +264,7 @@ const BASE_CAPABILITIES = [
   'system:read',
   'sites:read',
   'sites:write',
+  'panel:expose',
 ];
 
 /**

@@ -135,6 +135,73 @@ export function agentPluginsDir(label) {
   return path.join(agentDataDir(label), 'plugins');
 }
 
+// ---------------------------------------------------------------------------
+// Per-agent panel service paths
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-agent panel service stdout log.
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelLogFile(label) {
+  return path.join(agentLogsDir(label), 'panel.log');
+}
+
+/**
+ * Per-agent panel service stderr log.
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelErrorLogFile(label) {
+  return path.join(agentLogsDir(label), 'panel.error.log');
+}
+
+/**
+ * Per-agent panel launchd plist label.
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelPlistLabel(label) {
+  return `com.portlama.panel-${label}`;
+}
+
+/**
+ * Per-agent panel launchd plist file path.
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelPlistPath(label) {
+  return path.join(HOME, 'Library', 'LaunchAgents', `${panelPlistLabel(label)}.plist`);
+}
+
+/**
+ * Per-agent panel systemd unit name.
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelSystemdUnitName(label) {
+  return `portlama-panel-${label}`;
+}
+
+/**
+ * Per-agent panel systemd unit file path.
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelSystemdUnitPath(label) {
+  return `/etc/systemd/system/portlama-panel-${label}.service`;
+}
+
+/**
+ * Per-agent panel service config path (platform-aware).
+ * @param {string} label
+ * @returns {string}
+ */
+export function panelServiceConfigPath(label) {
+  return process.platform === 'darwin' ? panelPlistPath(label) : panelSystemdUnitPath(label);
+}
+
 /**
  * @returns {boolean} true if running on macOS
  */

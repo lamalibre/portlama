@@ -286,7 +286,7 @@ Generates a new agent-scoped certificate with the specified label, capabilities,
 | `capabilities` | `string[]` | No       | List of capabilities. Defaults to `["tunnels:read"]`. Must always include `tunnels:read`                                                                                   |
 | `allowedSites` | `string[]` | No       | List of site names this agent can access for file operations. Defaults to `[]` (no site access). Only relevant when `sites:read` or `sites:write` capabilities are granted |
 
-**Valid capabilities:** `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`
+**Valid capabilities:** `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`, `panel:expose`
 
 ```bash
 curl -s --cert client.p12:password \

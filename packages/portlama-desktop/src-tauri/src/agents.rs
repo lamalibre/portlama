@@ -501,3 +501,63 @@ pub async fn get_agent_config(label: String) -> Result<config::AgentConfig, Stri
     .await
     .map_err(|e| format!("Task failed: {}", e))?
 }
+
+/// Panel expose status response.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PanelExposeStatus {
+    pub running: bool,
+    pub enabled: bool,
+    pub fqdn: Option<String>,
+    pub port: Option<u32>,
+}
+
+#[tauri::command]
+pub async fn get_panel_expose_status(label: String) -> Result<PanelExposeStatus, String> {
+    tokio::task::spawn_blocking(move || {
+        validate_agent_label(&label)?;
+
+        // Run: portlama-agent panel --status --label <label> --json
+        let output = Command::new("portlama-agent")
+            .args(["panel", "--status", "--label", &label, "--json"])
+            .output()
+            .map_err(|e| format!("Failed to run portlama-agent: {}", e))?;
+
+        if !output.status.success() {
+            // Agent may not have the command — return disabled
+            return Ok(PanelExposeStatus {
+                running: false,
+                enabled: false,
+                fqdn: None,
+                port: None,
+            });
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        serde_json::from_str(stdout.trim())
+            .map_err(|e| format!("Failed to parse panel status: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn toggle_panel_expose(label: String, enabled: bool) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        validate_agent_label(&label)?;
+
+        let flag = if enabled { "--enable" } else { "--disable" };
+        let output = Command::new("portlama-agent")
+            .args(["panel", flag, "--label", &label])
+            .output()
+            .map_err(|e| format!("Failed to run portlama-agent: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Failed to {} panel: {}", if enabled { "enable" } else { "disable" }, stderr.trim()));
+        }
+
+        Ok(format!("Panel {} for agent \"{}\"", if enabled { "enabled" } else { "disabled" }, label))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}

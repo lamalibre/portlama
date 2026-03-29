@@ -2,12 +2,22 @@ import { z } from 'zod';
 import crypto from 'node:crypto';
 import { getConfig } from '../../lib/config.js';
 import { readTunnels, writeTunnels } from '../../lib/state.js';
-import { writeAppVhost, removeAppVhost, enableAppVhost, disableAppVhost } from '../../lib/nginx.js';
+import {
+  writeAppVhost,
+  removeAppVhost,
+  enableAppVhost,
+  disableAppVhost,
+  writeAgentPanelVhost,
+  removeAgentPanelVhost,
+  enableAgentPanelVhost,
+  disableAgentPanelVhost,
+} from '../../lib/nginx.js';
 import { updateChiselConfig } from '../../lib/chisel.js';
 import { issueTunnelCert } from '../../lib/certbot.js';
 import { generatePlist } from '../../lib/plist.js';
 import { buildChiselArgs } from '../../lib/chisel-args.js';
 
+// Note: the 'agent-' prefix is also reserved for panel tunnels (checked separately in the handler)
 const RESERVED_SUBDOMAINS = ['panel', 'auth', 'tunnel', 'www', 'mail', 'ftp', 'api'];
 
 const IdParamSchema = z.object({ id: z.string().uuid() });
@@ -30,6 +40,15 @@ const CreateTunnelSchema = z.object({
     .max(200, 'Description must be at most 200 characters')
     .optional()
     .default(''),
+  type: z.enum(['app', 'panel']).optional().default('app'),
+});
+
+const ExposePanelSchema = z.object({
+  port: z
+    .number()
+    .int('Port must be an integer')
+    .min(1024, 'Port must be at least 1024')
+    .max(65535, 'Port must be at most 65535'),
 });
 
 export default async function tunnelRoutes(fastify, _opts) {
@@ -140,11 +159,31 @@ export default async function tunnelRoutes(fastify, _opts) {
     },
     async (request, reply) => {
       const body = CreateTunnelSchema.parse(request.body);
-      const { subdomain, port, description } = body;
+      const { subdomain, port, description, type } = body;
 
       // Reserved subdomain check
       if (RESERVED_SUBDOMAINS.includes(subdomain)) {
         return reply.code(400).send({ error: `Subdomain '${subdomain}' is reserved` });
+      }
+
+      // Reserve agent- prefix for panel tunnels only
+      if (subdomain.startsWith('agent-') && type !== 'panel') {
+        return reply.code(400).send({ error: "Subdomain prefix 'agent-' is reserved for agent panel tunnels" });
+      }
+
+      // Panel tunnels require panel:expose capability and must match the requesting agent's label
+      if (type === 'panel') {
+        const caps = request.certCapabilities || [];
+        if (request.certRole !== 'admin' && !caps.includes('panel:expose')) {
+          return reply.code(403).send({ error: 'Agent does not have panel:expose capability' });
+        }
+        // Prevent cross-agent spoofing: agents can only create panel tunnels for themselves
+        if (request.certRole === 'agent' && request.certLabel) {
+          const expectedSubdomain = `agent-${request.certLabel}`;
+          if (subdomain !== expectedSubdomain) {
+            return reply.code(403).send({ error: 'Agents can only create panel tunnels for their own label' });
+          }
+        }
       }
 
       // Uniqueness check
@@ -183,9 +222,13 @@ export default async function tunnelRoutes(fastify, _opts) {
 
       try {
         // Step 2: Write nginx vhost
-        request.log.info({ fqdn, port }, 'Writing nginx vhost');
+        request.log.info({ fqdn, port, type }, 'Writing nginx vhost');
         const certPath = certResult.certPath || undefined;
-        await writeAppVhost(subdomain, config.domain, port, certPath);
+        if (type === 'panel') {
+          await writeAgentPanelVhost(subdomain, config.domain, port, certPath);
+        } else {
+          await writeAppVhost(subdomain, config.domain, port, certPath);
+        }
         request.log.info({ fqdn }, 'Nginx vhost configured');
       } catch (err) {
         request.log.error(err, 'Failed to write nginx vhost');
@@ -196,6 +239,8 @@ export default async function tunnelRoutes(fastify, _opts) {
         });
       }
 
+      const removeVhost = type === 'panel' ? removeAgentPanelVhost : removeAppVhost;
+
       try {
         // Step 3: Update Chisel config (only enabled tunnels)
         request.log.info({ port }, 'Updating Chisel configuration');
@@ -205,9 +250,8 @@ export default async function tunnelRoutes(fastify, _opts) {
         request.log.info('Chisel configuration updated');
       } catch (err) {
         request.log.error(err, 'Failed to update Chisel config');
-        // Rollback step 2: remove nginx vhost
         try {
-          await removeAppVhost(subdomain);
+          await removeVhost(subdomain);
         } catch (rollbackErr) {
           request.log.error(rollbackErr, 'Rollback: failed to remove nginx vhost');
         }
@@ -224,6 +268,7 @@ export default async function tunnelRoutes(fastify, _opts) {
         fqdn,
         port,
         description: description || null,
+        type,
         enabled: true,
         createdAt: new Date().toISOString(),
       };
@@ -234,9 +279,8 @@ export default async function tunnelRoutes(fastify, _opts) {
         await writeTunnels(tunnels);
       } catch (err) {
         request.log.error(err, 'Failed to save tunnel state');
-        // Rollback step 2: remove nginx vhost
         try {
-          await removeAppVhost(subdomain);
+          await removeVhost(subdomain);
         } catch (rollbackErr) {
           request.log.error(rollbackErr, 'Rollback: failed to remove nginx vhost');
         }
@@ -270,15 +314,31 @@ export default async function tunnelRoutes(fastify, _opts) {
       const wasEnabled = tunnel.enabled !== false; // default true for legacy tunnels
       tunnel.enabled = body.enabled;
 
+      const isPanel = tunnel.type === 'panel';
+
+      // Panel tunnels require panel:expose capability or admin
+      if (isPanel) {
+        const caps = request.certCapabilities || [];
+        if (request.certRole !== 'admin' && !caps.includes('panel:expose')) {
+          return reply.code(403).send({ error: 'Cannot toggle panel tunnel without panel:expose capability' });
+        }
+      }
+
       try {
         if (body.enabled && !wasEnabled) {
-          // Re-enable: restore nginx vhost + add to chisel
           request.log.info({ subdomain: tunnel.subdomain }, 'Enabling tunnel');
-          await enableAppVhost(tunnel.subdomain);
+          if (isPanel) {
+            await enableAgentPanelVhost(tunnel.subdomain);
+          } else {
+            await enableAppVhost(tunnel.subdomain);
+          }
         } else if (!body.enabled && wasEnabled) {
-          // Disable: remove nginx symlink (keep config file) + remove from chisel
           request.log.info({ subdomain: tunnel.subdomain }, 'Disabling tunnel');
-          await disableAppVhost(tunnel.subdomain);
+          if (isPanel) {
+            await disableAgentPanelVhost(tunnel.subdomain);
+          } else {
+            await disableAppVhost(tunnel.subdomain);
+          }
         }
 
         // Update chisel with only enabled tunnels
@@ -317,10 +377,22 @@ export default async function tunnelRoutes(fastify, _opts) {
 
       const tunnel = tunnels[index];
 
+      // Panel tunnels require panel:expose capability or admin
+      if (tunnel.type === 'panel') {
+        const caps = request.certCapabilities || [];
+        if (request.certRole !== 'admin' && !caps.includes('panel:expose')) {
+          return reply.code(403).send({ error: 'Cannot delete panel tunnel without panel:expose capability' });
+        }
+      }
+
       try {
         // Step 1: Remove nginx vhost
         request.log.info({ subdomain: tunnel.subdomain }, 'Removing nginx vhost');
-        await removeAppVhost(tunnel.subdomain);
+        if (tunnel.type === 'panel') {
+          await removeAgentPanelVhost(tunnel.subdomain);
+        } else {
+          await removeAppVhost(tunnel.subdomain);
+        }
 
         // Step 2: Update Chisel config (with remaining enabled tunnels)
         const remaining = tunnels.filter((_, i) => i !== index);
@@ -334,6 +406,198 @@ export default async function tunnelRoutes(fastify, _opts) {
         request.log.error(err, 'Failed to delete tunnel');
         return reply.code(500).send({
           error: 'Failed to delete tunnel',
+          details: err.message,
+        });
+      }
+
+      return { ok: true };
+    },
+  );
+
+  // GET /api/tunnels/agent-panel-status — check if agent has a panel tunnel
+  fastify.get(
+    '/tunnels/agent-panel-status',
+    {
+      preHandler: fastify.requireRole(['admin', 'agent'], { capability: 'panel:expose' }),
+    },
+    async (request, _reply) => {
+      const label = request.certLabel;
+      const tunnels = await readTunnels();
+      const subdomain = label ? `agent-${label}` : null;
+      const panelTunnel = tunnels.find(
+        (t) => t.type === 'panel' && t.subdomain === subdomain,
+      );
+
+      if (!panelTunnel) {
+        return { enabled: false, fqdn: null, port: null };
+      }
+
+      return {
+        enabled: panelTunnel.enabled !== false,
+        fqdn: panelTunnel.fqdn,
+        port: panelTunnel.port,
+      };
+    },
+  );
+
+  // POST /api/tunnels/expose-panel — create a panel tunnel for the requesting agent
+  fastify.post(
+    '/tunnels/expose-panel',
+    {
+      preHandler: fastify.requireRole(['admin', 'agent'], { capability: 'panel:expose' }),
+    },
+    async (request, reply) => {
+      const { port } = ExposePanelSchema.parse(request.body);
+      const label = request.certLabel;
+
+      if (!label) {
+        return reply.code(400).send({ error: 'Agent label is required (must use agent certificate)' });
+      }
+
+      const subdomain = `agent-${label}`;
+      const config = getConfig();
+
+      if (!config.domain || !config.email) {
+        return reply.code(400).send({
+          error: 'Domain and email must be configured before exposing agent panel',
+        });
+      }
+
+      // Check if a panel tunnel already exists for this agent
+      const existing = await readTunnels();
+      const existingPanel = existing.find(
+        (t) => t.type === 'panel' && t.subdomain === subdomain,
+      );
+      if (existingPanel) {
+        return reply.code(409).send({
+          error: 'Agent panel tunnel already exists',
+          tunnel: existingPanel,
+        });
+      }
+
+      // Check subdomain uniqueness (across all tunnel types)
+      if (existing.find((t) => t.subdomain === subdomain)) {
+        return reply.code(409).send({ error: `Subdomain '${subdomain}' is already in use` });
+      }
+
+      // Check port uniqueness
+      if (existing.find((t) => t.port === port)) {
+        return reply.code(400).send({ error: `Port ${port} is already in use by another tunnel` });
+      }
+
+      const fqdn = `${subdomain}.${config.domain}`;
+      let certResult = null;
+
+      try {
+        request.log.info({ fqdn }, 'Issuing TLS certificate for agent panel');
+        certResult = await issueTunnelCert(fqdn, config.email);
+      } catch (err) {
+        request.log.error(err, 'Failed to issue TLS certificate for agent panel');
+        return reply.code(500).send({
+          error: 'Failed to expose agent panel',
+          details: `Certificate issuance failed: ${err.message}`,
+        });
+      }
+
+      try {
+        request.log.info({ fqdn, port }, 'Writing mTLS nginx vhost for agent panel');
+        const certPath = certResult.certPath || undefined;
+        await writeAgentPanelVhost(subdomain, config.domain, port, certPath);
+      } catch (err) {
+        request.log.error(err, 'Failed to write nginx vhost for agent panel');
+        return reply.code(500).send({
+          error: 'Failed to expose agent panel',
+          details: `Nginx configuration failed: ${err.message}`,
+        });
+      }
+
+      try {
+        request.log.info({ port }, 'Updating Chisel configuration for agent panel');
+        const allTunnels = [...existing, { port, enabled: true }];
+        const enabledForChisel = allTunnels.filter((t) => t.enabled !== false);
+        await updateChiselConfig(enabledForChisel);
+      } catch (err) {
+        request.log.error(err, 'Failed to update Chisel config for agent panel');
+        try {
+          await removeAgentPanelVhost(subdomain);
+        } catch (rollbackErr) {
+          request.log.error(rollbackErr, 'Rollback: failed to remove agent panel vhost');
+        }
+        return reply.code(500).send({
+          error: 'Failed to expose agent panel',
+          details: `Chisel reconfiguration failed: ${err.message}`,
+        });
+      }
+
+      const tunnel = {
+        id: crypto.randomUUID(),
+        subdomain,
+        fqdn,
+        port,
+        description: `Agent management panel for ${label}`,
+        type: 'panel',
+        agentLabel: label,
+        enabled: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        existing.push(tunnel);
+        await writeTunnels(existing);
+      } catch (err) {
+        request.log.error(err, 'Failed to save agent panel tunnel state');
+        try {
+          await removeAgentPanelVhost(subdomain);
+        } catch (rollbackErr) {
+          request.log.error(rollbackErr, 'Rollback: failed to remove agent panel vhost');
+        }
+        return reply.code(500).send({
+          error: 'Failed to expose agent panel',
+          details: `State persistence failed: ${err.message}`,
+        });
+      }
+
+      return reply.code(201).send({ ok: true, tunnel });
+    },
+  );
+
+  // DELETE /api/tunnels/retract-panel — remove the panel tunnel for the requesting agent
+  fastify.delete(
+    '/tunnels/retract-panel',
+    {
+      preHandler: fastify.requireRole(['admin', 'agent'], { capability: 'panel:expose' }),
+    },
+    async (request, reply) => {
+      const label = request.certLabel;
+
+      if (!label) {
+        return reply.code(400).send({ error: 'Agent label is required (must use agent certificate)' });
+      }
+
+      const subdomain = `agent-${label}`;
+      const tunnels = await readTunnels();
+      const index = tunnels.findIndex(
+        (t) => t.type === 'panel' && t.subdomain === subdomain,
+      );
+
+      if (index === -1) {
+        return reply.code(404).send({ error: 'No panel tunnel found for this agent' });
+      }
+
+      try {
+        request.log.info({ subdomain }, 'Removing agent panel nginx vhost');
+        await removeAgentPanelVhost(subdomain);
+
+        const remaining = tunnels.filter((_, i) => i !== index);
+        const enabledRemaining = remaining.filter((t) => t.enabled !== false);
+        request.log.info('Updating Chisel configuration');
+        await updateChiselConfig(enabledRemaining);
+
+        await writeTunnels(remaining);
+      } catch (err) {
+        request.log.error(err, 'Failed to retract agent panel');
+        return reply.code(500).send({
+          error: 'Failed to retract agent panel',
           details: err.message,
         });
       }

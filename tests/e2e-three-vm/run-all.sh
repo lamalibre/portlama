@@ -99,6 +99,7 @@ TEST_SCRIPTS=(
   "12-enrollment-lifecycle.sh"
   "13-panel-2fa.sh"
   "14-json-installer.sh"
+  "15-panel-expose.sh"
 )
 
 PASSED=0

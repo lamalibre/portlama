@@ -63,6 +63,7 @@ curl -s --cert client.p12:password \
 | `fqdn`        | `string`         | Fully qualified domain name (e.g., `app.example.com`)   |
 | `port`        | `number`         | Local port on your machine that this tunnel forwards to |
 | `description` | `string \| null` | Optional human-readable description                     |
+| `type`        | `string`         | Tunnel type: `'app'` (default) or `'panel'` (agent web panel) |
 | `enabled`     | `boolean`        | Whether the tunnel is active (defaults to `true`)       |
 | `createdAt`   | `string`         | ISO 8601 timestamp                                      |
 
@@ -94,6 +95,7 @@ If any step fails, previous steps are rolled back where possible (nginx vhost is
 | `subdomain`   | `string`  | Lowercase alphanumeric + hyphens, max 63 chars, cannot start/end with hyphen | The subdomain to create    |
 | `port`        | `integer` | 1024 - 65535                                                                 | Local port on your machine |
 | `description` | `string`  | Max 200 chars, optional (defaults to `""`)                                   | Human-readable description |
+| `type`        | `string`  | `'app'` (default) or `'panel'`, optional                                     | Tunnel type (`panel` requires `panel:expose` capability) |
 
 **Subdomain regex:**
 
@@ -104,6 +106,8 @@ If any step fails, previous steps are rolled back where possible (nginx vhost is
 **Reserved subdomains** (cannot be used):
 
 `panel`, `auth`, `tunnel`, `www`, `mail`, `ftp`, `api`
+
+**Reserved prefix:** Subdomains starting with `agent-` are reserved for agent panel tunnels (created via `POST /api/tunnels/expose-panel`). Regular tunnel creation with `agent-` prefixed subdomains is rejected unless `type` is `'panel'`.
 
 ```bash
 curl -s --cert client.p12:password \
@@ -361,6 +365,7 @@ curl -s --cert client.p12:password \
 - Cannot start or end with a hyphen
 - Maximum 63 characters
 - Must not be one of: `panel`, `auth`, `tunnel`, `www`, `mail`, `ftp`, `api`
+- Must not start with `agent-` (reserved for agent panel tunnels, unless `type` is `'panel'`)
 - Must be unique across all tunnels
 - Must be unique across all static sites (checked during site creation)
 
@@ -382,6 +387,9 @@ curl -s --cert client.p12:password \
 | GET    | `/api/tunnels/agent-config`          | Platform-agnostic agent config (macOS & Linux)  |
 | GET    | `/api/tunnels/mac-plist`             | Download launchd plist for Mac client           |
 | GET    | `/api/tunnels/mac-plist?format=json` | Get plist content and instructions as JSON      |
+| GET    | `/api/tunnels/agent-panel-status`    | Check if agent has an exposed panel tunnel      |
+| POST   | `/api/tunnels/expose-panel`          | Create mTLS panel tunnel for requesting agent   |
+| DELETE | `/api/tunnels/retract-panel`         | Remove the panel tunnel for requesting agent    |
 
 ### Tunnel Object Shape
 
@@ -392,6 +400,7 @@ curl -s --cert client.p12:password \
   "fqdn": "app.example.com",
   "port": 3000,
   "description": "optional string or null",
+  "type": "app",
   "enabled": true,
   "createdAt": "2026-03-13T14:30:00.000Z"
 }

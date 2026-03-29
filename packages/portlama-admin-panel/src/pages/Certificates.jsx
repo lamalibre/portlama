@@ -315,6 +315,11 @@ const CAPABILITY_OPTIONS = [
     label: 'sites:write',
     description: 'Create, delete, and deploy to sites',
   },
+  {
+    value: 'panel:expose',
+    label: 'panel:expose',
+    description: 'Expose agent management panel at agent-<label>.<domain>',
+  },
 ];
 
 function CapabilityCheckboxes({ capabilities, onChange, disabled }) {

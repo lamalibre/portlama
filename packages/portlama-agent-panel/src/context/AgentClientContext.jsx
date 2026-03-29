@@ -47,6 +47,10 @@ const AgentClientContext = createContext(null);
  * @property {() => Promise<any>} rotateCertificate
  * @property {() => Promise<any>} downloadCertificate
  *
+ * Web Panel:
+ * @property {() => Promise<{enabled: boolean, fqdn?: string, port?: number, running?: boolean}>} getPanelExposeStatus
+ * @property {(enabled: boolean) => Promise<any>} togglePanelExpose
+ *
  * Lifecycle:
  * @property {() => Promise<any>} uninstallAgent
  *

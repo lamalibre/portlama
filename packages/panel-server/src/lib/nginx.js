@@ -675,6 +675,170 @@ export async function enableIpVhost() {
 }
 
 /**
+ * Write an agent panel vhost with mTLS authentication (not Authelia).
+ *
+ * Same backup/rollback pattern as writeAppVhost.
+ *
+ * @param {string} subdomain - The subdomain name (e.g., "agent-my-agent")
+ * @param {string} domain - The base domain (e.g., "example.com")
+ * @param {number} port - The local port to proxy to
+ * @param {string} [certPath] - Optional cert directory path override (e.g. for wildcard certs)
+ */
+export async function writeAgentPanelVhost(subdomain, domain, port, certPath) {
+  const fqdn = `${subdomain}.${domain}`;
+  const certDir = certPath || `/etc/letsencrypt/live/${fqdn}`;
+  const certDirClean = certDir.replace(/\/+$/, '');
+
+  const config = `server {
+    listen 443 ssl;
+    server_name ${fqdn};
+
+    ssl_certificate ${certDirClean}/fullchain.pem;
+    ssl_certificate_key ${certDirClean}/privkey.pem;
+
+    # mTLS — same CA as the admin panel
+    include /etc/nginx/snippets/portlama-mtls.conf;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Reject requests without valid client certificate
+    location / {
+        if ($ssl_client_verify != SUCCESS) {
+            return 496;
+        }
+
+        proxy_pass http://127.0.0.1:${port};
+        proxy_http_version 1.1;
+
+        # Client cert headers — set from nginx TLS variables, never passed through from client
+        proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
+        proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+        proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
+
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket support
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+`;
+
+  const name = `portlama-agent-panel-${subdomain}`;
+  const availablePath = path.join(SITES_AVAILABLE, name);
+  const bakPath = `${availablePath}.bak`;
+
+  const existed = await fileExistsSudo(availablePath);
+  if (existed) {
+    await execa('sudo', ['cp', availablePath, bakPath]);
+  }
+
+  try {
+    await writeVhostFile(name, config);
+    await enableSite(name);
+
+    const result = await testConfig();
+    if (!result.valid) {
+      if (existed) {
+        await execa('sudo', ['mv', bakPath, availablePath]);
+      } else {
+        await execa('sudo', ['rm', '-f', availablePath]);
+        await execa('sudo', ['rm', '-f', path.join(SITES_ENABLED, name)]);
+      }
+      throw new Error(`Nginx config test failed after writing vhost for ${fqdn}: ${result.error}`);
+    }
+
+    await reload();
+
+    if (existed) {
+      await execa('sudo', ['rm', '-f', bakPath]).catch(() => {});
+    }
+
+    return availablePath;
+  } catch (err) {
+    if (err.message.includes('Nginx config test failed')) {
+      throw err;
+    }
+
+    if (existed) {
+      await execa('sudo', ['mv', bakPath, availablePath]).catch(() => {});
+    } else {
+      await execa('sudo', ['rm', '-f', availablePath]).catch(() => {});
+      await execa('sudo', ['rm', '-f', path.join(SITES_ENABLED, name)]).catch(() => {});
+    }
+    throw err;
+  }
+}
+
+/**
+ * Remove an agent panel vhost from sites-available and sites-enabled, then test and reload nginx.
+ * Idempotent: if files don't exist, proceeds silently.
+ *
+ * @param {string} subdomain - The subdomain name (e.g., "agent-my-agent")
+ */
+export async function removeAgentPanelVhost(subdomain) {
+  const name = `portlama-agent-panel-${subdomain}`;
+  try {
+    await execa('sudo', ['rm', '-f', path.join(SITES_ENABLED, name)]);
+    await execa('sudo', ['rm', '-f', path.join(SITES_AVAILABLE, name)]);
+    await execa('sudo', ['rm', '-f', `${path.join(SITES_AVAILABLE, name)}.bak`]);
+  } catch (err) {
+    throw new Error(`Failed to remove agent panel vhost ${name}: ${err.stderr || err.message}`);
+  }
+
+  const result = await testConfig();
+  if (!result.valid) {
+    throw new Error(`Nginx config test failed after removing vhost ${name}: ${result.error}`);
+  }
+
+  await reload();
+}
+
+/**
+ * Enable an agent panel vhost (restore symlink), test and reload nginx.
+ *
+ * @param {string} subdomain - The subdomain name
+ */
+export async function enableAgentPanelVhost(subdomain) {
+  const name = `portlama-agent-panel-${subdomain}`;
+  await enableSite(name);
+
+  const result = await testConfig();
+  if (!result.valid) {
+    await disableSite(name);
+    throw new Error(`Nginx config test failed after enabling vhost ${name}: ${result.error}`);
+  }
+
+  await reload();
+}
+
+/**
+ * Disable an agent panel vhost (remove symlink only, keep config), test and reload nginx.
+ *
+ * @param {string} subdomain - The subdomain name
+ */
+export async function disableAgentPanelVhost(subdomain) {
+  const name = `portlama-agent-panel-${subdomain}`;
+  await disableSite(name);
+
+  const result = await testConfig();
+  if (!result.valid) {
+    await enableSite(name);
+    throw new Error(`Nginx config test failed after disabling vhost ${name}: ${result.error}`);
+  }
+
+  await reload();
+}
+
+/**
  * List all enabled Portlama sites.
  */
 export async function listEnabledSites() {

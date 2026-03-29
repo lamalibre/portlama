@@ -201,6 +201,18 @@ The binary is a single static Go executable with no runtime dependencies.
 | `packages/panel-server/src/routes/management/tunnels.js` | Tunnel CRUD API endpoints                                 |
 | `packages/create-portlama/src/tasks/nginx.js`            | Tunnel vhost nginx template (written during provisioning) |
 
+### Panel tunnels
+
+In addition to regular application tunnels (type `app`), Portlama supports panel tunnels (type `panel`) that expose an agent's management panel at a public subdomain.
+
+**Key differences from app tunnels:**
+
+- **Type:** Panel tunnels have type `panel` in `tunnels.json`, while regular tunnels have type `app`.
+- **Subdomain prefix:** Panel tunnels use the reserved `agent-` subdomain prefix (e.g., `agent-macbook.example.com`). Regular tunnels cannot use subdomains starting with `agent-`.
+- **nginx vhost:** Panel tunnel vhosts use mTLS client certificate verification (same CA as the main panel) instead of Authelia forward auth. The agent panel server validates that the certificate CN is either `agent:<label>` (the owning agent) or `admin`.
+- **Lifecycle:** Panel tunnels are created via `POST /api/tunnels/expose-panel` and removed via `DELETE /api/tunnels/retract-panel`, not through the standard tunnel CRUD endpoints.
+- **Capability:** The agent must have the `panel:expose` capability assigned to its certificate.
+
 ### Port mapping model
 
 Every tunnel creates a chain of port mappings:

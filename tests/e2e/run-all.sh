@@ -69,6 +69,7 @@ TEST_SCRIPTS=(
   "16-enrollment-tokens.sh"
   "17-panel-2fa.sh"
   "18-json-installer.sh"
+  "19-panel-expose.sh"
 )
 
 PASSED=0

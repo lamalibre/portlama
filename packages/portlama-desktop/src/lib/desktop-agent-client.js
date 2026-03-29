@@ -53,6 +53,14 @@ export function createDesktopAgentClient(label) {
     getPanelUrl: () => invoke('get_panel_url'),
     rotateCertificate: () => invoke('rotate_certificate'),
     downloadCertificate: () => invoke('download_certificate'),
+    getPanelExposeStatus: () =>
+      label
+        ? invoke('get_panel_expose_status', { label })
+        : Promise.resolve({ enabled: false, fqdn: null }),
+    togglePanelExpose: (enabled) =>
+      label
+        ? invoke('toggle_panel_expose', { label, enabled })
+        : Promise.reject(new Error('Multi-agent label required')),
     uninstallAgent: () => invoke('uninstall_agent'),
     openExternal: (url) => {
       const parsed = new URL(url);

@@ -46,6 +46,7 @@ Subdomain rules:
 - Cannot start or end with a hyphen
 - Maximum 63 characters
 - Cannot use reserved names: `panel`, `auth`, `tunnel`, `www`, `mail`, `ftp`, `api`
+- Cannot start with `agent-` (this prefix is reserved for agent panel tunnels)
 
 Enter the port number. This is the local port your web app listens on. Must be between 1024 and 65535.
 
@@ -212,5 +213,6 @@ The TLS certificate is left in place (certbot manages its lifecycle).
 | Port range           | 1024-65535                               |
 | Max subdomain length | 63 characters                            |
 | Reserved subdomains  | panel, auth, tunnel, www, mail, ftp, api |
+| Reserved prefix      | `agent-` (used by agent panel tunnels)   |
 | Unique port          | Yes (one tunnel per port)                |
 | Unique subdomain     | Yes (one tunnel per subdomain)           |

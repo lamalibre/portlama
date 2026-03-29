@@ -36,6 +36,9 @@ Without `--label`, the current default agent is used.
 | `sites delete <name-or-id>`        | Delete a static site (admin cert only)     |
 | `deploy <name-or-id> <local-path>` | Deploy a local directory to a site         |
 | `plugin`                           | Manage agent plugins (install, uninstall, update, status) |
+| `panel --enable [--port 9393]`     | Enable the agent management panel web server |
+| `panel --disable`                  | Disable the agent management panel         |
+| `panel --status [--json]`          | Show agent panel status                    |
 | `list`                             | List all configured agents                 |
 | `switch <label>`                   | Set the default agent                      |
 

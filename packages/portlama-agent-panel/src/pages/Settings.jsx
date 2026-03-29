@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Download,
   RefreshCw,
+  Globe,
 } from 'lucide-react';
 import { useAgentClient } from '../context/AgentClientContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -45,6 +46,18 @@ export default function SettingsPage() {
     },
   });
 
+  const panelExposeQuery = useQuery({
+    queryKey: ['agent', 'panel-expose-status'],
+    queryFn: () => client.getPanelExposeStatus(),
+  });
+
+  const togglePanelMutation = useMutation({
+    mutationFn: (enabled) => client.togglePanelExpose(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent', 'panel-expose-status'] });
+    },
+  });
+
   const handleOpenPanel = async () => {
     try {
       const url = await client.getPanelUrl();
@@ -78,8 +91,10 @@ export default function SettingsPage() {
               <p className="text-sm text-zinc-200 font-mono">{config.domain || 'N/A'}</p>
             </div>
             <div>
-              <label className="text-xs text-zinc-500 block mb-0.5">Certificate</label>
-              <p className="text-sm text-zinc-200 font-mono truncate">{config.p12Path}</p>
+              <label className="text-xs text-zinc-500 block mb-0.5">Auth Method</label>
+              <p className="text-sm text-zinc-200 font-mono truncate">
+                {config.authMethod === 'keychain' ? 'Keychain (hardware-bound)' : config.p12Path || 'P12'}
+              </p>
             </div>
             <div>
               <label className="text-xs text-zinc-500 block mb-0.5">Chisel Version</label>
@@ -123,6 +138,57 @@ export default function SettingsPage() {
         <p className="text-xs text-zinc-500 mt-2">
           Opens the Portlama web panel in your default browser (requires imported certificate).
         </p>
+      </div>
+
+      {/* Web Panel */}
+      <div className="mt-4 bg-zinc-900 border border-zinc-800 rounded-lg p-5">
+        <h2 className="text-xs font-medium uppercase text-zinc-400 mb-3 flex items-center gap-2">
+          <Globe size={14} className="text-cyan-400" />
+          Web Panel
+        </h2>
+        {panelExposeQuery.isError ? (
+          <p className="text-zinc-500 text-sm">
+            Not available (agent may lack <span className="font-mono text-zinc-400">panel:expose</span> capability)
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-zinc-300">Expose management panel</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {panelExposeQuery.data?.enabled
+                    ? <>Accessible at <span className="font-mono text-cyan-400">{panelExposeQuery.data.fqdn}</span></>
+                    : 'Make this agent panel accessible via a web subdomain'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => togglePanelMutation.mutate(!panelExposeQuery.data?.enabled)}
+                disabled={togglePanelMutation.isPending || panelExposeQuery.isPending}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                  panelExposeQuery.data?.enabled ? 'bg-cyan-500' : 'bg-zinc-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    panelExposeQuery.data?.enabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            {togglePanelMutation.isPending && (
+              <div className="flex items-center gap-2 text-xs text-zinc-400 mt-2">
+                <Loader2 size={12} className="animate-spin" />
+                {panelExposeQuery.data?.enabled ? 'Retracting...' : 'Exposing...'}
+              </div>
+            )}
+            {togglePanelMutation.isError && (
+              <p className="text-red-400 text-xs mt-2">
+                {togglePanelMutation.error?.message || 'Failed to toggle web panel'}
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Certificate Management */}

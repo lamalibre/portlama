@@ -1,11 +1,11 @@
 # orchestrate
 
-> Started at `2026-03-28 22:34:11 UTC` — log level **1**
+> Started at `2026-03-29 07:29:39 UTC` — log level **2**
 
 
 ## Preflight checks
 
-✅ `22:34:11` Required tools available  
+✅ `07:29:40` Required tools available  
 
 ---
 
@@ -16,37 +16,39 @@
 |-----|-------|
 | **Test Domain** | `test.portlama.local` |
 | **VM Specs** | `1 vCPU, 512M RAM, 10G disk` |
-| **Cleanup** | `true` |
+| **Cleanup** | `false` |
 | **Skip Create** | `false` |
 | **Skip Setup** | `false` |
 | **Skip Single** | `false` |
 | **Skip Multi** | `false` |
-| **Log Level** | `1` |
+| **Log Level** | `2` |
 | **Log Dir** | `<repo>/e2e-logs` |
-| **Date** | `2026-03-28 22:34:11 UTC` |
+| **Date** | `2026-03-29 07:29:40 UTC` |
 
 
 ## Phase 1: Creating VMs
 
-ℹ️ `22:34:11` Launching portlama-host...  
-✅ `22:34:39` portlama-host created  
-ℹ️ `22:34:39` Launching portlama-agent...  
-✅ `22:35:09` portlama-agent created  
-ℹ️ `22:35:09` Launching portlama-visitor...  
-✅ `22:35:36` portlama-visitor created  
-ℹ️ `22:35:36` Host IP:    192.168.2.9  
-ℹ️ `22:35:36` Agent IP:   192.168.2.10  
-ℹ️ `22:35:36` Visitor IP: 192.168.2.11  
+ℹ️ `07:29:40` Launching portlama-host...  
+✅ `07:30:09` portlama-host created  
+ℹ️ `07:30:09` Launching portlama-agent...  
+✅ `07:30:37` portlama-agent created  
+ℹ️ `07:30:37` Launching portlama-visitor...  
+✅ `07:31:05` portlama-visitor created  
+ℹ️ `07:31:06` Host IP:    192.168.2.12  
+ℹ️ `07:31:06` Agent IP:   192.168.2.13  
+ℹ️ `07:31:06` Visitor IP: 192.168.2.14  
 
 ## Phase 2: Setting up VMs
 
-🔵 `22:35:36` **Packing create-portlama tarball...**  
-✅ `22:35:36` Tarball ready: /tmp/lamalibre-create-portlama-1.0.36.tgz  
-🔵 `22:35:36` **Packing portlama-agent tarball...**  
-✅ `22:35:37` Agent tarball ready: /tmp/lamalibre-portlama-agent-1.0.11.tgz  
-🔵 `22:35:37` **Checking npm on portlama-host...**  
+🔵 `07:31:06` **Bundling vendor into create-portlama...**  
+✅ `07:31:06` Vendor bundled  
+🔵 `07:31:06` **Packing create-portlama tarball...**  
+✅ `07:31:06` Tarball ready: /tmp/lamalibre-create-portlama-1.0.37.tgz  
+🔵 `07:31:06` **Packing portlama-agent tarball...**  
+✅ `07:31:06` Agent tarball ready: /tmp/lamalibre-portlama-agent-1.0.12.tgz  
+🔵 `07:31:06` **Checking npm on portlama-host...**  
 <details>
-<summary>✅ <code>22:35:40</code> apt-get update on portlama-host</summary>
+<summary>✅ <code>07:31:09</code> apt-get update on portlama-host</summary>
 
 ```
 $ multipass exec portlama-host -- sudo apt-get update
@@ -59,7 +61,7 @@ Reading package lists...
 </details>
 
 <details>
-<summary>✅ <code>22:36:24</code> apt install npm on portlama-host</summary>
+<summary>✅ <code>07:32:55</code> apt install npm on portlama-host</summary>
 
 ```
 $ multipass exec portlama-host -- sudo apt-get install -y npm
@@ -892,7 +894,7 @@ debconf: unable to initialize frontend: Readline
 debconf: (This frontend requires a controlling tty.)
 debconf: falling back to frontend: Teletype
 dpkg-preconfigure: unable to re-open stdin: 
-Fetched 158 MB in 13s (12.3 MB/s)
+Fetched 158 MB in 1min 15s (2114 kB/s)
 Selecting previously unselected package binutils-common:arm64.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 77711 files and directories currently installed.)
 Preparing to unpack .../000-binutils-common_2.42-4ubuntu2.10_arm64.deb ...
@@ -3079,19 +3081,21 @@ No containers need to be restarted.
 No user sessions are running outdated binaries.
 
 No VM guests are running outdated hypervisor (qemu) binaries on this host.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1774769575.976239 5454278 init.cc:229] grpc_wait_for_shutdown_with_timeout() timed out.
 ```
 </details>
 
-🔵 `22:36:24` **Transferring installer tarball to portlama-host...**  
-✅ `22:36:24` Tarball transferred  
-🔵 `22:36:24` **Installing create-portlama from tarball on portlama-host...**  
+🔵 `07:32:56` **Transferring installer tarball to portlama-host...**  
+✅ `07:32:56` Tarball transferred  
+🔵 `07:32:56` **Installing create-portlama from tarball on portlama-host...**  
 <details>
-<summary>✅ <code>22:36:27</code> npm install -g tarball on portlama-host</summary>
+<summary>✅ <code>07:32:59</code> npm install -g tarball on portlama-host</summary>
 
 ```
 $ multipass exec portlama-host -- sudo npm install -g /tmp/create-portlama.tgz
 npm WARN EBADENGINE Unsupported engine {
-npm WARN EBADENGINE   package: '@lamalibre/create-portlama@1.0.36',
+npm WARN EBADENGINE   package: '@lamalibre/create-portlama@1.0.37',
 npm WARN EBADENGINE   required: { node: '>=20.0.0' },
 npm WARN EBADENGINE   current: { node: 'v18.19.1', npm: '9.2.0' }
 npm WARN EBADENGINE }
@@ -3103,40 +3107,40 @@ added 48 packages in 2s
 ```
 </details>
 
-🔵 `22:36:27` **Running create-portlama on portlama-host...**  
-✅ `22:37:21` Portlama installed on portlama-host  
-🔵 `22:37:21` **Transferring test scripts to VMs...**  
-✅ `22:37:27` Test scripts transferred to all VMs  
-🔵 `22:37:27` **Running setup-host.sh on portlama-host...**  
-✅ `22:37:50` Host VM setup complete  
-ℹ️ `22:37:50` Extracting credentials from portlama-host...  
-✅ `22:37:50` Credentials extracted (agent P12 password obtained)  
-🔵 `22:37:50` **Creating enrollment token on portlama-host...**  
-✅ `22:37:50` Enrollment token created  
-ℹ️ `22:37:50` Transferring portlama-agent tarball to portlama-agent...  
-✅ `22:37:50` Agent tarball transferred  
-🔵 `22:37:50` **Running setup-agent.sh on portlama-agent...**  
-✅ `22:38:14` Agent VM setup complete  
-🔵 `22:38:14` **Running setup-visitor.sh on portlama-visitor...**  
-✅ `22:38:21` Visitor VM setup complete  
+🔵 `07:32:59` **Running create-portlama on portlama-host...**  
+✅ `07:33:52` Portlama installed on portlama-host  
+🔵 `07:33:52` **Transferring test scripts to VMs...**  
+✅ `07:33:58` Test scripts transferred to all VMs  
+🔵 `07:33:58` **Running setup-host.sh on portlama-host...**  
+✅ `07:34:22` Host VM setup complete  
+ℹ️ `07:34:22` Extracting credentials from portlama-host...  
+✅ `07:34:22` Credentials extracted (agent P12 password obtained)  
+🔵 `07:34:22` **Creating enrollment token on portlama-host...**  
+✅ `07:34:22` Enrollment token created  
+ℹ️ `07:34:22` Transferring portlama-agent tarball to portlama-agent...  
+✅ `07:34:22` Agent tarball transferred  
+🔵 `07:34:22` **Running setup-agent.sh on portlama-agent...**  
+✅ `07:34:54` Agent VM setup complete  
+🔵 `07:34:54` **Running setup-visitor.sh on portlama-visitor...**  
+✅ `07:35:00` Visitor VM setup complete  
 
 ## Phase 3: Running single-VM E2E tests on portlama-host
 
-ℹ️ `22:38:21` Transferring single-VM E2E test scripts to portlama-host...  
-✅ `22:38:23` Single-VM test scripts transferred  
-ℹ️ `22:38:23` Running tests/e2e/run-all.sh on portlama-host...  
-ℹ️ `22:39:50` Collecting per-test log files from portlama-host...  
-✅ `22:39:53` Single-VM E2E tests passed  
+ℹ️ `07:35:00` Transferring single-VM E2E test scripts to portlama-host...  
+✅ `07:35:02` Single-VM test scripts transferred  
+ℹ️ `07:35:02` Running tests/e2e/run-all.sh on portlama-host...  
+ℹ️ `07:36:28` Collecting per-test log files from portlama-host...  
+✅ `07:36:31` Single-VM E2E tests passed  
 
 ## Phase 4: Running three-VM E2E tests from macOS
 
-ℹ️ `22:39:53` Environment:  
-ℹ️ `22:39:53`   HOST_IP=192.168.2.9  
-ℹ️ `22:39:53`   AGENT_IP=192.168.2.10  
-ℹ️ `22:39:53`   VISITOR_IP=192.168.2.11  
-ℹ️ `22:39:53`   TEST_DOMAIN=test.portlama.local  
-ℹ️ `22:39:53`   TEST_USER=testuser  
-✅ `22:43:35` Three-VM E2E tests passed  
+ℹ️ `07:36:31` Environment:  
+ℹ️ `07:36:31`   HOST_IP=192.168.2.12  
+ℹ️ `07:36:31`   AGENT_IP=192.168.2.13  
+ℹ️ `07:36:31`   VISITOR_IP=192.168.2.14  
+ℹ️ `07:36:31`   TEST_DOMAIN=test.portlama.local  
+ℹ️ `07:36:31`   TEST_USER=testuser  
+✅ `07:40:22` Three-VM E2E tests passed  
 
 ---
 
@@ -3145,11 +3149,11 @@ added 48 packages in 2s
 
 | Key | Value |
 |-----|-------|
-| **VMs** | `portlama-host (192.168.2.9), portlama-agent (192.168.2.10), portlama-visitor (192.168.2.11)` |
+| **VMs** | `portlama-host (192.168.2.12), portlama-agent (192.168.2.13), portlama-visitor (192.168.2.14)` |
 | **Test Domain** | `test.portlama.local` |
 
-✅ `22:43:35` Single-VM E2E: PASSED  
-✅ `22:43:35` Three-VM E2E: PASSED  
+✅ `07:40:22` Single-VM E2E: PASSED  
+✅ `07:40:22` Three-VM E2E: PASSED  
 
 ## Log files
 
@@ -3177,6 +3181,7 @@ added 48 packages in 2s
 | **single-test-16-enrollment-tokens** | `<repo>/e2e-logs/single-test-16-enrollment-tokens.md` |
 | **single-test-17-panel-2fa** | `<repo>/e2e-logs/single-test-17-panel-2fa.md` |
 | **single-test-18-json-installer** | `<repo>/e2e-logs/single-test-18-json-installer.md` |
+| **single-test-19-panel-expose** | `<repo>/e2e-logs/single-test-19-panel-expose.md` |
 | **single-vm-e2e** | `<repo>/e2e-logs/single-vm-e2e.md` |
 | **test-01-onboarding-complete** | `<repo>/e2e-logs/test-01-onboarding-complete.md` |
 | **test-02-tunnel-traffic** | `<repo>/e2e-logs/test-02-tunnel-traffic.md` |
@@ -3191,13 +3196,9 @@ added 48 packages in 2s
 | **test-12-enrollment-lifecycle** | `<repo>/e2e-logs/test-12-enrollment-lifecycle.md` |
 | **test-13-panel-2fa** | `<repo>/e2e-logs/test-13-panel-2fa.md` |
 | **test-14-json-installer** | `<repo>/e2e-logs/test-14-json-installer.md` |
+| **test-15-panel-expose** | `<repo>/e2e-logs/test-15-panel-expose.md` |
 | **three-vm-e2e** | `<repo>/e2e-logs/three-vm-e2e.md` |
 
-
-## Cleaning up VMs
-
-ℹ️ `22:43:35` Deleting portlama-host...  
-ℹ️ `22:43:36` Deleting portlama-agent...  
-ℹ️ `22:43:37` Deleting portlama-visitor...  
-✅ `22:43:37` All VMs deleted  
-✅ `22:43:37` OVERALL: PASSED  
+ℹ️ `07:40:22` VMs kept for debugging. Delete manually with:  
+ℹ️ `07:40:22`   multipass delete portlama-host portlama-agent portlama-visitor && multipass purge  
+✅ `07:40:22` OVERALL: PASSED  

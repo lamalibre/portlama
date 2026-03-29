@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add agent web panel expose feature — agents can serve their management panel at `agent-<label>.<domain>` via a tunnelled mTLS-protected subdomain
+- Add `panel:expose` capability for agent certificates — admin grants per-agent permission to expose the panel
+- Add `POST /api/tunnels/expose-panel`, `DELETE /api/tunnels/retract-panel`, `GET /api/tunnels/agent-panel-status` endpoints for panel tunnel lifecycle
+- Add `type` field to tunnel records (`app` or `panel`) with `agent-` subdomain prefix reserved for panel tunnels
+- Add mTLS nginx vhost for panel tunnels — uses client certificate verification instead of Authelia forward auth
+- Add agent panel Fastify HTTP server (`panel-server.js`) serving the SPA and REST API on `localhost:9393`
+- Add independent panel system service (`com.portlama.panel-<label>` on macOS, `portlama-panel-<label>` on Linux) so the panel survives agent restarts
+- Add `portlama-agent panel` CLI command with `--enable [--port 9393]`, `--disable`, and `--status [--json]` modes
+- Add web agent client (`createWebAgentClient()`) — HTTP-based `AgentClient` implementation for the web SPA
+- Add web panel expose toggle in agent panel Settings page with status indicator and URL display
+- Add Tauri commands `get_panel_expose_status` and `toggle_panel_expose` for desktop app integration
+- Add `build` script to `create-portlama` that runs `bundle-vendor.js`, keeping bundled panel-server in sync with source
+- Add E2E tests for panel expose in both single-VM (19-panel-expose.sh) and three-VM (15-panel-expose.sh) suites
+
+### Security
+
+- Validate tunnel UUID parameters with regex before URL interpolation in agent panel API proxy routes
+- Enforce `panel:expose` capability on PATCH and DELETE operations for panel-type tunnels
+- Prevent cross-agent panel tunnel spoofing — agents can only create panel tunnels matching their own certificate label
+- Strip sensitive fields from agent panel config endpoint — return `hasCertificate` boolean instead of filesystem paths
+- Restrict panel server port to unprivileged range (1024-65535)
+- Validate panel server mTLS CN strictly — accept only `agent:<label>` or `admin` (not any non-agent cert)
+- Use constant-memory log reading (`tail -n 200`) instead of unbounded `readFile` to prevent OOM on 512MB droplets
+
+**Affected packages:**
+
+- `@lamalibre/portlama-panel-server`: 0.1.10 → 0.1.11
+- `@lamalibre/portlama-panel-client`: 0.1.8 → 0.1.9
+- `@lamalibre/portlama-agent`: 1.0.11 → 1.0.12
+- `@lamalibre/portlama-agent-panel`: 0.1.0 → 0.1.1
+- `@lamalibre/portlama-admin-panel`: 0.1.0 → 0.1.1
+- `@lamalibre/portlama-desktop`: 0.1.8 → 0.1.9
+- `@lamalibre/create-portlama`: 1.0.36 → 1.0.37
+
+## [Unreleased] - 2026-03-29
+
+### Added
+
 - Add `@lamalibre/portlama-agent-panel` shared package — extract agent-mode pages (Dashboard, Tunnels, Services, Logs, Settings) into a host-agnostic React library with `AgentClientContext` abstraction
 - Add `createDesktopAgentClient(label)` factory in the desktop app — Tauri-backed implementation of the `AgentClient` interface with multi-agent label binding
 - Add URL scheme validation on all `openExternal` calls — only HTTP(S) URLs accepted

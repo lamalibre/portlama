@@ -9,8 +9,9 @@ import {
 } from '../lib/platform.js';
 import { loadAgentConfig } from '../lib/config.js';
 import { isAgentLoaded, getAgentPid } from '../lib/service.js';
+import { isPanelLoaded } from '../lib/panel-service.js';
 import { getInstalledVersion } from '../lib/chisel.js';
-import { fetchTunnels } from '../lib/panel-api.js';
+import { fetchTunnels, fetchPanelTunnelStatus } from '../lib/panel-api.js';
 
 /**
  * Print formatted status information about the agent.
@@ -68,6 +69,23 @@ export async function runStatus({ label }) {
   }
   if (config.updatedAt) {
     console.log(`  ${b('Updated:')}   ${d(config.updatedAt)}`);
+  }
+
+  // Panel server status
+  const panelRunning = await isPanelLoaded(label);
+  console.log(
+    `  ${b('Web Panel:')} ${panelRunning ? g('running') : d('stopped')}`,
+  );
+
+  if (panelRunning || config.panelEnabled) {
+    try {
+      const panelStatus = await fetchPanelTunnelStatus(config);
+      if (panelStatus.enabled && panelStatus.fqdn) {
+        console.log(`  ${b('Panel URL:')} ${c(`https://${panelStatus.fqdn}`)}`);
+      }
+    } catch {
+      // panel:expose capability not available
+    }
   }
 
   console.log('');
