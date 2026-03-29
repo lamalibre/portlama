@@ -20,6 +20,7 @@ import {
   Package,
   Shield,
   ChevronLeft,
+  Puzzle,
 } from 'lucide-react';
 import {
   AdminClientProvider,
@@ -48,6 +49,7 @@ import { desktopAdminClient } from './lib/desktop-admin-client.js';
 import { createDesktopAgentClient } from './lib/desktop-agent-client.js';
 import Servers from './pages/Servers.jsx';
 import Agents from './pages/Agents.jsx';
+import LocalPlugins from './pages/LocalPlugins.jsx';
 
 const AGENT_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity },
@@ -438,6 +440,22 @@ export default function App() {
             </button>
           ))}
 
+          {/* Local Plugins — always visible */}
+          <div className="border-t border-zinc-800 mt-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('local-plugins')}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm mb-0.5 ${
+                activeTab === 'local-plugins'
+                  ? 'bg-zinc-800 text-cyan-400'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+              }`}
+            >
+              <Puzzle size={14} />
+              Local Plugins
+            </button>
+          </div>
+
           {mode === 'agent' && (
             <button
               type="button"
@@ -486,7 +504,9 @@ export default function App() {
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto">
-        {mode === 'admin' ? (
+        {activeTab === 'local-plugins' ? (
+          <LocalPlugins />
+        ) : mode === 'admin' ? (
           <AdminClientProvider client={desktopAdminClient}>
             <AdminToastProvider>
               <TwoFaProvider>

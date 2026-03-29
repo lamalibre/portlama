@@ -95,6 +95,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Server registry persisted as JSON at `~/.portlama/servers.json`
 - Agent registry persisted as JSON at `~/.portlama/agents.json` — multi-agent support with per-agent data directories
 - Atomic file writes (temp → fsync → rename) for registry and config
+- Local plugin management in `local_plugins.rs` — registry at `~/.portlama/local/plugins.json`, curated plugin list, npm install/uninstall, launchd/systemd service for the local Fastify host on `127.0.0.1:9293`
 - Agent panel expose: `get_panel_expose_status(label)` and `toggle_panel_expose(label, enabled)` Tauri commands shell out to `portlama-agent panel --status/--enable/--disable`
 
 **Agent Web Panel:**
@@ -182,7 +183,8 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 **Plugin system:**
 
-- Plugins are `@lamalibre/`-scoped npm packages with a `portlama-plugin.json` manifest (`name`, optional `displayName`, `version`, `description`, `capabilities`, `packages`, `panel`, `config`)
+- Plugins are `@lamalibre/`-scoped npm packages with a `portlama-plugin.json` manifest (`name`, optional `displayName`, `version`, `description`, `capabilities`, `packages`, `panel`, `config`, `modes`)
+- Manifest `modes` field: array of `['server', 'agent', 'local']` — defaults to `['server', 'agent']` if omitted. Plugins with `'local'` can run via the desktop app's local plugin host without a server
 - Manifest `panel` field: flat format (`{ label, icon, route }`) for single-page plugins, or multi-page format (`{ pages: [{ path, title, icon?, description? }], apiPrefix? }`) — sidebar renders one entry per page with section header
 - Manifest `config` field: declarative schema for plugin settings (`{ key: { type, default?, description?, enum? } }`) — stored in registry, used by plugin's settings UI
 - Server-side plugin code runs unsandboxed in the panel process — `@lamalibre/` scope is the trust boundary
@@ -195,6 +197,22 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Push install policies: IP allow/deny lists, allowed plugins (`@lamalibre/` scope enforced via Zod), allowed actions
 - Plugin state: `/etc/portlama/plugins.json` (registry), `/etc/portlama/plugins/` (per-plugin data directories)
 - Agent plugin state: `~/.portlama/agents/<label>/plugins.json`, `~/.portlama/agents/<label>/plugins/` directories (legacy paths `~/.portlama/plugins.json` and `~/.portlama/plugins/` used only during migration)
+- Local plugin state: `~/.portlama/local/plugins.json` (registry), `~/.portlama/local/plugins/` (per-plugin data), `~/.portlama/local/node_modules/` (installed packages), `~/.portlama/local/logs/` (host logs)
+
+**Local plugin host (desktop-only, serverless plugin execution):**
+
+- Runs plugins locally without a server or agent — accessible via "Local Plugins" sidebar section in the desktop app (visible in both Agents and Servers modes)
+- Single shared Fastify instance on `127.0.0.1:9293` — no mTLS, localhost trust boundary only
+- Managed as a launchd (macOS) / user-level systemd (Linux) service: `com.portlama.local-plugin-host` / `portlama-local-plugin-host`
+- Plugin discovery: hardcoded curated list of `@lamalibre/` plugins (herd, shell, sync, gate) — only plugins with `modes` including `'local'` are installable
+- Install/enable/disable/uninstall via Tauri commands in `local_plugins.rs` → operates on `~/.portlama/local/` filesystem directly (no curl/API)
+- Enable/disable requires host service restart (same pattern as panel-server plugin lifecycle)
+- Plugin panel bundles read from local `node_modules/` and rendered via microfrontend loader (`new Function()` eval + `mount(ctx)`)
+- Path helpers in `portlama-agent/src/lib/platform.js` (`localDir()`, `localPluginsFile()`, etc.) and `portlama-desktop/src-tauri/src/config.rs` (`local_dir()`, `local_plugins_path()`, etc.)
+- Registry management in `portlama-agent/src/lib/local-plugins.js` — read/write/install/enable/disable/uninstall with promise-chain mutex, @lamalibre/ scope validation, manifest `modes` check
+- Fastify host server in `portlama-agent/src/lib/local-plugin-host.js` — mounts enabled plugin routes (no auth, localhost only), serves panel.js bundles, management API on `127.0.0.1:9293`
+- Service config in `portlama-agent/src/lib/local-host-service.js` — generates plist/systemd for the host entry point (`local-plugin-host-entry.js`)
+- Desktop frontend: `portlama-desktop/src/pages/LocalPlugins.jsx` (management page), `portlama-desktop/src/lib/desktop-local-plugin-client.js` (Tauri invoke wrapper)
 
 **Ticket system (agent-to-agent authorization):**
 

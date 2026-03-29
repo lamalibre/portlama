@@ -9,6 +9,7 @@ mod config;
 mod chisel;
 mod credentials;
 mod local_install;
+mod local_plugins;
 mod mode;
 mod services;
 mod plugins;
@@ -78,6 +79,18 @@ fn main() {
             local_install::start_local_install,
             local_install::import_existing_local_install,
             local_install::check_local_server_health,
+            // Local plugin management
+            local_plugins::local_get_plugins,
+            local_plugins::local_get_available_plugins,
+            local_plugins::local_install_plugin,
+            local_plugins::local_uninstall_plugin,
+            local_plugins::local_enable_plugin,
+            local_plugins::local_disable_plugin,
+            local_plugins::local_fetch_plugin_bundle,
+            local_plugins::local_get_host_status,
+            local_plugins::local_start_host,
+            local_plugins::local_stop_host,
+            local_plugins::local_get_host_logs,
             // Mode switching
             mode::set_server_mode,
             mode::get_server_mode,

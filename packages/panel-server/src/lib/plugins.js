@@ -105,6 +105,11 @@ const ManifestSchema = z.object({
       (val) => Object.keys(val).length <= 50,
       { message: 'Config must have at most 50 keys' },
     ),
+  modes: z
+    .array(z.enum(['server', 'agent', 'local']))
+    .min(1)
+    .optional()
+    .default(['server', 'agent']),
 });
 
 // --- Plugin registry persistence ---
@@ -286,6 +291,7 @@ export function installPlugin(packageName, logger) {
       packages: manifest.packages,
       panel: manifest.panel,
       config: manifest.config,
+      modes: manifest.modes,
       status: 'disabled',
       installedAt: new Date().toISOString(),
     };

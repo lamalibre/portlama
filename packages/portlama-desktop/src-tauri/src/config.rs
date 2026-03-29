@@ -81,6 +81,26 @@ pub fn servers_registry_path() -> PathBuf {
     agent_dir().join("servers.json")
 }
 
+pub fn local_dir() -> PathBuf {
+    agent_dir().join("local")
+}
+
+pub fn local_plugins_path() -> PathBuf {
+    local_dir().join("plugins.json")
+}
+
+pub fn local_plugins_dir() -> PathBuf {
+    local_dir().join("plugins")
+}
+
+pub fn local_logs_dir() -> PathBuf {
+    local_dir().join("logs")
+}
+
+pub fn local_host_log_file() -> PathBuf {
+    local_logs_dir().join("host.log")
+}
+
 /// Minimal typed struct for entries in `servers.json`.
 /// Only the fields needed for `load_effective_config`; unknown fields are ignored.
 #[derive(Debug, Deserialize)]

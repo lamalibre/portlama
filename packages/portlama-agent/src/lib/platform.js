@@ -202,6 +202,67 @@ export function panelServiceConfigPath(label) {
   return process.platform === 'darwin' ? panelPlistPath(label) : panelSystemdUnitPath(label);
 }
 
+// ---------------------------------------------------------------------------
+// Local plugin host paths (not per-agent — shared across the machine)
+// ---------------------------------------------------------------------------
+
+export const LOCAL_DIR = path.join(AGENT_DIR, 'local');
+
+/** Local plugin host data directory. */
+export function localDir() {
+  return LOCAL_DIR;
+}
+
+/** Local plugin registry file. */
+export function localPluginsFile() {
+  return path.join(LOCAL_DIR, 'plugins.json');
+}
+
+/** Local per-plugin data directories root. */
+export function localPluginsDir() {
+  return path.join(LOCAL_DIR, 'plugins');
+}
+
+/** Local plugin host logs directory. */
+export function localHostLogsDir() {
+  return path.join(LOCAL_DIR, 'logs');
+}
+
+/** Local plugin host stdout log. */
+export function localHostLogFile() {
+  return path.join(localHostLogsDir(), 'host.log');
+}
+
+/** Local plugin host stderr log. */
+export function localHostErrorLogFile() {
+  return path.join(localHostLogsDir(), 'host.error.log');
+}
+
+/** Local plugin host launchd plist label. */
+export function localHostPlistLabel() {
+  return 'com.portlama.local-plugin-host';
+}
+
+/** Local plugin host launchd plist file path. */
+export function localHostPlistPath() {
+  return path.join(HOME, 'Library', 'LaunchAgents', 'com.portlama.local-plugin-host.plist');
+}
+
+/** Local plugin host systemd unit name. */
+export function localHostSystemdUnitName() {
+  return 'portlama-local-plugin-host';
+}
+
+/** Local plugin host systemd unit file path (user-level). */
+export function localHostSystemdUnitPath() {
+  return path.join(HOME, '.config', 'systemd', 'user', 'portlama-local-plugin-host.service');
+}
+
+/** Local plugin host service config path (platform-aware). */
+export function localHostServiceConfigPath() {
+  return process.platform === 'darwin' ? localHostPlistPath() : localHostSystemdUnitPath();
+}
+
 /**
  * @returns {boolean} true if running on macOS
  */

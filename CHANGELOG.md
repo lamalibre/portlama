@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add standalone local plugin installation via the desktop app — install and manage `@lamalibre/` plugins directly on the local machine without requiring a server or agent
+- Add "Local Plugins" sidebar section visible in both Agents and Servers modes in the desktop app
+- Add local plugin host Fastify server on `127.0.0.1:9293` — mounts enabled plugin server routes and serves panel bundles, managed as a launchd/systemd user-level service
+- Add curated plugin browser (Herd, Shell, Sync, Gate) with install, enable, disable, uninstall lifecycle
+- Add plugin panel rendering via microfrontend loader for locally-installed plugins
+- Add `modes` field to `portlama-plugin.json` manifest schema — plugins declare support for `server`, `agent`, and/or `local` execution modes (defaults to `['server', 'agent']`)
+- Add bearer token authentication and Host header validation (DNS rebinding protection) to the local plugin host
+- Add `local_plugins.rs` Tauri module with 11 commands for local plugin management from the desktop app
+
+**Affected packages:** panel-server 0.1.11 → 0.1.12, portlama-agent 1.0.13 → 1.0.14, portlama-desktop 0.1.10 → 0.1.11, create-portlama 1.0.37 → 1.0.38
+
 - Add agent web panel expose feature — agents can serve their management panel at `agent-<label>.<domain>` via a tunnelled mTLS-protected subdomain
 - Add `panel:expose` capability for agent certificates — admin grants per-agent permission to expose the panel
 - Add `POST /api/tunnels/expose-panel`, `DELETE /api/tunnels/retract-panel`, `GET /api/tunnels/agent-panel-status` endpoints for panel tunnel lifecycle
