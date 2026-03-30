@@ -19,7 +19,7 @@ portlama/
 │   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
 │   ├── install-portlama-e2e-mcp/ @lamalibre/install-portlama-e2e-mcp — npx installer + MCP server for E2E test infrastructure
 │   ├── portlama-tickets/      @lamalibre/portlama-tickets — SDK for ticket system (agent-to-agent authorization)
-│   └── portlama-cloud/        @lamalibre/portlama-cloud — cloud provider abstraction for server provisioning
+│   └── portlama-cloud/        @lamalibre/portlama-cloud — cloud provider abstraction for server and storage provisioning
 ├── tests/
 │   ├── e2e/                   Single-VM end-to-end tests
 │   └── e2e-three-vm/          Three-VM integration tests (Multipass)
@@ -50,7 +50,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 | TLS            | Let's Encrypt / certbot                     |
 | Panel auth     | mTLS client certificates                    |
 | Ticket SDK     | TypeScript, undici (mTLS HTTP client)        |
-| Cloud SDK      | TypeScript, undici (DO REST API, provider abstraction) |
+| Cloud SDK      | TypeScript, undici (DO REST API + S3-compatible storage API, provider abstraction) |
 | State          | JSON files + YAML (no database)             |
 | Target OS      | Ubuntu 24.04 LTS                            |
 
@@ -130,16 +130,19 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - TypeScript, same conventions as portlama-tickets (strict, ESM, verbatimModuleSyntax)
 - `undici` for HTTP — direct REST API calls to cloud providers, no heavy SDKs
 - `child_process.execFile` for SSH/SCP/openssl commands (array args only)
-- Provider abstraction: `CloudProvider` interface, each provider (DigitalOcean, etc.) implements it
-- Token scope validation: reject over-scoped tokens, require minimum necessary permissions. `domain:*` scopes are safe extras (opt-in DNS management)
+- Two provider interfaces: `CloudProvider` (compute — droplets, SSH keys, DNS) and `StorageProvider` (object storage — buckets). Each cloud provider implements one or both
+- Compute token scope validation: reject over-scoped tokens, require minimum necessary permissions. `domain:*` scopes are safe extras (opt-in DNS management)
 - DNS management (opt-in): if token has `domain:read`, wizard lists DO-managed domains; after droplet creation, `setup_dns` provisioning step creates A + wildcard A records. Existing records with different IPs are warned, not overwritten. DNS records are NOT auto-cleaned on server destroy
-- NDJSON progress protocol on stdout for Rust/Tauri integration
+- Storage provisioning: `StorageProvider` creates S3-compatible buckets (currently DigitalOcean Spaces). Uses AWS Signature V4 signing via `node:crypto` (no external S3 SDK). Hardcoded Spaces region list (DO has no API to list them). Storage servers are independent resources with their own lifecycle — not tied to compute servers
+- NDJSON progress protocol on stdout for Rust/Tauri integration (used by both compute and storage provisioners)
 - SSH via `ssh-keygen`/`ssh`/`scp` commands — temporary ed25519 keys, secure-deleted after use. SSH TOFU accepted risk: first connection uses `accept-new`, pinned in per-session `known_hosts` for subsequent commands; DigitalOcean does not expose host fingerprints via API
 - Credential storage: macOS Keychain (`security-framework` crate, no CLI) / Linux libsecret (`secret-tool` with stdin) — never plaintext, never in process args. Two services: `com.portlama.cloud` (API tokens), `com.portlama.server` (P12 passwords, keyed by server UUID)
-- Token passed to Node.js via `PORTLAMA_CLOUD_TOKEN` env var (never CLI args)
+- Compute token passed via `PORTLAMA_CLOUD_TOKEN` env var (never CLI args). Storage credentials via `PORTLAMA_SPACES_ACCESS_KEY` and `PORTLAMA_SPACES_SECRET_KEY` env vars
 - Server registry: `~/.portlama/servers.json` with atomic writes (tmp → 0600 → fsync → rename)
+- Storage server registry: `~/.portlama/storage-servers.json` with same atomic write pattern. Stores bucket name, region, endpoint — no credentials (those stay in OS keychain)
 - Droplet safety: only operate on droplets tagged `portlama:managed`
-- Cleanup stack: each resource creation registers a rollback; on failure, cleanup runs in reverse
+- Cleanup stack (shared `cleanup.ts`): each resource creation registers a rollback; on failure, cleanup runs in reverse. `destroy-storage` deletes both the bucket and the registry entry — bucket must be empty (S3 returns 409 BucketNotEmpty otherwise)
+- Provisioning locks: `~/.portlama/.provisioning.lock` (compute) and `~/.portlama/.storage-provisioning.lock` (storage) prevent concurrent operations
 
 **Installer:**
 
@@ -274,6 +277,8 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 | `NODE_ENV`                  | panel-server   | `development` skips mTLS check                           |
 | `PORTLAMA_ENROLLMENT_TOKEN` | portlama-agent | Enrollment token for `setup --token` (avoids process listing exposure) |
 | `PORTLAMA_CLOUD_TOKEN`      | portlama-cloud | Cloud provider API token (never CLI args)                |
+| `PORTLAMA_SPACES_ACCESS_KEY`| portlama-cloud | Spaces access key for storage commands (never CLI args)  |
+| `PORTLAMA_SPACES_SECRET_KEY`| portlama-cloud | Spaces secret key for storage commands (never CLI args)  |
 
 ## License
 

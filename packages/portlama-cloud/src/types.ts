@@ -179,3 +179,78 @@ export interface ProvisionOptions {
   readonly doSubdomain?: string | undefined;
   readonly overrideDns?: boolean | undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Storage provider
+// ---------------------------------------------------------------------------
+
+export type StorageProviderName = 'spaces';
+
+/** S3 bucket naming: 3-63 chars, lowercase alphanumeric and hyphens. */
+export const BUCKET_NAME_REGEX = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
+
+export interface StorageRegion {
+  readonly slug: string;
+  readonly name: string;
+  readonly endpoint: string;
+}
+
+// ---------------------------------------------------------------------------
+// Storage server registry (local)
+// ---------------------------------------------------------------------------
+
+export interface StorageServerEntry {
+  readonly id: string;
+  readonly label: string;
+  readonly provider: StorageProviderName;
+  readonly region: string;
+  readonly bucket: string;
+  readonly endpoint: string;
+  readonly createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Storage provisioning progress (NDJSON protocol)
+// ---------------------------------------------------------------------------
+
+export type StorageProvisionStep =
+  | 'validate_credentials'
+  | 'create_bucket'
+  | 'save_registry';
+
+export interface StorageStepEvent {
+  readonly event: 'step';
+  readonly step: StorageProvisionStep;
+  readonly status: StepStatus;
+  readonly data?: Record<string, unknown>;
+}
+
+export interface StorageErrorEvent {
+  readonly event: 'error';
+  readonly step: StorageProvisionStep;
+  readonly message: string;
+  readonly recoverable: boolean;
+}
+
+export interface StorageCompleteEvent {
+  readonly event: 'complete';
+  readonly storageServer: StorageServerEntry;
+}
+
+export type StorageProgressEvent =
+  | StorageStepEvent
+  | StorageErrorEvent
+  | StorageCompleteEvent;
+
+// ---------------------------------------------------------------------------
+// Storage provisioner options
+// ---------------------------------------------------------------------------
+
+export interface StorageProvisionOptions {
+  readonly provider: StorageProviderName;
+  readonly accessKey: string;
+  readonly secretKey: string;
+  readonly region: string;
+  readonly label: string;
+  readonly bucket?: string | undefined;
+}

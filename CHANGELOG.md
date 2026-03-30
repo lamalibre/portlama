@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `GET /api/identity/self`, `GET /api/identity/users`, `GET /api/identity/users/:username`, `GET /api/identity/groups` panel API endpoints
 - Add nginx `Remote-*` header clearing on all vhosts to prevent client-forged identity headers (panel domain, panel IP, app, static site, agent panel, public endpoints)
 - Add identity capability toggles to admin certificate management UI
+- Add `StorageProvider` interface and DigitalOcean Spaces implementation for provisioning S3-compatible object storage independently from compute servers (`portlama-cloud`)
+- Add `provision-storage`, `destroy-storage`, `storage-servers`, and `spaces-regions` CLI commands for storage lifecycle management (`portlama-cloud`)
+- Add storage server registry at `~/.portlama/storage-servers.json` with atomic writes (`portlama-cloud`)
+- Add minimal AWS Signature V4 signing for S3-compatible APIs using only `node:crypto` — no new dependencies (`portlama-cloud`)
+- Extract shared `CleanupStack` from compute provisioner for reuse by both compute and storage provisioners (`portlama-cloud`)
 
 ### Changed
 
@@ -22,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update E2E agent setup to use enrollment token flow instead of legacy P12 certificate transfer
 - Update E2E VM provisioning with tiered snapshot system (node-ready → installed → provisioned) for faster iteration
 
-**Affected packages:** portlama-identity 0.1.0 (new), panel-server 0.1.13, portlama-admin-panel 0.1.2, create-portlama 1.0.42, install-portlama-e2e-mcp 0.2.0
+**Affected packages:** portlama-identity 0.1.0 (new), panel-server 0.1.13, portlama-admin-panel 0.1.2, create-portlama 1.0.42, install-portlama-e2e-mcp 0.2.0, portlama-cloud 0.1.3
 
 ### Fixed
 

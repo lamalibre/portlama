@@ -30,6 +30,7 @@ import {
   type SSHKeyPair,
 } from './ssh.js';
 import { addServer } from './registry.js';
+import { CleanupStack } from './cleanup.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -75,37 +76,6 @@ function emitStep(
 
 function emitError(step: ProvisionStep, message: string, recoverable: boolean): void {
   emit({ event: 'error', step, message, recoverable });
-}
-
-// ---------------------------------------------------------------------------
-// Cleanup stack
-// ---------------------------------------------------------------------------
-
-type CleanupAction = () => Promise<void>;
-
-class CleanupStack {
-  readonly actions: Array<{ label: string; fn: CleanupAction }> = [];
-
-  push(label: string, fn: CleanupAction): void {
-    this.actions.push({ label, fn });
-  }
-
-  clear(): void {
-    this.actions.length = 0;
-  }
-
-  async runAll(): Promise<boolean> {
-    let allSucceeded = true;
-    // Run in reverse order
-    for (let i = this.actions.length - 1; i >= 0; i--) {
-      try {
-        await this.actions[i]!.fn();
-      } catch {
-        allSucceeded = false;
-      }
-    }
-    return allSucceeded;
-  }
 }
 
 // ---------------------------------------------------------------------------

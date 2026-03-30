@@ -5,7 +5,7 @@
  * Starting with DigitalOcean, architecture supports all major providers.
  */
 
-// Types
+// Types — compute
 export type {
   Region,
   RegionWithLatency,
@@ -28,20 +28,37 @@ export type {
   DnsSetupResult,
 } from './types.js';
 
+// Types — storage
+export { BUCKET_NAME_REGEX } from './types.js';
+export type {
+  StorageProviderName,
+  StorageRegion,
+  StorageServerEntry,
+  StorageProvisionStep,
+  StorageStepEvent,
+  StorageErrorEvent,
+  StorageCompleteEvent,
+  StorageProgressEvent,
+  StorageProvisionOptions,
+} from './types.js';
+
 // Errors
 export { CloudHttpError, TokenScopeError, CloudError } from './errors.js';
 
-// Provider interface
+// Provider interfaces
 export type { CloudProvider } from './provider.js';
+export type { StorageProvider } from './storage-provider.js';
 
 // DigitalOcean provider
 export { DigitalOceanProvider } from './digitalocean/index.js';
 export { validateDOToken, assertValidDOToken, REQUIRED_SCOPES } from './digitalocean/scopes.js';
 export { probeRegionLatencies } from './digitalocean/latency.js';
 export { listDomains, createDomain, listDomainRecords, deleteDomainRecord, updateARecord, setupDnsRecords } from './digitalocean/dns.js';
+export { DigitalOceanSpacesProvider } from './digitalocean/spaces.js';
 
-// Provisioner
+// Provisioners
 export { provision } from './provisioner.js';
+export { provisionStorage } from './storage-provisioner.js';
 
 // SSH utilities (only safe functions exported; sshExec/scpDownload are internal
 // because their command/path parameters are shell-interpreted on the remote host)
@@ -63,3 +80,13 @@ export {
   migrateFromAgentConfig,
   registryPath,
 } from './registry.js';
+
+// Storage server registry
+export {
+  loadStorageServers,
+  saveStorageServers,
+  addStorageServer,
+  removeStorageServer,
+  getStorageServer,
+  storageRegistryPath,
+} from './storage-registry.js';
