@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-03-30
 
+### Fixed
+
+- Fix DigitalOcean token validation rejecting correctly-scoped tokens — update scope parser to handle both comma-separated and space-separated `X-OAuth-Scopes` header formats (OAuth 2.0 RFC 6749 compatibility)
+- Fix stale scope names in dangerous-scope check — `loadbalancer:*` → `load_balancer:*`, `volume:*` → `block_storage:*` per current DO API
+- Fix false rejection of tokens with `database:create` — now recognized as a DO-documented associated scope of `droplet:create`
+
+**Affected packages:** portlama-cloud 0.1.2
+
 ### Security
 
 - Fix SSRF in agent panel API proxy — validate that all curl targets use `https://` scheme before invocation (`portlama-agent`)

@@ -41,33 +41,69 @@ export const REQUIRED_SCOPES: readonly string[] = [
 /**
  * Additional scopes that are expected on a correctly scoped token.
  *
- * The DO custom scopes UI works at the resource level — selecting
- * "droplet" gives all 5 sub-scopes, "ssh_key" gives all 4, etc.
- * The minimum token (account + droplet + regions + ssh_key + tag)
- * has 20 scopes on the wire:
+ * These come from three sources:
+ * 1. Resource group extras — selecting a resource in the DO UI adds
+ *    all sub-scopes for that resource (e.g. droplet:update, droplet:admin).
+ * 2. Required dependencies — DO auto-adds these when you select a scope
+ *    (e.g. droplet:create requires regions:read, sizes:read, etc.).
+ * 3. Associated scopes — DO documents these as supporting full functionality
+ *    of a scope. Since April 2025 (authorization completeness fix), the DO
+ *    UI may auto-add associated scopes to new tokens.
  *
- * From resource groups (cannot be individually deselected):
- *   droplet:update, droplet:admin, ssh_key:update, tag:delete
- *
- * Auto-added as dependencies of droplet:read:
- *   account:read, sizes:read, actions:read, image:read,
- *   snapshot:read, vpc:read
- *
- * All of these are harmless — either read-only or non-destructive.
+ * All scopes here are harmless for Portlama's purposes — either read-only,
+ * update-only (no resource creation/deletion), or scoped to resources we
+ * already interact with during provisioning.
  */
 const SAFE_EXTRA_SCOPES: readonly string[] = [
-  // Resource group extras (cannot opt out)
+  // Resource group extras (cannot opt out when selecting the group)
   'droplet:update',
   'droplet:admin',
   'ssh_key:update',
   'tag:delete',
-  // Auto-added dependencies of droplet:read
+
+  // Required dependencies auto-added by DO for our required scopes.
+  // droplet:create/read/delete all require these:
   'account:read',
   'sizes:read',
   'actions:read',
   'image:read',
   'snapshot:read',
   'vpc:read',
+
+  // Associated scopes of droplet:create — DO may auto-add these to
+  // ensure full functionality (April 2025 authorization fix).
+  'block_storage:read',
+  'monitoring:create',
+  'database:create',
+
+  // Associated scopes of droplet:read
+  'monitoring:read',
+  'reserved_ip:read',
+  'firewall:read',
+  'project:read',
+
+  // Associated scopes of tag:create — tags apply to all resource
+  // types, so DO associates update scopes for every taggable resource.
+  'app:update',
+  'database:update',
+  'reserved_ip:update',
+  'image:update',
+  'load_balancer:update',
+  'addon:update',
+  'spaces:update',
+  'firewall:update',
+  'kubernetes:update',
+
+  // Associated scopes of tag:read — read scopes for taggable resources
+  'app:read',
+  'database:read',
+  'load_balancer:read',
+  'addon:read',
+  'spaces:read',
+  'block_storage_snapshot:read',
+  'firewall:read',
+  'kubernetes:read',
+
   // DNS management (opt-in — enables automatic DNS record creation).
   // DO's custom scope UI grants all 4 domain sub-scopes as a group;
   // domain:delete cannot be individually deselected. Accepted risk:
@@ -81,23 +117,29 @@ const SAFE_EXTRA_SCOPES: readonly string[] = [
 ];
 
 /**
- * Scope patterns that indicate overly broad permissions.
+ * Scopes that indicate overly broad permissions.
  * If any of these are present, the token is rejected.
+ *
+ * This list excludes scopes that DO documents as associated (auto-addable)
+ * scopes of the resource groups we require (droplet, ssh_key, tag, regions).
+ * For example, database:create is an associated scope of droplet:create and
+ * database:update is an associated scope of tag:create — both are in
+ * SAFE_EXTRA_SCOPES, not here.
+ *
+ * Scope names updated to match current DO API (April 2025):
+ *   volume:* → block_storage:*, loadbalancer:* → load_balancer:*
  */
-const DANGEROUS_SCOPE_PREFIXES: readonly string[] = [
+const DANGEROUS_SCOPES: readonly string[] = [
   'account:write',
-  'database:create',
   'database:delete',
-  'firewall:create',
-  'firewall:delete',
   'image:create',
   'image:delete',
   'kubernetes:create',
   'kubernetes:delete',
-  'loadbalancer:create',
-  'loadbalancer:delete',
-  'volume:create',
-  'volume:delete',
+  'load_balancer:create',
+  'load_balancer:delete',
+  'block_storage:create',
+  'block_storage:delete',
   'vpc:create',
   'vpc:delete',
 ];
@@ -105,13 +147,16 @@ const DANGEROUS_SCOPE_PREFIXES: readonly string[] = [
 /**
  * Parse the X-OAuth-Scopes header from a DO API response.
  * Returns a deduplicated list of scope strings.
+ *
+ * Handles both comma-separated (historically used by DO) and
+ * space-separated (OAuth 2.0 RFC 6749 standard) formats, as well
+ * as any mix of the two.
  */
 function parseScopes(header: string | null): string[] {
   if (!header) return [];
   return [...new Set(
     header
-      .split(',')
-      .map((s) => s.trim())
+      .split(/[,\s]+/)
       .filter(Boolean),
   )];
 }
@@ -170,7 +215,7 @@ export async function validateDOToken(token: string): Promise<TokenValidation> {
     );
 
     const excessScopes = tokenScopes.filter((scope) =>
-      DANGEROUS_SCOPE_PREFIXES.includes(scope),
+      DANGEROUS_SCOPES.includes(scope),
     );
 
     const hasDnsAccess = tokenScopes.includes('domain:read');
