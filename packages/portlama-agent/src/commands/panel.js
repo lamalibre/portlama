@@ -18,11 +18,7 @@ import {
   unloadPanelService,
   removePanelServiceConfig,
 } from '../lib/panel-service.js';
-import {
-  exposePanelTunnel,
-  retractPanelTunnel,
-  fetchPanelTunnelStatus,
-} from '../lib/panel-api.js';
+import { exposePanelTunnel, retractPanelTunnel, fetchPanelTunnelStatus } from '../lib/panel-api.js';
 
 const DEFAULT_PANEL_PORT = 9393;
 
@@ -91,10 +87,11 @@ async function enablePanel(label, config, port, isJson) {
     // Rollback: stop the panel service we just started
     await unloadPanelService(label);
     await removePanelServiceConfig(label);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
     if (isJson) {
-      console.log(JSON.stringify({ error: err.message }));
+      console.log(JSON.stringify({ error: msg }));
     } else {
-      console.error(chalk.red(`Failed to expose panel: ${err.message}`));
+      console.error(chalk.red(`Failed to expose panel: ${msg}`));
     }
     process.exit(1);
   }
@@ -108,7 +105,8 @@ async function enablePanel(label, config, port, isJson) {
   // 6. Update the agent's chisel service (needs new tunnel mapping)
   try {
     const { fetchAgentConfig } = await import('../lib/panel-api.js');
-    const { generateServiceConfig, writeServiceConfigFile } = await import('../lib/service-config.js');
+    const { generateServiceConfig, writeServiceConfigFile } =
+      await import('../lib/service-config.js');
     const { unloadAgent, loadAgent } = await import('../lib/service.js');
     const agentConfig = await fetchAgentConfig(config);
     const serviceContent = generateServiceConfig(agentConfig.chiselArgs, label);
@@ -117,7 +115,8 @@ async function enablePanel(label, config, port, isJson) {
     await loadAgent(label);
   } catch (err) {
     if (!isJson) {
-      console.log(chalk.yellow(`Warning: Could not restart chisel with new tunnel: ${err.message}`));
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.log(chalk.yellow(`Warning: Could not restart chisel with new tunnel: ${msg}`));
     }
   }
 
@@ -139,7 +138,8 @@ async function disablePanel(label, config, isJson) {
     await retractPanelTunnel(config);
   } catch (err) {
     if (!isJson) {
-      console.log(chalk.yellow(`Warning: Could not retract panel tunnel: ${err.message}`));
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.log(chalk.yellow(`Warning: Could not retract panel tunnel: ${msg}`));
     }
   }
 
@@ -152,7 +152,8 @@ async function disablePanel(label, config, isJson) {
   // 4. Update chisel (remove the panel tunnel mapping)
   try {
     const { fetchAgentConfig } = await import('../lib/panel-api.js');
-    const { generateServiceConfig, writeServiceConfigFile } = await import('../lib/service-config.js');
+    const { generateServiceConfig, writeServiceConfigFile } =
+      await import('../lib/service-config.js');
     const { unloadAgent, loadAgent } = await import('../lib/service.js');
     const agentConfig = await fetchAgentConfig(config);
     const serviceContent = generateServiceConfig(agentConfig.chiselArgs, label);
@@ -161,7 +162,8 @@ async function disablePanel(label, config, isJson) {
     await loadAgent(label);
   } catch (err) {
     if (!isJson) {
-      console.log(chalk.yellow(`Warning: Could not restart chisel: ${err.message}`));
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.log(chalk.yellow(`Warning: Could not restart chisel: ${msg}`));
     }
   }
 
@@ -189,18 +191,22 @@ async function showStatus(label, config, isJson) {
   }
 
   if (isJson) {
-    console.log(JSON.stringify({
-      running: loaded,
-      enabled: tunnelStatus.enabled,
-      fqdn: tunnelStatus.fqdn,
-      port: config.panelPort || null,
-    }));
+    console.log(
+      JSON.stringify({
+        running: loaded,
+        enabled: tunnelStatus.enabled,
+        fqdn: tunnelStatus.fqdn,
+        port: config.panelPort || null,
+      }),
+    );
     return;
   }
 
   console.log(chalk.bold('\nAgent Panel Status\n'));
   console.log(`  Service:  ${loaded ? chalk.green('running') : chalk.red('stopped')}`);
-  console.log(`  Tunnel:   ${tunnelStatus.enabled ? chalk.green('exposed') : chalk.dim('not exposed')}`);
+  console.log(
+    `  Tunnel:   ${tunnelStatus.enabled ? chalk.green('exposed') : chalk.dim('not exposed')}`,
+  );
 
   if (tunnelStatus.fqdn) {
     console.log(`  URL:      ${chalk.cyan(`https://${tunnelStatus.fqdn}`)}`);

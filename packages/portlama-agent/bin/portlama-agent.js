@@ -5,9 +5,8 @@ import { main } from '../src/index.js';
 try {
   await main();
 } catch (error) {
-  console.error('\n');
-  console.error('  Portlama Agent failed.');
-  console.error(`  Error: ${error.message}`);
-  console.error('\n');
+  const msg = error instanceof Error ? error.message : 'Unknown error';
+  process.stderr.write('\n  Portlama Agent failed.\n');
+  process.stderr.write(`  Error: ${msg}\n\n`);
   process.exit(1);
 }

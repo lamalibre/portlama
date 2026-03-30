@@ -109,15 +109,23 @@ function certArgs(configPath) {
 }
 
 /**
- * Validate that a URL uses the https: scheme.  Prevents SSRF by ensuring
- * curl only connects to HTTPS endpoints.
+ * Sanitize the URL in a curl argument list.  Parses the last element via
+ * `new URL()` (which CodeQL recognises as a taint-breaking sanitizer) and
+ * rejects non-HTTPS schemes.  The validated `.href` replaces the original
+ * string so that execa never receives un-validated input.
+ *
  * @param {string[]} args - curl arguments; the last element must be the URL
+ * @returns {string[]} a copy of args with the URL replaced by validated href
  */
-function validateCurlUrl(args) {
-  const url = args[args.length - 1];
-  if (typeof url !== 'string' || !url.startsWith('https://')) {
-    throw new Error(`Refusing to call curl with non-HTTPS URL: ${url}`);
+function sanitizeCurlArgs(args) {
+  const raw = args[args.length - 1];
+  const parsed = new URL(raw);
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`Refusing to call curl with non-HTTPS URL: ${parsed.protocol}`);
   }
+  const out = args.slice();
+  out[out.length - 1] = parsed.href;
+  return out;
 }
 
 /**
@@ -130,10 +138,10 @@ function validateCurlUrl(args) {
  * @returns {Promise<import('execa').ExecaReturnValue>}
  */
 async function curlWithConfig(p12Path, p12Password, extraArgs) {
-  validateCurlUrl(extraArgs);
+  const safeArgs = sanitizeCurlArgs(extraArgs);
   const configPath = await createCurlConfig(p12Path, p12Password);
   try {
-    return await execa('curl', [...certArgs(configPath), ...extraArgs]);
+    return await execa('curl', [...certArgs(configPath), ...safeArgs]);
   } finally {
     await removeCurlConfig(configPath);
   }
@@ -148,7 +156,7 @@ async function curlWithConfig(p12Path, p12Password, extraArgs) {
  * @returns {Promise<import('execa').ExecaReturnValue>}
  */
 async function curlWithKeychain(keychainIdentity, extraArgs) {
-  validateCurlUrl(extraArgs);
+  const safeArgs = sanitizeCurlArgs(extraArgs);
   return execa('curl', [
     '--cert',
     keychainIdentity,
@@ -157,7 +165,7 @@ async function curlWithKeychain(keychainIdentity, extraArgs) {
     '--max-time',
     '30',
     '-k', // skip server TLS verification (self-signed server cert)
-    ...extraArgs,
+    ...safeArgs,
   ]);
 }
 

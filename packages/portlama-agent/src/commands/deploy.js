@@ -73,7 +73,8 @@ export async function runDeploy(args, { label } = {}) {
   try {
     data = await fetchSites(config);
   } catch (err) {
-    console.error(`\n  ${chalk.red(`Failed to connect to panel: ${err.message}`)}\n`);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`\n  ${chalk.red(`Failed to connect to panel: ${msg}`)}\n`);
     process.exit(1);
   }
   const sites = data.sites || [];

@@ -98,9 +98,12 @@ export default async function panelApiRoutes(fastify, opts) {
     const config = await getConfig();
     const { curlAuthenticatedJson } = await import('./panel-api.js');
     return curlAuthenticatedJson(config, [
-      '-X', 'POST',
-      '-H', 'Content-Type: application/json',
-      '-d', JSON.stringify(request.body),
+      '-X',
+      'POST',
+      '-H',
+      'Content-Type: application/json',
+      '-d',
+      JSON.stringify(request.body),
       `${config.panelUrl}/api/tunnels`,
     ]);
   });
@@ -111,9 +114,12 @@ export default async function panelApiRoutes(fastify, opts) {
     const config = await getConfig();
     const { curlAuthenticatedJson } = await import('./panel-api.js');
     return curlAuthenticatedJson(config, [
-      '-X', 'PATCH',
-      '-H', 'Content-Type: application/json',
-      '-d', JSON.stringify(request.body),
+      '-X',
+      'PATCH',
+      '-H',
+      'Content-Type: application/json',
+      '-d',
+      JSON.stringify(request.body),
       `${config.panelUrl}/api/tunnels/${id}`,
     ]);
   });
@@ -123,10 +129,7 @@ export default async function panelApiRoutes(fastify, opts) {
     if (!UUID_RE.test(id)) return reply.code(400).send({ error: 'Invalid tunnel ID' });
     const config = await getConfig();
     const { curlAuthenticatedJson } = await import('./panel-api.js');
-    return curlAuthenticatedJson(config, [
-      '-X', 'DELETE',
-      `${config.panelUrl}/api/tunnels/${id}`,
-    ]);
+    return curlAuthenticatedJson(config, ['-X', 'DELETE', `${config.panelUrl}/api/tunnels/${id}`]);
   });
 
   // --- Services ---
@@ -187,7 +190,8 @@ export default async function panelApiRoutes(fastify, opts) {
     const config = await getConfig();
     const { curlAuthenticatedJson } = await import('./panel-api.js');
     return curlAuthenticatedJson(config, [
-      '-X', 'POST',
+      '-X',
+      'POST',
       `${config.panelUrl}/api/certs/mtls/rotate`,
     ]);
   });
@@ -205,8 +209,12 @@ export default async function panelApiRoutes(fastify, opts) {
       const config = await getConfig();
       return await fetchPanelTunnelStatus(config);
     } catch (err) {
-      request.log.error(err, 'Failed to fetch panel expose status');
-      const is403 = err.message?.includes('capability') || err.message?.includes('403');
+      request.log.error(
+        { errMsg: String(err.message ?? '') },
+        'Failed to fetch panel expose status',
+      );
+      const msg = String(err.message ?? '');
+      const is403 = msg.includes('capability') || msg.includes('403');
       return reply.code(is403 ? 403 : 500).send({ error: 'Failed to fetch panel status' });
     }
   });
@@ -221,9 +229,12 @@ export default async function panelApiRoutes(fastify, opts) {
       }
       return await exposePanelTunnel(config, port);
     } catch (err) {
-      request.log.error(err, 'Failed to expose panel');
-      const is409 = err.message?.includes('already exists');
-      return reply.code(is409 ? 409 : 500).send({ error: is409 ? 'Panel tunnel already exists' : 'Failed to expose panel' });
+      request.log.error({ errMsg: String(err.message ?? '') }, 'Failed to expose panel');
+      const msg = String(err.message ?? '');
+      const is409 = msg.includes('already exists');
+      return reply
+        .code(is409 ? 409 : 500)
+        .send({ error: is409 ? 'Panel tunnel already exists' : 'Failed to expose panel' });
     }
   });
 
@@ -232,7 +243,7 @@ export default async function panelApiRoutes(fastify, opts) {
       const config = await getConfig();
       return await retractPanelTunnel(config);
     } catch (err) {
-      request.log.error(err, 'Failed to retract panel');
+      request.log.error({ errMsg: String(err.message ?? '') }, 'Failed to retract panel');
       return reply.code(500).send({ error: 'Failed to retract panel' });
     }
   });

@@ -27,11 +27,18 @@ function CopyButton({ text }) {
 /**
  * Returns the URL only if it uses the https: scheme, preventing XSS via
  * javascript: or data: URLs and open-redirect via arbitrary schemes.
+ * Uses the URL constructor to parse and re-emit the href, which breaks
+ * any taint chain from unvalidated server responses.
  * @param {string} url
  * @returns {string}
  */
 function safeHttpsUrl(url) {
-  if (typeof url === 'string' && url.startsWith('https://')) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:') return parsed.href;
+  } catch {
+    /* invalid URL */
+  }
   return '';
 }
 

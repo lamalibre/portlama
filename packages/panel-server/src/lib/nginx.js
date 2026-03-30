@@ -246,7 +246,8 @@ export async function writeAppVhost(subdomain, domain, port, certPath) {
   const fqdn = `${subdomain}.${domain}`;
   const certDir = certPath || `/etc/letsencrypt/live/${fqdn}`;
   // Normalize: remove trailing slash if present
-  const certDirClean = certDir.endsWith('/') ? certDir.replace(/\/+$/, '') : certDir;
+  let certDirClean = certDir;
+  while (certDirClean.endsWith('/')) certDirClean = certDirClean.slice(0, -1);
 
   const config = `server {
     listen 443 ssl;
@@ -387,7 +388,8 @@ export async function writeAppVhost(subdomain, domain, port, certPath) {
  * @param {string} [domain] - Base domain (needed for Authelia redirect URL)
  */
 export async function writeStaticSiteVhost(site, certDir, domain) {
-  const certDirClean = certDir.endsWith('/') ? certDir.replace(/\/+$/, '') : certDir;
+  let certDirClean = certDir;
+  while (certDirClean.endsWith('/')) certDirClean = certDirClean.slice(0, -1);
   const tryFiles = site.spaMode ? 'try_files $uri $uri/ /index.html' : 'try_files $uri $uri/ =404';
 
   let autheliaBlock = '';
@@ -687,7 +689,8 @@ export async function enableIpVhost() {
 export async function writeAgentPanelVhost(subdomain, domain, port, certPath) {
   const fqdn = `${subdomain}.${domain}`;
   const certDir = certPath || `/etc/letsencrypt/live/${fqdn}`;
-  const certDirClean = certDir.endsWith('/') ? certDir.replace(/\/+$/, '') : certDir;
+  let certDirClean = certDir;
+  while (certDirClean.endsWith('/')) certDirClean = certDirClean.slice(0, -1);
 
   const config = `server {
     listen 443 ssl;

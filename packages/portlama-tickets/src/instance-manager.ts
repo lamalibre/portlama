@@ -80,9 +80,9 @@ export class TicketInstanceManager {
   private readonly lastTicketRequest = new Map<string, number>();
 
   constructor(options: TicketInstanceManagerOptions) {
-    this.panelUrl = options.panelUrl.endsWith('/')
-      ? options.panelUrl.replace(/\/+$/, '')
-      : options.panelUrl;
+    let url = options.panelUrl;
+    while (url.endsWith('/')) url = url.slice(0, -1);
+    this.panelUrl = url;
     this.certs = options.certs;
     this.scope = options.scope;
     this.transport = options.transport;

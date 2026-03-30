@@ -165,7 +165,7 @@ async function runCreate(config, args) {
   try {
     result = await createSite(config, body);
   } catch (err) {
-    const detail = err.message || 'Unknown error';
+    const detail = err instanceof Error ? err.message : 'Unknown error';
     console.error(`\n  ${chalk.red(`Failed to create site: ${detail}`)}\n`);
     process.exit(1);
   }
@@ -209,7 +209,8 @@ async function runDelete(config, args) {
     try {
       data = await fetchSites(config);
     } catch (err) {
-      console.error(`\n  ${chalk.red(`Failed to connect to panel: ${err.message}`)}\n`);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`\n  ${chalk.red(`Failed to connect to panel: ${msg}`)}\n`);
       process.exit(1);
     }
     const sites = data.sites || [];
@@ -231,7 +232,7 @@ async function runDelete(config, args) {
   try {
     await deleteSite(config, siteId);
   } catch (err) {
-    const detail = err.message || 'Unknown error';
+    const detail = err instanceof Error ? err.message : 'Unknown error';
     console.error(`\n  ${chalk.red(`Failed to delete site: ${detail}`)}\n`);
     process.exit(1);
   }

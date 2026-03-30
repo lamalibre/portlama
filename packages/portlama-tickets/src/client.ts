@@ -127,9 +127,9 @@ export class TicketClient {
   private readonly logger: TicketLogger;
 
   constructor(options: TicketClientOptions) {
-    this.panelUrl = options.panelUrl.endsWith('/')
-      ? options.panelUrl.replace(/\/+$/, '')
-      : options.panelUrl;
+    let url = options.panelUrl;
+    while (url.endsWith('/')) url = url.slice(0, -1);
+    this.panelUrl = url;
     this.dispatcher = options.dispatcher;
     this.logger = options.logger.child({ component: 'ticket-client' });
   }
