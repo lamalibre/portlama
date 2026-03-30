@@ -71,6 +71,7 @@ async function start() {
   await server.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
+    allowList: ['127.0.0.1', '::1'],
   });
 
   // Resolve static file root for the panel client SPA

@@ -4,8 +4,52 @@
 
 import { z } from 'zod';
 import * as mp from '../lib/multipass.js';
-import { PROFILES, ALL_VMS, VM_NAME_MAP } from '../config.js';
-import { setVmState, removeVmState, updateState } from '../lib/state.js';
+import { PROFILES, ALL_VMS, VM_NAME_MAP, VM_STATIC_IPS } from '../config.js';
+import { setVmState, removeVmState, updateState, clearTierSnapshots } from '../lib/state.js';
+
+/**
+ * Apply a static IP to a VM post-boot via netplan.
+ * Writes a netplan config, removes the DHCP default, and applies.
+ * Multipass agent stays connected because it communicates via virtio, not IP.
+ */
+async function applyStaticIp(vmName) {
+  const ip = VM_STATIC_IPS[vmName];
+  if (!ip) return null;
+
+  // Add a secondary static IP on 10.13.37.0/24 via `ip addr add`. This subnet is
+  // completely outside the Multipass DHCP range, eliminating collision risk. DHCP
+  // stays untouched — Multipass connectivity and internet access are unaffected.
+  // Inter-VM traffic on 10.13.37.x works at L2 because all VMs share the same bridge.
+  await mp.exec(
+    vmName,
+    `ip addr add ${ip}/24 dev enp0s1 2>/dev/null || true`,
+    { sudo: true, timeout: 10_000 },
+  );
+
+  // Create a systemd service to re-apply on boot (survives snapshot restore)
+  const unitFile = [
+    '[Unit]',
+    'Description=Static IP for E2E testing',
+    'After=network-online.target',
+    'Wants=network-online.target',
+    '',
+    '[Service]',
+    'Type=oneshot',
+    `ExecStart=/sbin/ip addr add ${ip}/24 dev enp0s1`,
+    'RemainAfterExit=yes',
+    '',
+    '[Install]',
+    'WantedBy=multi-user.target',
+  ].join('\\n');
+
+  await mp.exec(
+    vmName,
+    `printf '${unitFile}\\n' > /etc/systemd/system/portlama-static-ip.service && systemctl daemon-reload && systemctl enable portlama-static-ip`,
+    { sudo: true, timeout: 15_000 },
+  );
+
+  return ip;
+}
 
 export const vmCreateTool = {
   name: 'vm_create',
@@ -41,17 +85,23 @@ export const vmCreateTool = {
       }),
     );
 
-    // Create VMs in parallel
+    // Create VMs in parallel (DHCP initially)
     await Promise.all(
       targets.map(async (name) => {
         await mp.launch(name, specs);
-        const ip = await mp.getIp(name);
-        setVmState(name, { ip, profile: p, state: 'running' });
-        results.push(`Created ${name} (${ip}) — ${specs.cpus} CPU, ${specs.memory} RAM`);
       }),
     );
 
+    // Apply static IPs post-boot (sequential — each VM's netplan apply is fast)
+    for (const name of targets) {
+      const staticIp = await applyStaticIp(name);
+      const ip = staticIp || await mp.getIp(name);
+      setVmState(name, { ip, profile: p, state: 'running' });
+      results.push(`Created ${name} (${ip}) — ${specs.cpus} CPU, ${specs.memory} RAM`);
+    }
+
     updateState({ profile: p });
+    clearTierSnapshots();
 
     return {
       content: [
@@ -107,6 +157,11 @@ export const vmDeleteTool = {
         removeVmState(name);
       }),
     );
+
+    // Invalidate tier snapshots when deleting all VMs
+    if (!vms || targets.length === 3) {
+      clearTierSnapshots();
+    }
 
     return {
       content: [

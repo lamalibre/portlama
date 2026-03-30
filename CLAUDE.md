@@ -14,6 +14,7 @@ portlama/
 │   ├── portlama-admin-panel/   @lamalibre/portlama-admin-panel — shared React admin UI (pages, context, components) used by panel-client and portlama-desktop
 │   ├── portlama-agent-panel/  @lamalibre/portlama-agent-panel — shared React agent UI (pages, context, components) used by portlama-desktop and future web agent panel
 │   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop app (dual-mode: agent management + server admin panel)
+│   ├── portlama-identity/      @lamalibre/portlama-identity — SDK for Authelia identity header parsing and user metadata queries
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
 │   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
 │   ├── install-portlama-e2e-mcp/ @lamalibre/install-portlama-e2e-mcp — npx installer + MCP server for E2E test infrastructure
@@ -117,6 +118,13 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Response shape validation — `assertObject` checks before type assertions
 - No runtime dependencies beyond `undici`
 
+**TypeScript (Identity SDK):**
+
+- Same conventions as portlama-tickets (strict, ESM, verbatimModuleSyntax, undici)
+- Two export paths: `@lamalibre/portlama-identity` (types, parser, client) and `@lamalibre/portlama-identity/fastify` (Fastify plugin)
+- Parser is pure (no HTTP, no dependencies) — `parseIdentity()` returns three-state result
+- Client uses mTLS dispatcher factory (same pattern as tickets)
+
 **Cloud SDK (portlama-cloud):**
 
 - TypeScript, same conventions as portlama-tickets (strict, ESM, verbatimModuleSyntax)
@@ -176,6 +184,8 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
   - `system:read` — system stats
   - `sites:read` / `sites:write` — static site file browsing and deployment (site CRUD is admin-only)
   - `panel:expose` — expose agent management panel at `agent-<label>.<domain>` via mTLS-protected vhost
+  - `identity:read` — parse Authelia identity headers on plugin routes
+  - `identity:query` — query panel for Authelia user metadata (users, groups)
   - `allowedSites: string[]` — per-site scoping; agent sees and can deploy to only listed sites
 - Plugins and ticket scopes declare additional capabilities; these are merged with base capabilities dynamically via `getValidCapabilities()` (base + plugin + ticket scope). Plugin capabilities come from manifest (flat array or nested `{ agent: [...] }` — normalized to flat array internally); ticket scope capabilities come from scope declarations registered via `/api/tickets/scopes`
 - Plugin management endpoints (install, enable, push install) are admin-only at the route level
@@ -190,7 +200,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Manifest `config` field: declarative schema for plugin settings (`{ key: { type, default?, description?, enum? } }`) — stored in registry, used by plugin's settings UI
 - Server-side plugin code runs unsandboxed in the panel process — `@lamalibre/` scope is the trust boundary
 - All `npm install` calls use `--ignore-scripts` to block postinstall script execution
-- Plugin names and ticket scope names matching core API prefixes are rejected — single source of truth in `lib/constants.js`: `health`, `onboarding`, `invite`, `enroll`, `tunnels`, `sites`, `system`, `services`, `logs`, `users`, `certs`, `invitations`, `plugins`, `tickets`, `settings`
+- Plugin names and ticket scope names matching core API prefixes are rejected — single source of truth in `lib/constants.js`: `health`, `onboarding`, `invite`, `enroll`, `tunnels`, `sites`, `system`, `services`, `logs`, `users`, `certs`, `invitations`, `plugins`, `tickets`, `settings`, `identity`
 - Plugin server routes are mounted with two-level Fastify encapsulation: auth guard on outer scope (plugin cannot override), plugin code on inner scope
 - Plugin panel bundles served at `/{pluginName}/panel.js` with runtime `@lamalibre/` scope check
 - Disabled plugins return 503 via `onRequest` hook (Fastify cannot remove routes at runtime — clean state requires restart)
@@ -235,6 +245,18 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Error responses use same error message for all failure conditions in security-sensitive paths (ticket validation, deregistration — no information leakage); admin-facing endpoints return descriptive errors
 - Concurrency: promise-chain mutex (same pattern as enrollment tokens)
 - State files: atomic writes (temp → fsync → rename)
+
+**Identity system (Authelia user identity for plugins):**
+
+- Applies only to requests through Authelia-protected subdomains — does not replace mTLS
+- Three layers: nginx header clearing (defense against forged headers), panel middleware (validation + decoration), SDK package (`@lamalibre/portlama-identity`)
+- Capabilities: `identity:read` (parse headers), `identity:query` (query panel for user metadata)
+- SDK: TypeScript, undici (mTLS HTTP client), same conventions as portlama-tickets
+- SDK exports: `parseIdentity(headers)` (three-state: AutheliaIdentity / null / IdentityParseError), `hasGroup()`, `isIdentityParseError()` type guard, `createIdentityDispatcher()` (mTLS factory), `IdentityClient` (query class), `IdentityHttpError`, Fastify plugin (`@lamalibre/portlama-identity/fastify`)
+- Panel API: `GET /api/identity/self` (admin, Authelia headers → JSON), `GET /api/identity/users` (admin/identity:query), `GET /api/identity/users/:username` (admin/identity:query), `GET /api/identity/groups` (admin/identity:query)
+- Reads from Authelia's `users.yml` — no new state files
+- nginx security: `proxy_set_header Remote-* ""` clears client-injected headers before `auth_request`; Authelia re-injects on success
+- Identity headers trusted ONLY on Authelia-protected vhosts — stripped on mTLS and agent panel vhosts
 
 **File operations:**
 

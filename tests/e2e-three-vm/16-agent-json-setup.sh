@@ -18,9 +18,10 @@ require_commands multipass jq
 # ---------------------------------------------------------------------------
 
 agent_exec() { multipass exec portlama-agent -- sudo bash -c "$1"; }
+host_exec() { multipass exec portlama-host -- sudo bash -c "$1"; }
 
 host_api_get() {
-  multipass exec portlama-host -- sudo /tmp/vm-api-helper.sh GET "$1"
+  host_exec "curl -skf --max-time 30 --cert /etc/portlama/pki/client.crt --key /etc/portlama/pki/client.key --cacert /etc/portlama/pki/ca.crt -H 'Accept: application/json' https://127.0.0.1:9292/api/$1"
 }
 
 host_api_post() {
@@ -28,11 +29,11 @@ host_api_post() {
   local body="$2"
   local b64body
   b64body=$(echo -n "$body" | base64)
-  multipass exec portlama-host -- sudo /tmp/vm-api-helper.sh POST "$path" "$b64body"
+  host_exec "curl -skf --max-time 30 --cert /etc/portlama/pki/client.crt --key /etc/portlama/pki/client.key --cacert /etc/portlama/pki/ca.crt -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d \"\$(echo '$b64body' | base64 -d)\" https://127.0.0.1:9292/api/$path"
 }
 
 host_api_delete() {
-  multipass exec portlama-host -- sudo /tmp/vm-api-helper.sh DELETE "$1"
+  host_exec "curl -skf --max-time 30 --cert /etc/portlama/pki/client.crt --key /etc/portlama/pki/client.key --cacert /etc/portlama/pki/ca.crt -X DELETE -H 'Accept: application/json' https://127.0.0.1:9292/api/$1"
 }
 
 begin_test "16 — Agent JSON Setup Output (Three-VM)"
@@ -78,7 +79,7 @@ log_section "Generate enrollment token on host"
 AGENT_LABEL="json-test-3vm"
 
 # Clean up any existing agent cert with this label
-host_api_delete "certs/agent/$AGENT_LABEL" &>/dev/null || true
+host_api_delete "certs/agent/$AGENT_LABEL" 2>/dev/null || true
 
 TOKEN_RESPONSE=$(host_api_post "certs/agent/enroll" "{\"label\":\"$AGENT_LABEL\",\"capabilities\":[\"tunnels:read\"]}")
 
@@ -219,10 +220,22 @@ fi
 log_section "Cleanup: uninstall test agent"
 # ---------------------------------------------------------------------------
 
-agent_exec "portlama-agent uninstall --label '$AGENT_LABEL' 2>/dev/null; true"
-host_api_delete "certs/agent/$AGENT_LABEL" &>/dev/null || true
-agent_exec "rm -f /tmp/agent-json-setup.txt"
+if agent_exec "portlama-agent uninstall --label '$AGENT_LABEL' 2>/dev/null; true"; then
+  log_pass "Agent uninstalled on agent VM"
+else
+  log_fail "Agent uninstall failed on agent VM (exit $?)"
+fi
 
-log_pass "Test agent cleaned up"
+DELETE_RESULT=$(host_api_delete "certs/agent/$AGENT_LABEL" 2>/dev/null) || true
+DELETE_STATUS=$(echo "$DELETE_RESULT" | jq -r '.ok // .error // "unknown"' 2>/dev/null || echo "unknown")
+if [ "$DELETE_STATUS" = "true" ]; then
+  log_pass "Agent cert revoked on host"
+elif echo "$DELETE_RESULT" | jq -e '.error' &>/dev/null; then
+  log_info "Agent cert revocation: $DELETE_STATUS (may already be revoked)"
+else
+  log_info "Agent cert revocation returned: $DELETE_STATUS"
+fi
+
+agent_exec "rm -f /tmp/agent-json-setup.txt" || true
 
 end_test

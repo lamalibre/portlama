@@ -1,45 +1,45 @@
 # Portlama E2E: 01 — Onboarding Complete Verification (Three-VM)
 
-> Started at `2026-03-29 09:09:36 UTC`
+> Started at `2026-03-30 13:08:21 UTC`
 
 
 ## Onboarding status
 
-✅ `09:09:37` Onboarding status is COMPLETED  
-✅ `09:09:37` Domain is set in onboarding status: test.portlama.local  
+✅ `13:08:21` Onboarding status is COMPLETED  
+✅ `13:08:21` Domain is set in onboarding status: test.portlama.local  
 
 ## Core services running
 
-✅ `09:09:37` Service nginx is active  
-✅ `09:09:37` Service chisel is active  
-✅ `09:09:37` Service authelia is active  
-✅ `09:09:37` Service portlama-panel is active  
+✅ `13:08:21` Service nginx is active  
+✅ `13:08:21` Service chisel is active  
+✅ `13:08:21` Service authelia is active  
+✅ `13:08:21` Service portlama-panel is active  
 
 ## Self-signed certificates exist
 
-✅ `09:09:37` Certificate exists: /etc/portlama/pki/ca.crt  
-✅ `09:09:37` Certificate exists: /etc/portlama/pki/ca.key  
-✅ `09:09:37` Certificate exists: /etc/portlama/pki/client.crt  
-✅ `09:09:37` Certificate exists: /etc/portlama/pki/client.key  
-✅ `09:09:37` Certificate exists: /etc/portlama/pki/self-signed.pem  
-✅ `09:09:37` Certificate exists: /etc/portlama/pki/self-signed-key.pem  
+✅ `13:08:21` Certificate exists: /etc/portlama/pki/ca.crt  
+✅ `13:08:21` Certificate exists: /etc/portlama/pki/ca.key  
+✅ `13:08:21` Certificate exists: /etc/portlama/pki/client.crt  
+✅ `13:08:21` Certificate exists: /etc/portlama/pki/client.key  
+✅ `13:08:21` Certificate exists: /etc/portlama/pki/self-signed.pem  
+✅ `13:08:21` Certificate exists: /etc/portlama/pki/self-signed-key.pem  
 
 ## Panel accessible via domain (mTLS)
 
-✅ `09:09:37` Panel accessible via https://panel.test.portlama.local (HTTP 200)  
+✅ `13:08:22` Panel accessible via https://panel.test.portlama.local (HTTP 200)  
 
 ## DNS resolution
 
-✅ `09:09:37` DNS resolves test.portlama.local to 192.168.2.15  
+✅ `13:08:37` DNS resolves test.portlama.local to 10.13.37.1 (from host VM)  
 
 ## Agent VM connectivity
 
-✅ `09:09:38` Agent VM can reach host VM at 192.168.2.15:9292 (HTTP 400)  
+✅ `13:08:37` Agent VM can reach host VM at 10.13.37.1:9292 (HTTP 400)  
 
 ## Visitor VM connectivity
 
-✅ `09:09:38` Visitor VM can reach host VM at 192.168.2.15:9292 (HTTP 400)  
-✅ `09:09:38` Visitor VM can reach Authelia at auth.test.portlama.local (HTTP 200)  
+✅ `13:08:37` Visitor VM can reach host VM at 10.13.37.1:9292 (HTTP 400)  
+✅ `13:08:37` Visitor VM can reach Authelia at auth.test.portlama.local (HTTP 200)  
 
 ---
 
@@ -52,4 +52,4 @@
 | **Skipped** | `0` |
 | **Total** | `17` |
 
-🔵 `09:09:38` **Running: 02-tunnel-traffic.sh**  
+🔵 `13:08:37` **Running: 02-tunnel-traffic.sh**  

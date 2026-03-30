@@ -320,6 +320,16 @@ const CAPABILITY_OPTIONS = [
     label: 'panel:expose',
     description: 'Expose agent management panel at agent-<label>.<domain>',
   },
+  {
+    value: 'identity:read',
+    label: 'identity:read',
+    description: 'Parse Authelia identity headers on plugin routes',
+  },
+  {
+    value: 'identity:query',
+    label: 'identity:query',
+    description: 'Query panel for Authelia user metadata',
+  },
 ];
 
 function CapabilityCheckboxes({ capabilities, onChange, disabled }) {

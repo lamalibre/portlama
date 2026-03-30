@@ -7,13 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - 2026-03-30
 
+### Added
+
+- Add identity system for Authelia user metadata in plugin routes — plugins can identify which Authelia user is making a request through protected subdomains
+- Add `@lamalibre/portlama-identity` SDK (v0.1.0) with `parseIdentity()` parser, `IdentityClient` for user/group queries, and Fastify plugin (`@lamalibre/portlama-identity/fastify`)
+- Add `identity:read` and `identity:query` agent capabilities for identity header parsing and user metadata queries
+- Add `GET /api/identity/self`, `GET /api/identity/users`, `GET /api/identity/users/:username`, `GET /api/identity/groups` panel API endpoints
+- Add nginx `Remote-*` header clearing on all vhosts to prevent client-forged identity headers (panel domain, panel IP, app, static site, agent panel, public endpoints)
+- Add identity capability toggles to admin certificate management UI
+
+### Changed
+
+- Update E2E test infrastructure to use deterministic static IPs (`10.13.37.0/24`) — eliminates DHCP instability across snapshot restores
+- Update E2E agent setup to use enrollment token flow instead of legacy P12 certificate transfer
+- Update E2E VM provisioning with tiered snapshot system (node-ready → installed → provisioned) for faster iteration
+
+**Affected packages:** portlama-identity 0.1.0 (new), panel-server 0.1.13, portlama-admin-panel 0.1.2, create-portlama 1.0.42, install-portlama-e2e-mcp 0.2.0
+
 ### Fixed
 
+- Fix agent certificate revocation skipping active certs when a revoked entry with the same label exists in the registry
+- Fix rate limiting blocking localhost API calls during rapid test/automation sequences — exempt `127.0.0.1` and `::1` from the global rate limit
+- Fix `portlama-agent uninstall` hanging when run without a TTY (e.g. via `multipass exec` or CI) — use simple renderer when no terminal is attached
 - Fix DigitalOcean token validation rejecting correctly-scoped tokens — update scope parser to handle both comma-separated and space-separated `X-OAuth-Scopes` header formats (OAuth 2.0 RFC 6749 compatibility)
 - Fix stale scope names in dangerous-scope check — `loadbalancer:*` → `load_balancer:*`, `volume:*` → `block_storage:*` per current DO API
 - Fix false rejection of tokens with `database:create` — now recognized as a DO-documented associated scope of `droplet:create`
 
-**Affected packages:** portlama-cloud 0.1.2
+**Affected packages:** panel-server 0.1.13, portlama-agent 1.0.16, portlama-cloud 0.1.2
 
 ### Security
 

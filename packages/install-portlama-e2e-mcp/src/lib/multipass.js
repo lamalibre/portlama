@@ -39,7 +39,7 @@ export async function launch(name, { cpus, memory, disk }) {
     memory,
     '--disk',
     disk,
-  ]);
+  ], { timeout: 300_000 });
 }
 
 /** Delete a VM and purge only that VM (not other users' deleted VMs). */

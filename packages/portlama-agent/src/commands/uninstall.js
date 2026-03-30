@@ -55,6 +55,7 @@ async function uninstallSingle(label) {
   const svcPath = serviceConfigPath(label);
   const dataDir = agentDataDir(label);
 
+  const isTTY = process.stdout.isTTY && process.stderr.isTTY;
   const tasks = new Listr(
     [
       {
@@ -104,7 +105,7 @@ async function uninstallSingle(label) {
       },
     ],
     {
-      renderer: 'default',
+      renderer: isTTY ? 'default' : 'simple',
       rendererOptions: { collapseSubtasks: false },
       exitOnError: true,
     },
@@ -141,6 +142,7 @@ async function uninstallAll() {
     return;
   }
 
+  const isTTY = process.stdout.isTTY && process.stderr.isTTY;
   const tasks = new Listr(
     [
       // Stop all panel services
@@ -194,7 +196,7 @@ async function uninstallAll() {
       },
     ],
     {
-      renderer: 'default',
+      renderer: isTTY ? 'default' : 'simple',
       rendererOptions: { collapseSubtasks: false },
       exitOnError: true,
     },
@@ -214,6 +216,7 @@ async function uninstallAll() {
 async function uninstallLegacy() {
   const { SERVICE_CONFIG_PATH } = await import('../lib/platform.js');
 
+  const isTTY = process.stdout.isTTY && process.stderr.isTTY;
   const tasks = new Listr(
     [
       {
@@ -251,7 +254,7 @@ async function uninstallLegacy() {
       },
     ],
     {
-      renderer: 'default',
+      renderer: isTTY ? 'default' : 'simple',
       rendererOptions: { collapseSubtasks: false },
       exitOnError: true,
     },

@@ -103,6 +103,14 @@ init_log "orchestrate"
 
 # Get VM IP address
 vm_ip() {
+  # Deterministic static IPs for E2E networking (10.13.37.0/24).
+  # Added as secondary addresses alongside DHCP during vm_create — no collision risk.
+  case "$1" in
+    portlama-host)   echo "10.13.37.1"; return ;;
+    portlama-agent)  echo "10.13.37.2"; return ;;
+    portlama-visitor) echo "10.13.37.3"; return ;;
+  esac
+  # Fallback to Multipass DHCP IP for unknown VMs
   multipass info "$1" --format json 2>/dev/null | \
     python3 -c "import sys,json; print(json.load(sys.stdin)['info']['$1']['ipv4'][0])" 2>/dev/null || \
     multipass info "$1" 2>/dev/null | grep -oE 'IPv4:\s+[0-9.]+' | awk '{print $2}'
@@ -183,6 +191,21 @@ if [ "$SKIP_CREATE" = "false" ]; then
     --cpus "${VM_CPUS}" --memory "${VM_MEMORY}" --disk "${VM_DISK}" || \
     log_fatal "Failed to create ${VM_VISITOR}"
   log_ok "${VM_VISITOR} created"
+
+  # Apply deterministic static IPs (10.13.37.0/24) as secondary addresses.
+  # DHCP stays active for Multipass connectivity; static IPs are used by
+  # provisioning scripts, nginx, and /etc/hosts. A systemd oneshot service
+  # ensures static IPs survive snapshot restores.
+  log_info "Applying static IPs..."
+  for vm_entry in "${VM_HOST}:10.13.37.1" "${VM_AGENT}:10.13.37.2" "${VM_VISITOR}:10.13.37.3"; do
+    vm="${vm_entry%%:*}"
+    ip="${vm_entry##*:}"
+    multipass exec "${vm}" -- sudo ip addr add "${ip}/24" dev enp0s1 2>/dev/null || true
+    multipass exec "${vm}" -- sudo bash -c "
+      printf '[Unit]\nDescription=Static IP for E2E testing\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nExecStart=/sbin/ip addr add ${ip}/24 dev enp0s1\nRemainAfterExit=yes\n\n[Install]\nWantedBy=multi-user.target\n' > /etc/systemd/system/portlama-static-ip.service && \
+      systemctl daemon-reload && systemctl enable portlama-static-ip"
+  done
+  log_ok "Static IPs applied (10.13.37.1/2/3)"
 else
   log_section "Phase 1: Skipping VM creation (--skip-create)"
 fi
@@ -264,6 +287,14 @@ if [ "$SKIP_SETUP" = "false" ]; then
   fi
   log_ok "Portlama installed on ${VM_HOST}"
 
+  # Patch panel.json to use the static IP instead of the DHCP IP that
+  # create-portlama auto-detected via hostname -I.
+  log_step "Patching panel.json with static IP (${HOST_IP})..."
+  multipass exec "${VM_HOST}" -- sudo \
+    sed -i "s/\"ip\": *\"[^\"]*\"/\"ip\": \"${HOST_IP}\"/" /etc/portlama/panel.json
+  multipass exec "${VM_HOST}" -- sudo systemctl restart portlama-panel || true
+  log_ok "panel.json patched with static IP"
+
   # -----------------------------------------------------------------------
   # 2c: Transfer test scripts to VMs and run setup scripts
   # -----------------------------------------------------------------------
@@ -302,17 +333,12 @@ if [ "$SKIP_SETUP" = "false" ]; then
   # -----------------------------------------------------------------------
   log_info "Extracting credentials from ${VM_HOST}..."
   CREDS_JSON=$(multipass exec "${VM_HOST}" -- sudo cat /tmp/portlama-test-credentials.json 2>/dev/null || echo "{}")
-  AGENT_P12_PASSWORD=$(echo "$CREDS_JSON" | jq -r '.agentP12Password // empty')
-  [ -n "$AGENT_P12_PASSWORD" ] || log_fatal "Could not extract agentP12Password from credentials"
-  log_ok "Credentials extracted (agent P12 password obtained)"
-
-  log_step "Creating enrollment token on ${VM_HOST}..."
-  ENROLL_BODY='{"label":"test-agent-enrolled","capabilities":["tunnels:read","tunnels:write","services:read","services:write","system:read"]}'
-  ENROLL_B64=$(echo -n "$ENROLL_BODY" | base64)
-  TOKEN_RESPONSE=$(multipass exec "${VM_HOST}" -- sudo /tmp/vm-api-helper.sh POST "certs/agent/enroll" "$ENROLL_B64" 2>/dev/null || echo '{"ok":false}')
-  ENROLLMENT_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token // empty')
-  [ -n "$ENROLLMENT_TOKEN" ] || log_fatal "Could not create enrollment token"
-  log_ok "Enrollment token created"
+  # setup-host.sh now generates an enrollment token (not P12 password)
+  ENROLLMENT_TOKEN=$(echo "$CREDS_JSON" | jq -r '.enrollmentToken // empty')
+  [ -n "$ENROLLMENT_TOKEN" ] || log_fatal "Could not extract enrollmentToken from credentials"
+  # AGENT_P12_PASSWORD is still required by run-all.sh env validation — use a placeholder
+  AGENT_P12_PASSWORD="not-used-enrollment-flow"
+  log_ok "Credentials extracted (enrollment token obtained)"
 
   # -----------------------------------------------------------------------
   # 2e: Transfer agent tarball to agent VM and run setup-agent.sh
@@ -358,8 +384,8 @@ else
 
   # Still need credentials for the test runner
   CREDS_JSON=$(multipass exec "${VM_HOST}" -- sudo cat /tmp/portlama-test-credentials.json 2>/dev/null || echo "{}")
-  AGENT_P12_PASSWORD=$(echo "$CREDS_JSON" | jq -r '.agentP12Password // empty')
-  [ -n "$AGENT_P12_PASSWORD" ] || log_fatal "Could not extract agentP12Password — was setup run?"
+  AGENT_P12_PASSWORD=$(echo "$CREDS_JSON" | jq -r '.agentP12Password // .enrollmentToken // empty')
+  [ -n "$AGENT_P12_PASSWORD" ] || log_fatal "Could not extract credentials — was setup run?"
   ENROLLMENT_TOKEN="" # Not needed when skipping setup
 fi
 

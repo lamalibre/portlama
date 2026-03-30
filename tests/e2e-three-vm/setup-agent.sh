@@ -73,10 +73,8 @@ log_kv "Test Domain" "${TEST_DOMAIN}"
 # ---------------------------------------------------------------------------
 log_step "[1/5] Configuring /etc/hosts..."
 
-# Remove any previous portlama test entries to ensure idempotency
+# Add entries to /etc/hosts for immediate use
 sed -i '/# portlama-e2e-test$/d' /etc/hosts
-
-# Add entries for the host VM's domain and subdomains
 {
   echo "${HOST_IP}  ${TEST_DOMAIN}  # portlama-e2e-test"
   echo "${HOST_IP}  panel.${TEST_DOMAIN}  # portlama-e2e-test"
@@ -84,7 +82,21 @@ sed -i '/# portlama-e2e-test$/d' /etc/hosts
   echo "${HOST_IP}  tunnel.${TEST_DOMAIN}  # portlama-e2e-test"
 } >> /etc/hosts
 
-log_ok "/etc/hosts configured with ${TEST_DOMAIN} entries"
+# Also inject into the cloud-init hosts template so entries survive snapshot
+# restores. Multipass cloud-init regenerates /etc/hosts from this template
+# on every boot — entries here are preserved automatically.
+TMPL="/etc/cloud/templates/hosts.debian.tmpl"
+if [ -f "${TMPL}" ]; then
+  sed -i '/# portlama-e2e-test$/d' "${TMPL}"
+  {
+    echo "${HOST_IP}  ${TEST_DOMAIN}  # portlama-e2e-test"
+    echo "${HOST_IP}  panel.${TEST_DOMAIN}  # portlama-e2e-test"
+    echo "${HOST_IP}  auth.${TEST_DOMAIN}  # portlama-e2e-test"
+    echo "${HOST_IP}  tunnel.${TEST_DOMAIN}  # portlama-e2e-test"
+  } >> "${TMPL}"
+fi
+
+log_ok "/etc/hosts configured with ${TEST_DOMAIN} entries (persists across reboots)"
 
 # ---------------------------------------------------------------------------
 # Step 2: Install Node.js 20

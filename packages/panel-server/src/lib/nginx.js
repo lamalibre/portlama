@@ -75,6 +75,12 @@ server {
         proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
         proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
 
+        # Strip Authelia identity headers — not trusted on mTLS vhost
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
         # Standard proxy headers
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -92,6 +98,12 @@ server {
         proxy_set_header X-SSL-Client-DN "";
         proxy_set_header X-SSL-Client-Serial "";
 
+        # Strip Authelia identity headers — not trusted on public endpoint
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -105,6 +117,12 @@ server {
         proxy_set_header X-SSL-Client-Verify "";
         proxy_set_header X-SSL-Client-DN "";
         proxy_set_header X-SSL-Client-Serial "";
+
+        # Strip Authelia identity headers — not trusted on public endpoint
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -124,6 +142,12 @@ server {
         proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
         proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
         proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
+
+        # Strip Authelia identity headers — not trusted on mTLS vhost
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
 
         # Standard proxy headers
         proxy_set_header Host $host;
@@ -284,6 +308,12 @@ export async function writeAppVhost(subdomain, domain, port, certPath) {
     }
 
     location / {
+        # Clear client-supplied identity headers (Authelia re-injects on success)
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
         auth_request /internal/authelia/authz;
         auth_request_set $user $upstream_http_remote_user;
         auth_request_set $groups $upstream_http_remote_groups;
@@ -416,9 +446,18 @@ export async function writeStaticSiteVhost(site, certDir, domain) {
     }
 `;
     locationAuthDirectives = `
+        # Clear client-supplied identity headers (Authelia re-injects on success)
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
         auth_request /internal/authelia/authz;
         auth_request_set $user $upstream_http_remote_user;
         auth_request_set $groups $upstream_http_remote_groups;
+        # $name and $email captured for future proxy use (no proxy_pass in static sites)
+        auth_request_set $name $upstream_http_remote_name;
+        auth_request_set $email $upstream_http_remote_email;
         auth_request_set $redirection_url $upstream_http_location;`;
   }
 
@@ -719,6 +758,12 @@ export async function writeAgentPanelVhost(subdomain, domain, port, certPath) {
         proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
         proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
         proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
+
+        # Strip Authelia identity headers — not trusted on agent panel (mTLS only)
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
 
         # Standard proxy headers
         proxy_set_header Host $host;

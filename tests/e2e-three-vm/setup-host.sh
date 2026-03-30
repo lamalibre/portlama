@@ -297,26 +297,26 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 9: Generate agent certificate
+# Step 9: Generate agent enrollment token
 # ---------------------------------------------------------------------------
-log_step "[8/10] Generating agent certificate..."
+log_step "[8/10] Generating agent enrollment token..."
 
-AGENT_CERT_RESULT=$(curl_mtls -X POST -H "Content-Type: application/json" \
-  -d '{"label":"test-agent","capabilities":["tunnels:read","tunnels:write"]}' \
-  "${BASE_URL}/api/certs/agent" 2>/dev/null)
+ENROLL_RESULT=$(curl_mtls -X POST -H "Content-Type: application/json" \
+  -d '{"label":"test-agent","capabilities":["tunnels:read","tunnels:write","services:read","services:write","system:read","identity:read","identity:query"]}' \
+  "${BASE_URL}/api/certs/agent/enroll" 2>/dev/null)
 
-if echo "${AGENT_CERT_RESULT}" | jq -e '.error' &>/dev/null; then
-  ERROR_MSG=$(echo "${AGENT_CERT_RESULT}" | jq -r '.error')
-  log_fatal "Failed to generate agent certificate: ${ERROR_MSG}"
+if echo "${ENROLL_RESULT}" | jq -e '.error' &>/dev/null; then
+  ERROR_MSG=$(echo "${ENROLL_RESULT}" | jq -r '.error')
+  log_fatal "Failed to generate enrollment token: ${ERROR_MSG}"
 fi
 
-AGENT_P12_PASSWORD=$(echo "${AGENT_CERT_RESULT}" | jq -r '.p12Password // empty')
-if [ -z "${AGENT_P12_PASSWORD}" ]; then
-  log_fail "Agent cert response: ${AGENT_CERT_RESULT}"
-  log_fatal "Agent certificate response did not include p12Password"
+ENROLLMENT_TOKEN=$(echo "${ENROLL_RESULT}" | jq -r '.token // empty')
+if [ -z "${ENROLLMENT_TOKEN}" ]; then
+  log_fail "Enrollment response: ${ENROLL_RESULT}"
+  log_fatal "Enrollment response did not include token"
 fi
 
-log_ok "Agent certificate generated (label: test-agent)"
+log_ok "Enrollment token generated (label: test-agent)"
 
 # ---------------------------------------------------------------------------
 # Step 10: Save credentials
@@ -327,7 +327,7 @@ cat > /tmp/portlama-test-credentials.json <<CREDS
 {
   "hostIp": "${HOST_IP}",
   "testDomain": "${TEST_DOMAIN}",
-  "agentP12Password": "${AGENT_P12_PASSWORD}",
+  "enrollmentToken": "${ENROLLMENT_TOKEN}",
   "testUser": "testuser",
   "testUserPassword": "TestPassword-E2E-123",
   "agentLabel": "test-agent"
@@ -352,8 +352,7 @@ log_kv "Auth URL" "https://auth.${TEST_DOMAIN}"
 log_kv "Tunnel URL" "https://tunnel.${TEST_DOMAIN}"
 log_kv "Test User" "testuser / TestPassword-E2E-123"
 log_kv "Agent Label" "test-agent"
-log_kv "Agent P12 Pass" "${AGENT_P12_PASSWORD}"
+log_kv "Enrollment Token" "(generated, one-time use)"
 log_kv "Credentials file" "/tmp/portlama-test-credentials.json"
-log_kv "Agent P12 file" "/etc/portlama/pki/agents/test-agent/client.p12"
 log_kv "Log file" "$(log_file_path)"
-log_info "Next: transfer agent P12 + credentials to the agent VM, then run setup-agent.sh on the agent VM."
+log_info "Next: transfer credentials to the agent VM, then run setup-agent.sh on the agent VM."

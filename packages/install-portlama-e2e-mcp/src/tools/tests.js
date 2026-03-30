@@ -27,6 +27,7 @@ import {
   VM_HOST,
   VM_AGENT,
   VM_VISITOR,
+  VM_STATIC_IPS,
   REPO_ROOT,
   THREE_VM_DIR,
   SINGLE_VM_DIR,
@@ -55,10 +56,12 @@ async function resetAuthelia() {
 
 /** Build the test environment object with VM IPs and credentials. */
 async function buildTestEnv(state) {
+  // Prefer static IPs from config (deterministic across snapshot restores),
+  // fall back to Multipass query for VMs without static assignments.
   const [hostIp, agentIp, visitorIp] = await Promise.all([
-    mp.getIp(VM_HOST),
-    mp.getIp(VM_AGENT),
-    mp.getIp(VM_VISITOR),
+    VM_STATIC_IPS[VM_HOST] || mp.getIp(VM_HOST),
+    VM_STATIC_IPS[VM_AGENT] || mp.getIp(VM_AGENT),
+    VM_STATIC_IPS[VM_VISITOR] || mp.getIp(VM_VISITOR),
   ]);
   const domain = state.domain || TEST_DOMAIN;
 
@@ -68,7 +71,7 @@ async function buildTestEnv(state) {
     VISITOR_IP: visitorIp || '',
     TEST_DOMAIN: domain,
     ADMIN_PASSWORD: 'not-used-mTLS-only',
-    AGENT_P12_PASSWORD: state.credentials?.agentP12Password || '',
+    AGENT_P12_PASSWORD: state.credentials?.agentP12Password || 'not-used-enrollment-flow',
     TEST_USER: 'testuser',
     TEST_USER_PASSWORD: 'TestPassword-E2E-123',
     LOG_LEVEL: '1',
@@ -236,16 +239,15 @@ export const testRunAllTool = {
     // Single-VM tests
     if (suite === 'single-vm' || suite === 'both') {
       // Transfer single-VM test scripts to host
-      await mp.exec(VM_HOST, 'mkdir -p /tmp/e2e-single', { sudo: true });
+      await mp.exec(VM_HOST, 'mkdir -p /tmp/e2e-single && chmod 777 /tmp/e2e-single', { sudo: true });
       const files = fs.readdirSync(SINGLE_VM_DIR).filter((f) => f.endsWith('.sh'));
-      await Promise.all(
-        files.map((file) =>
-          mp.transfer(
-            path.join(SINGLE_VM_DIR, file),
-            `${VM_HOST}:/tmp/e2e-single/${file}`,
-          ),
-        ),
-      );
+      // Transfer sequentially to avoid overwhelming the VM's SSH daemon
+      for (const file of files) {
+        await mp.transfer(
+          path.join(SINGLE_VM_DIR, file),
+          `${VM_HOST}:/tmp/e2e-single/${file}`,
+        );
+      }
 
       for (const [, file] of Object.entries(getSingleVmTests()).sort(
         ([a], [b]) => Number(a) - Number(b),
@@ -442,7 +444,7 @@ export const testPublishTool = {
             AGENT_IP: env.AGENT_IP,
             VISITOR_IP: env.VISITOR_IP,
             TEST_DOMAIN: env.TEST_DOMAIN,
-            AGENT_P12_PASSWORD: state.credentials?.agentP12Password || '',
+            AGENT_P12_PASSWORD: state.credentials?.agentP12Password || 'not-used-enrollment-flow',
           },
           all: true,
         },

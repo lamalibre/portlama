@@ -71,6 +71,7 @@ TEST_SCRIPTS=(
   "18-json-installer.sh"
   "19-panel-expose.sh"
   "20-agent-json-setup.sh"
+  "21-identity-system.sh"
 )
 
 PASSED=0

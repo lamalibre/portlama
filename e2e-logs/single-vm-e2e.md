@@ -1,6 +1,6 @@
 # Single-VM E2E Test Results
 
-> Run at `2026-03-29 09:07:46 UTC`
+> Run at `2026-03-30 13:06:16 UTC`
 
 
 ============================================================================
@@ -9,7 +9,7 @@
 
   BASE_URL:       https://127.0.0.1:9292
   SKIP_DNS_TESTS: 1
-  Date:           2026-03-29 09:07:47 UTC
+  Date:           2026-03-30 13:06:17 UTC
 
   Running: 01-fresh-install.sh
 
@@ -59,7 +59,7 @@
   [PASS] Request with untrusted cert rejected (HTTP 400)
 
 --- Certificate validity check ---
-  [PASS] Client certificate has valid expiry: notAfter=Mar 28 09:06:15 2028 GMT
+  [PASS] Client certificate has valid expiry: notAfter=Mar 29 13:04:54 2028 GMT
   [PASS] Client certificate is signed by the CA
 
 ============================================================================
@@ -101,13 +101,13 @@
   [PASS] Tunnel has an ID
   [PASS] Tunnel has an FQDN
   [PASS] Tunnel has a createdAt timestamp
-  [INFO] Created tunnel ID: bbfe0dbd-f971-4f17-a37c-c67c344dfa4c
+  [INFO] Created tunnel ID: 27bd6d45-1509-4eaa-9c5a-291050c779c1
 
 --- Verify tunnel in list ---
   [PASS] Tunnel appears in GET /api/tunnels
 
 --- Verify nginx configuration ---
-  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774775267
+  [PASS] Nginx vhost exists at /etc/nginx/sites-enabled/portlama-app-e2etest-1774875977
   [PASS] nginx -t passes after tunnel creation
 
 --- Validation: reserved subdomain ---
@@ -294,17 +294,17 @@
 --- Pre-flight: check onboarding is complete ---
 
 --- Current cert fingerprint (before rotation) ---
-  [INFO] Current cert fingerprint: sha256 Fingerprint=14:C1:AC:66:8E:9B:9B:1F:F7:0A:C4:DF:42:B5:03:7B:0D:F6:6D:BF:EA:F0:79:BE:AB:B1:7F:4A:F3:97:7D:AA
+  [INFO] Current cert fingerprint: sha256 Fingerprint=8D:54:F0:97:FC:BF:FB:24:E2:08:79:4D:32:97:91:21:E3:8B:5E:A0:19:60:5F:41:99:B2:9B:D5:1A:F3:8D:D9
 
 --- Rotate mTLS certificate ---
   [PASS] Rotation response contains p12 password
-  [PASS] Rotation response contains expiry: 2028-03-28T09:08:17.000Z
+  [PASS] Rotation response contains expiry: 2028-03-29T13:06:46.000Z
   [INFO] Rotation warning: Your current browser certificate is now invalid. Download and import the new certificate before closing this page.
 
 --- Download rotated certificate ---
   [PASS] Downloaded client.p12 (HTTP 200)
   [PASS] Downloaded file is a valid PKCS12
-  [INFO] New cert fingerprint: sha256 Fingerprint=A4:B8:4B:79:9F:68:75:E7:65:F8:0A:1E:10:E5:3A:3C:62:E6:41:F7:C4:49:5C:B3:52:8F:3A:71:C4:62:62:E9
+  [INFO] New cert fingerprint: sha256 Fingerprint=07:F9:91:82:D0:73:CA:C0:2E:35:1C:D1:BA:FA:72:3D:5C:F6:0F:30:5C:45:EB:53:0C:59:10:4D:3F:9A:28:0B
   [PASS] New cert has different fingerprint than old cert
 
 --- Verify API access with current credentials ---
@@ -322,7 +322,7 @@
 
 
 --- Determine server IP ---
-  [INFO] Server IP: 192.168.2.15
+  [INFO] Server IP: 10.13.37.1
 
 --- Health endpoint via IP ---
   [PASS] Health endpoint accessible via IP:9292
@@ -524,7 +524,7 @@
   [PASS] Site has an ID
   [PASS] Site name matches
   [PASS] Site type is managed
-  [INFO] Created site: e2esite.test.portlama.local (ID: 707b180c-1ac0-43e2-9001-f877ff6b9846)
+  [INFO] Created site: e2esite.test.portlama.local (ID: ae423cb6-1bde-4745-915c-68f469c426f6)
 
 --- Verify site in listing ---
   [PASS] Site appears in listing
@@ -745,7 +745,7 @@
 
 --- Confirm 2FA with valid code ---
   [PASS] Generated TOTP code
-  [INFO] Generated TOTP code: 142792
+  [INFO] Generated TOTP code: 160308
   [PASS] 2FA is now enabled
   [PASS] Session cookie received on confirm
   [PASS] Status shows enabled after confirm
@@ -760,7 +760,7 @@
   [PASS] Authenticated request with session cookie returns system stats
 
 --- Disable 2FA ---
-  [INFO] Waiting 17s for next TOTP window...
+  [INFO] Waiting 18s for next TOTP window...
   [PASS] 2FA disabled successfully
 
 --- IP vhost re-enabled after disabling 2FA ---
@@ -799,8 +799,8 @@
 
 --- Complete event validation ---
   [PASS] Exactly one complete event emitted
-  [PASS] Server IP present: 192.168.2.15
-  [PASS] Panel URL present and uses HTTPS: https://192.168.2.15:9292
+  [PASS] Server IP present: 192.168.2.9
+  [PASS] Panel URL present and uses HTTPS: https://192.168.2.9:9292
   [PASS] P12 path within expected directory: /etc/portlama/pki/client.p12
   [PASS] P12 password path within expected directory: /etc/portlama/pki/.p12-password
 
@@ -827,7 +827,7 @@
 --- Verify panel:expose is a valid capability ---
   [PASS] Agent cert with panel:expose created successfully
   [PASS] Agent cert has a p12 password
-  [INFO] Created agent cert: panel-e2e-1774775360
+  [INFO] Created agent cert: panel-e2e-1774876078
   [PASS] Extracted PEM cert and key from .p12
 
 --- Expose panel: check agent-panel-status before expose ---
@@ -843,14 +843,14 @@
   [PASS] Panel tunnel has an FQDN
   [PASS] Panel tunnel has a createdAt timestamp
   [PASS] Panel tunnel agentLabel matches
-  [INFO] Exposed panel tunnel: agent-panel-e2e-1774775360.test.portlama.local (ID: 26f852a6-010a-476e-a9e7-d2af1f71855d)
+  [INFO] Exposed panel tunnel: agent-panel-e2e-1774876078.test.portlama.local (ID: d78eba91-ecdf-4f01-8941-754b2332c6c0)
 
 --- Verify panel tunnel in tunnel listing ---
   [PASS] Panel tunnel shows type 'panel' in listing
   [PASS] Panel tunnel shows correct agentLabel in listing
 
 --- Verify nginx mTLS vhost created (not app vhost) ---
-  [PASS] mTLS panel vhost exists at /etc/nginx/sites-enabled/portlama-agent-panel-agent-panel-e2e-1774775360
+  [PASS] mTLS panel vhost exists at /etc/nginx/sites-enabled/portlama-agent-panel-agent-panel-e2e-1774876078
   [PASS] No app vhost created (correct — panel uses mTLS vhost)
   [PASS] nginx -t passes after panel expose
 
@@ -900,7 +900,7 @@
 ============================================================================
 
   [INFO] Cleaning up test resources...
-{"error":"No panel tunnel found for this agent"}{"ok":true,"label":"panel-e2e-1774775360"}{"ok":true,"label":"nopanel-e2e"}  Running: 20-agent-json-setup.sh
+{"error":"No panel tunnel found for this agent"}{"ok":true,"label":"panel-e2e-1774876078"}{"ok":true,"label":"nopanel-e2e"}  Running: 20-agent-json-setup.sh
 
 ============================================================================
  Portlama E2E: 20 — Agent JSON Setup Output
@@ -914,7 +914,61 @@
   Results: 0 passed, 0 failed, 1 skipped (1 total)
 ============================================================================
 
+  Running: 21-identity-system.sh
 
+============================================================================
+ Portlama E2E: 21 — Identity System
+============================================================================
+
+
+--- Pre-flight: check onboarding is complete ---
+
+--- GET /api/identity/users (admin) ---
+  [PASS] GET /api/identity/users returns { users: [...] } array (count: 2)
+  [PASS] User object has 'username' field
+  [PASS] User object has 'displayname' field
+  [PASS] User object has 'email' field
+  [PASS] User object has 'groups' field
+  [PASS] No 'password' field in identity users response
+  [PASS] No bcrypt hash in identity users response
+
+--- GET /api/identity/users/:username (admin) ---
+  [PASS] Single user lookup returns correct username
+  [PASS] Single user lookup returns 200
+  [PASS] Nonexistent user returns 404
+
+--- GET /api/identity/groups (admin) ---
+  [PASS] GET /api/identity/groups returns { groups: [...] } array (count: 1)
+  [INFO] Only 1 group(s) — sort order trivially correct
+  [PASS] Groups endpoint matches groups extracted from user list
+
+--- GET /api/identity/self (admin, mTLS vhost) ---
+  [PASS] identity/self returns 400 with appropriate message on mTLS vhost
+  [PASS] identity/self returns HTTP 400 on mTLS vhost
+
+--- Input validation — invalid username parameter ---
+  [PASS] Username with special characters returns 400
+  [PASS] Username with path traversal returns 400
+  [PASS] Nonexistent identity sub-path returns 404
+
+--- identity:query capability gating ---
+  [PASS] Agent cert without identity:query created
+  [PASS] Extracted agent PEM cert and key from .p12
+  [PASS] Agent without identity:query gets 403 on /api/identity/users
+  [PASS] Agent without identity:query gets 403 on /api/identity/groups
+  [PASS] Agent capabilities updated to include identity:query
+  [PASS] Agent with identity:query gets 200 on /api/identity/users
+  [PASS] Agent with identity:query gets 200 on /api/identity/groups
+
+--- Reserved API prefix: 'identity' in RESERVED_API_PREFIXES ---
+  [PASS] 'identity' prefix is reserved (ticket scope registration rejected with HTTP 400)
+
+============================================================================
+  Results: 25 passed, 0 failed, 0 skipped (25 total)
+============================================================================
+
+  [INFO] Cleaning up identity test resources...
+{"ok":true,"label":"identity-e2e-1774876089"}
 ============================================================================
   Test Suite Summary
 ============================================================================
@@ -938,7 +992,8 @@
   [PASS] 18-json-installer.sh
   [PASS] 19-panel-expose.sh
   [PASS] 20-agent-json-setup.sh
+  [PASS] 21-identity-system.sh
 
-  Total: 19 tests — 19 passed, 0 failed
+  Total: 20 tests — 20 passed, 0 failed
 
   SUITE PASSED

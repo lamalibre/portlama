@@ -265,6 +265,8 @@ const BASE_CAPABILITIES = [
   'sites:read',
   'sites:write',
   'panel:expose',
+  'identity:read',  // gates Authelia header access on plugin routes (checked by plugin-router)
+  'identity:query', // gates /api/identity/users and /api/identity/groups
 ];
 
 /**
@@ -659,9 +661,9 @@ export async function updateAgentAllowedSites(label, allowedSites) {
 export async function revokeAgentCert(label, logger) {
   return withRegistryLock(async () => {
     const registry = await loadAgentRegistry();
-    const agent = registry.agents.find((a) => a.label === label);
+    const agent = registry.agents.find((a) => a.label === label && !a.revoked);
 
-    if (!agent || agent.revoked) {
+    if (!agent) {
       throw Object.assign(new Error(`Agent certificate "${label}" not found`), { statusCode: 404 });
     }
 

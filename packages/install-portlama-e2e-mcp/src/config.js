@@ -31,6 +31,21 @@ export const TEST_DOMAIN = 'test.portlama.local';
 /** VM short-name → full multipass name mapping. */
 export const VM_NAME_MAP = { host: VM_HOST, agent: VM_AGENT, visitor: VM_VISITOR };
 
+/**
+ * Static IPs for deterministic VM networking.
+ * Uses 10.13.37.0/24 — a private subnet completely outside the Multipass DHCP range
+ * (192.168.2.0/24), eliminating any collision risk. Added as secondary addresses
+ * alongside DHCP, so Multipass connectivity and internet access are unaffected.
+ * These survive snapshot restores via a systemd oneshot service, ensuring provisioned
+ * configs (nginx, /etc/hosts, agent enrollment) remain valid.
+ */
+export const VM_STATIC_IPS = {
+  [VM_HOST]: '10.13.37.1',
+  [VM_AGENT]: '10.13.37.2',
+  [VM_VISITOR]: '10.13.37.3',
+};
+export const STATIC_SUBNET = '10.13.37.0/24';
+
 /** VM profiles — resource allocation tiers. */
 export const PROFILES = {
   production: {
@@ -58,3 +73,31 @@ export const CHECKPOINTS = {
   'post-create': 'VMs exist but no setup has run',
   'post-setup': 'All VMs provisioned, onboarding complete, services running',
 };
+
+/** Snapshot tier definitions — layered provisioning stages. */
+export const TIERS = {
+  'node-ready': {
+    level: 1,
+    description: 'Node.js 22.x installed, apt cache warm',
+    appliesTo: ['host', 'agent', 'visitor'],
+    coordinated: false,
+  },
+  'installed': {
+    level: 2,
+    description: 'Portlama installed (create-portlama completed)',
+    appliesTo: ['host'],
+    coordinated: false,
+  },
+  'provisioned': {
+    level: 3,
+    description: 'Onboarding complete, agent enrolled, visitor configured',
+    appliesTo: ['host', 'agent', 'visitor'],
+    coordinated: true,
+  },
+};
+
+/** Ordered tier names from lowest to highest. */
+export const TIER_ORDER = ['node-ready', 'installed', 'provisioned'];
+
+/** Snapshot name prefix for tier snapshots. */
+export const TIER_SNAPSHOT_PREFIX = 'tier-';

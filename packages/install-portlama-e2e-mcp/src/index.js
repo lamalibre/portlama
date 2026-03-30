@@ -17,6 +17,7 @@
 //   snapshot_create     — snapshot VMs at a checkpoint
 //   snapshot_restore    — restore VMs to a checkpoint
 //   snapshot_list       — list available snapshots
+//   provision           — smart tier-aware provisioning with layered snapshots
 //   provision_host      — full host provisioning pipeline
 //   provision_agent     — agent setup with cert transfer
 //   provision_visitor   — visitor setup
@@ -41,6 +42,7 @@ import {
   snapshotListTool,
 } from './tools/snapshots.js';
 import {
+  provisionTool,
   provisionHostTool,
   provisionAgentTool,
   provisionVisitorTool,
@@ -70,6 +72,7 @@ const tools = [
   snapshotCreateTool,
   snapshotRestoreTool,
   snapshotListTool,
+  provisionTool,
   provisionHostTool,
   provisionAgentTool,
   provisionVisitorTool,

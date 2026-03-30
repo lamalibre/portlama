@@ -82,6 +82,8 @@ export const envStatusTool = {
               domain: state.domain,
               services,
               snapshots: Object.keys(snapshots).length > 0 ? snapshots : null,
+              tiers: state.tiers || {},
+              tierSnapshots: state.tierSnapshots || {},
               lastRun: lastRun
                 ? {
                     id: lastRun.runId,

@@ -101,6 +101,7 @@ TEST_SCRIPTS=(
   "14-json-installer.sh"
   "15-panel-expose.sh"
   "16-agent-json-setup.sh"
+  "17-identity-system.sh"
 )
 
 PASSED=0

@@ -25,6 +25,8 @@ function defaultState() {
     credentials: null,
     lastRun: null,
     runs: [],
+    tiers: {},
+    tierSnapshots: {},
   };
 }
 
@@ -65,6 +67,47 @@ export function setVmState(name, info) {
 export function removeVmState(name) {
   const state = loadState();
   delete state.vms[name];
+  saveState(state);
+}
+
+/** Update the current tier for a VM. */
+export function setVmTier(vmName, tier) {
+  const state = loadState();
+  if (!state.tiers) state.tiers = {};
+  state.tiers[vmName] = tier;
+  saveState(state);
+}
+
+/** Get the current tier for a VM. Returns null if not set. */
+export function getVmTier(vmName) {
+  const state = loadState();
+  return state.tiers?.[vmName] || null;
+}
+
+/** Record that a tier snapshot was created. */
+export function recordTierSnapshot(tierName, vmNames) {
+  const state = loadState();
+  if (!state.tierSnapshots) state.tierSnapshots = {};
+  state.tierSnapshots[tierName] = {
+    vms: Object.fromEntries(vmNames.map((vm) => [vm, true])),
+    createdAt: new Date().toISOString(),
+  };
+  saveState(state);
+}
+
+/** Check if a tier snapshot exists for all required VMs. */
+export function hasTierSnapshot(tierName, requiredVms) {
+  const state = loadState();
+  const snap = state.tierSnapshots?.[tierName];
+  if (!snap) return false;
+  return requiredVms.every((vm) => snap.vms?.[vm]);
+}
+
+/** Clear all tier snapshot records (called when VMs are recreated/deleted). */
+export function clearTierSnapshots() {
+  const state = loadState();
+  state.tierSnapshots = {};
+  state.tiers = {};
   saveState(state);
 }
 

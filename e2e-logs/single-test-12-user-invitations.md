@@ -1,6 +1,6 @@
 # Portlama E2E: 12 — User Invitations
 
-> Started at `2026-03-29 09:08:31 UTC`
+> Started at `2026-03-30 13:07:00 UTC`
 
 
 ## Pre-flight: check onboarding is complete
@@ -8,67 +8,67 @@
 
 ## Create invitation
 
-✅ `09:08:31` Invitation creation returned ok: true  
-✅ `09:08:31` Invitation username matches  
-✅ `09:08:31` Invitation email matches  
-✅ `09:08:31` Invitation token is valid 64-char hex  
-✅ `09:08:31` Invitation ID is present  
-✅ `09:08:31` Invitation createdAt is present  
-✅ `09:08:31` Invitation expiresAt is present  
+✅ `13:07:00` Invitation creation returned ok: true  
+✅ `13:07:00` Invitation username matches  
+✅ `13:07:00` Invitation email matches  
+✅ `13:07:00` Invitation token is valid 64-char hex  
+✅ `13:07:00` Invitation ID is present  
+✅ `13:07:00` Invitation createdAt is present  
+✅ `13:07:00` Invitation expiresAt is present  
 
 ## List invitations
 
-✅ `09:08:31` Invitation appears in GET /api/invitations  
-✅ `09:08:31` Token is not exposed in invitation list  
-✅ `09:08:31` Invitation status is pending  
+✅ `13:07:00` Invitation appears in GET /api/invitations  
+✅ `13:07:00` Token is not exposed in invitation list  
+✅ `13:07:00` Invitation status is pending  
 
 ## Duplicate invitation
 
-✅ `09:08:31` Duplicate invitation for same username rejected (HTTP 409)  
+✅ `13:07:00` Duplicate invitation for same username rejected (HTTP 409)  
 
 ## Validation: invalid input
 
-✅ `09:08:31` Incomplete invitation data rejected (HTTP 400)  
-✅ `09:08:31` Invalid email rejected (HTTP 400)  
+✅ `13:07:00` Incomplete invitation data rejected (HTTP 400)  
+✅ `13:07:00` Invalid email rejected (HTTP 400)  
 
 ## Get invitation details (public endpoint)
 
-✅ `09:08:31` Public invite details show username  
-✅ `09:08:31` Public invite details show email  
-✅ `09:08:31` Public invite details show expiresAt  
+✅ `13:07:00` Public invite details show username  
+✅ `13:07:00` Public invite details show email  
+✅ `13:07:00` Public invite details show expiresAt  
 
 ## Invalid token
 
-✅ `09:08:31` Accept with invalid token returns 404  
-✅ `09:08:31` Malformed token rejected (HTTP 400)  
+✅ `13:07:00` Accept with invalid token returns 404  
+✅ `13:07:00` Malformed token rejected (HTTP 400)  
 
 ## Accept invitation (public endpoint)
 
-✅ `09:08:33` Invitation acceptance returned ok: true  
-✅ `09:08:33` Accepted username matches  
+✅ `13:07:02` Invitation acceptance returned ok: true  
+✅ `13:07:02` Accepted username matches  
 
 ## Verify invited user exists
 
-✅ `09:08:33` Invited user appears in GET /api/users  
-✅ `09:08:33` Invited user email matches  
+✅ `13:07:02` Invited user appears in GET /api/users  
+✅ `13:07:02` Invited user email matches  
 
 ## Invitation marked as accepted
 
-✅ `09:08:33` Invitation status changed to accepted  
+✅ `13:07:02` Invitation status changed to accepted  
 
 ## Used token rejection
 
-✅ `09:08:33` Reusing accepted token returns 410 Gone  
-✅ `09:08:33` GET on used token returns 410 Gone  
+✅ `13:07:02` Reusing accepted token returns 410 Gone  
+✅ `13:07:02` GET on used token returns 410 Gone  
 
 ## Accept with short password
 
-✅ `09:08:33` Short password rejected on invite accept (HTTP 400)  
+✅ `13:07:02` Short password rejected on invite accept (HTTP 400)  
 
 ## Cleanup: delete invited user
 
-✅ `09:08:35` Invited user deletion returned ok: true  
-✅ `09:08:35` Invited user no longer in list after deletion  
+✅ `13:07:04` Invited user deletion returned ok: true  
+✅ `13:07:04` Invited user no longer in list after deletion  
 
 ---
 
