@@ -834,6 +834,7 @@ function AgentEnrollTokenModal({ onClose }) {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
+  const [revoking, setRevoking] = useState(false);
 
   const { data: sitesData } = useQuery({
     queryKey: ['sites'],
@@ -1024,6 +1025,12 @@ function AgentEnrollTokenModal({ onClose }) {
                 </p>
               </div>
 
+              {error && (
+                <div className="rounded bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Setup Command
@@ -1047,7 +1054,30 @@ function AgentEnrollTokenModal({ onClose }) {
               </div>
             </div>
 
-            <div className="flex justify-end mt-6">
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                disabled={revoking}
+                onClick={async () => {
+                  setRevoking(true);
+                  try {
+                    await client.revokeEnrollmentToken(result.label);
+                    queryClient.invalidateQueries({ queryKey: ['agent-certs'] });
+                    onClose();
+                  } catch (err) {
+                    setError(err.message);
+                    setRevoking(false);
+                  }
+                }}
+                className="rounded bg-red-600/20 px-4 py-2 text-sm text-red-400 hover:bg-red-600/30 disabled:opacity-50"
+              >
+                {revoking ? (
+                  <Loader2 size={14} className="animate-spin inline mr-1" />
+                ) : (
+                  <Trash2 size={14} className="inline mr-1" />
+                )}
+                Revoke Token
+              </button>
               <button
                 type="button"
                 onClick={onClose}

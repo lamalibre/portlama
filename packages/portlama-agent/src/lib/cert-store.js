@@ -1,74 +1,32 @@
 /**
  * Portable certificate storage for token-based enrollment.
  *
- * Dispatches to macOS Keychain or Linux P12 file storage based on process.platform.
+ * Stores enrolled certificates as P12 files on all platforms.
+ * The P12 password is returned to the caller for secure storage
+ * (e.g., macOS Keychain via security-framework, Linux libsecret).
  */
 
 import crypto from 'node:crypto';
 import { writeFile, access, constants } from 'node:fs/promises';
 import path from 'node:path';
 import { execa } from 'execa';
-import { isDarwin, agentDataDir } from './platform.js';
+import { agentDataDir } from './platform.js';
 import { secureDelete } from './keychain.js';
 
 /**
- * Store an enrolled certificate using the platform-appropriate mechanism.
+ * Store an enrolled certificate as a P12 file.
  *
- * - macOS: imports identity into Keychain (non-extractable)
- * - Linux: creates a P12 file at ~/.portlama/client.p12 with mode 0600
+ * Creates a P12 bundle from key + cert + CA at
+ * ~/.portlama/agents/<label>/client.p12 with mode 0600.
  *
  * @param {string} keyPath - Path to the temporary private key PEM
  * @param {string} certPem - PEM-encoded signed certificate
  * @param {string} caCertPem - PEM-encoded CA certificate
  * @param {string} label - Agent label
  * @param {import('pino').Logger | Console} logger
- * @returns {Promise<{ identity?: string, p12Path?: string, p12Password?: string }>}
+ * @returns {Promise<{ p12Path: string, p12Password: string }>}
  */
 export async function storeEnrolledCert(keyPath, certPem, caCertPem, label, logger) {
-  if (isDarwin()) {
-    const { importIdentityToKeychain } = await import('./keychain.js');
-    const { identity } = await importIdentityToKeychain(keyPath, certPem, caCertPem, label, logger);
-    return { identity };
-  }
-  return storeP12Linux(keyPath, certPem, caCertPem, label, logger);
-}
-
-/**
- * Check if an enrolled certificate exists.
- * @param {string} label - Agent label
- * @returns {Promise<boolean>}
- */
-export async function enrolledCertExists(label) {
-  if (isDarwin()) {
-    const { keychainIdentityExists } = await import('./keychain.js');
-    return keychainIdentityExists(label);
-  }
-  return linuxP12Exists(label);
-}
-
-/**
- * Remove an enrolled certificate.
- * @param {string} label - Agent label
- */
-export async function removeEnrolledCert(label) {
-  if (isDarwin()) {
-    const { removeKeychainIdentity } = await import('./keychain.js');
-    return removeKeychainIdentity(label);
-  }
-  return removeLinuxP12(label);
-}
-
-// ---------------------------------------------------------------------------
-// Linux — P12 file storage
-// ---------------------------------------------------------------------------
-
-/**
- * Create a P12 from key + cert + CA and store at ~/.portlama/client.p12.
- *
- * Uses the same `-keypbe PBE-SHA1-3DES` parameters as keychain.js for
- * maximum curl compatibility.
- */
-async function storeP12Linux(keyPath, certPem, caCertPem, label, logger) {
   const dataDir = agentDataDir(label);
   const p12Path = path.join(dataDir, 'client.p12');
   const suffix = crypto.randomBytes(8).toString('hex');
@@ -124,7 +82,12 @@ async function storeP12Linux(keyPath, certPem, caCertPem, label, logger) {
   }
 }
 
-async function linuxP12Exists(label) {
+/**
+ * Check if an enrolled certificate exists.
+ * @param {string} label - Agent label
+ * @returns {Promise<boolean>}
+ */
+export async function enrolledCertExists(label) {
   try {
     const p12Path = path.join(agentDataDir(label), 'client.p12');
     await access(p12Path, constants.F_OK);
@@ -134,7 +97,11 @@ async function linuxP12Exists(label) {
   }
 }
 
-async function removeLinuxP12(label) {
+/**
+ * Remove an enrolled certificate.
+ * @param {string} label - Agent label
+ */
+export async function removeEnrolledCert(label) {
   try {
     const p12Path = path.join(agentDataDir(label), 'client.p12');
     await secureDelete(p12Path);

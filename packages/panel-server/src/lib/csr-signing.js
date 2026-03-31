@@ -153,6 +153,146 @@ export async function signAdminCSR(csrPem, logger) {
 }
 
 /**
+ * Rotate an agent's certificate via CSR for hardware-bound upgrade.
+ *
+ * Signs a new CSR for an existing agent, revokes the old certificate,
+ * preserves capabilities and allowed sites, and sets enrollmentMethod
+ * to 'hardware-bound'.
+ *
+ * @param {string} csrPem - PEM-encoded CSR
+ * @param {string} label - Agent label (must match an existing non-revoked agent)
+ * @param {import('pino').Logger} logger
+ * @returns {Promise<{ certPem: string, caCertPem: string, serial: string, expiresAt: string, label: string }>}
+ */
+export async function rotateAgentCSR(csrPem, label, logger) {
+  // Defense-in-depth: re-validate label for DN safety
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(label) || label.length > 50) {
+    throw Object.assign(new Error('Invalid agent label'), { statusCode: 400 });
+  }
+
+  if (csrPem.length > 8192) {
+    throw Object.assign(new Error('CSR too large'), { statusCode: 400 });
+  }
+
+  return withRegistryLock(async () => {
+    // Find the existing non-revoked agent entry
+    const registry = await loadAgentRegistry();
+    const existing = registry.agents.find((a) => a.label === label && !a.revoked);
+    if (!existing) {
+      throw Object.assign(new Error(`Agent certificate "${label}" not found`), {
+        statusCode: 404,
+      });
+    }
+
+    // Verify CA key exists
+    try {
+      await access(`${PKI_DIR}/ca.key`, constants.R_OK);
+    } catch {
+      try {
+        await execa('sudo', ['test', '-r', `${PKI_DIR}/ca.key`]);
+      } catch {
+        throw Object.assign(new Error('CA key not found — cannot sign certificate'), {
+          statusCode: 500,
+        });
+      }
+    }
+
+    const tmpSuffix = crypto.randomBytes(8).toString('hex');
+    const csrPath = `${AGENTS_DIR}/.rotate-csr-${tmpSuffix}.pem`;
+    const certPath = `${AGENTS_DIR}/.rotate-cert-${tmpSuffix}.pem`;
+
+    try {
+      // Write the CSR to a temp file
+      await writeFile(csrPath, csrPem, { mode: 0o600 });
+
+      // Validate CSR structure and signature
+      try {
+        await execa('openssl', ['req', '-verify', '-in', csrPath, '-noout']);
+      } catch {
+        throw Object.assign(
+          new Error('Invalid CSR: structure or signature verification failed'),
+          { statusCode: 400 },
+        );
+      }
+
+      // Sign the CSR with the CA (2-year validity)
+      logger.info({ label }, 'Signing rotation CSR for hardware-bound upgrade');
+      await execa('sudo', [
+        'openssl',
+        'x509',
+        '-req',
+        '-in',
+        csrPath,
+        '-CA',
+        `${PKI_DIR}/ca.crt`,
+        '-CAkey',
+        `${PKI_DIR}/ca.key`,
+        '-CAcreateserial',
+        '-out',
+        certPath,
+        '-days',
+        '730',
+        '-sha256',
+        '-subj',
+        `/CN=agent:${label}/O=Portlama`,
+      ]);
+
+      // Make cert readable
+      await execa('sudo', ['chown', 'portlama:portlama', certPath]);
+      await execa('sudo', ['chmod', '644', certPath]);
+
+      // Read the serial number
+      const { stdout: serialOut } = await execa('openssl', [
+        'x509',
+        '-in',
+        certPath,
+        '-serial',
+        '-noout',
+      ]);
+      const serialMatch = serialOut.match(/serial=([A-Fa-f0-9]+)/);
+      const serial = serialMatch ? serialMatch[1] : '';
+
+      // Read expiry
+      const expiry = await readCertExpiry(certPath);
+      const expiresAt = expiry?.expiresAt || new Date(Date.now() + 730 * 86400000).toISOString();
+
+      // Read the signed certificate PEM
+      const certPem = await readFile(certPath, 'utf-8');
+
+      // Read the CA certificate PEM
+      let caCertPem;
+      try {
+        caCertPem = await readFile(`${PKI_DIR}/ca.crt`, 'utf-8');
+      } catch {
+        const { stdout } = await execa('sudo', ['cat', `${PKI_DIR}/ca.crt`]);
+        caCertPem = stdout;
+      }
+
+      // Revoke the old certificate
+      const { addToRevocationList } = await import('./revocation.js');
+      logger.info({ label, oldSerial: existing.serial }, 'Revoking old agent certificate for hardware-bound upgrade');
+      await addToRevocationList(existing.serial, `agent:${label} (upgraded to hardware-bound)`);
+
+      // Update the existing registry entry atomically: new serial, new expiry,
+      // mark as hardware-bound, preserve capabilities and allowedSites
+      existing.serial = serial;
+      existing.expiresAt = expiresAt;
+      existing.enrollmentMethod = 'hardware-bound';
+      existing.revoked = false;
+      await saveAgentRegistry(registry);
+
+      logger.info({ label, serial }, 'Agent certificate rotated for hardware-bound upgrade');
+
+      return { certPem, caCertPem, serial, expiresAt, label };
+    } finally {
+      await unlink(csrPath).catch(() => {});
+      await unlink(certPath).catch(() => {});
+      await execa('sudo', ['rm', '-f', `${PKI_DIR}/ca.srl`]).catch(() => {});
+    }
+  });
+}
+
+/**
  * Sign an externally-generated CSR with the panel CA.
  *
  * Validates that the CSR subject matches the expected agent CN format,

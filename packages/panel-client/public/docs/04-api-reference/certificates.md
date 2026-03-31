@@ -182,9 +182,7 @@ curl -s --cert client.p12:password \
 | ------ | ---------------------------------------------------------- | ----------------------------------------- |
 | 400    | `{"error":"Validation failed","details":{"issues":[...]}}` | Invalid domain format                     |
 | 404    | `{"error":"Certificate not found"}`                        | certbot has no certificate with this name |
-| 500    | `{"error":"Certificate renewal failed","details":"..."}`   | certbot command failed                    |
-
-The certbot command has a 90-second timeout. If it times out, a 500 error is returned.
+| 500    | `{"error":"Certificate renewal failed"}`                   | certbot command failed                    |
 
 ---
 
@@ -286,7 +284,7 @@ Generates a new agent-scoped certificate with the specified label, capabilities,
 | `capabilities` | `string[]` | No       | List of capabilities. Defaults to `["tunnels:read"]`. Must always include `tunnels:read`                                                                                   |
 | `allowedSites` | `string[]` | No       | List of site names this agent can access for file operations. Defaults to `[]` (no site access). Only relevant when `sites:read` or `sites:write` capabilities are granted |
 
-**Valid capabilities:** `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`, `panel:expose`
+**Valid capabilities:** `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`, `panel:expose`, `identity:read`, `identity:query`
 
 ```bash
 curl -s --cert client.p12:password \
@@ -583,7 +581,44 @@ curl -s --cert client.p12:password \
 | ------ | ------------------------------------------------------------------------- | ------------------------------------------------------- |
 | 400    | `{"error":"Validation failed","details":{...}}`                           | Invalid label format or missing `tunnels:read`          |
 | 409    | `{"error":"Agent certificate with label \"macbook-pro\" already exists"}` | Label already in use (non-revoked)                      |
-| 409    | `{"error":"An active enrollment token for label \"macbook-pro\" already exists"}` | A pending (unexpired, unused) token exists for the label|
+
+**Note:** If a pending (unused, unexpired) enrollment token already exists for the same label, it is silently replaced by the new token. This allows retried installations without requiring explicit token revocation first.
+
+---
+
+### `DELETE /api/certs/agent/enroll/:label` — Revoke unused enrollment token (admin-only)
+
+Revokes any active (unused, unexpired) enrollment token for the given agent label. This should be called when an agent installation fails before enrollment to prevent the token from being used on another machine.
+
+**Request:**
+
+No request body. The label is specified in the URL path.
+
+```bash
+curl -s --cert client.p12:password \
+  -X DELETE \
+  https://203.0.113.42:9292/api/certs/agent/enroll/macbook-pro | jq
+```
+
+**Response (200):**
+
+```json
+{
+  "ok": true,
+  "revoked": true
+}
+```
+
+| Field     | Type      | Description                                                  |
+| --------- | --------- | ------------------------------------------------------------ |
+| `ok`      | `boolean` | Always `true`                                                |
+| `revoked` | `boolean` | `true` if an active token was found and removed, `false` if no matching active token existed |
+
+**Errors:**
+
+| Status | Body                                 | When                 |
+| ------ | ------------------------------------ | -------------------- |
+| 400    | `{"error":"Validation failed",...}`  | Invalid label format |
 
 ---
 
@@ -736,6 +771,64 @@ curl -s --cert client.p12:password \
 
 ---
 
+### `POST /api/certs/agent/upgrade-cert` — Upgrade agent cert to hardware-bound (agent-only)
+
+Upgrades an existing agent certificate to hardware-bound authentication via CSR. The agent submits a PEM-encoded CSR generated from a key pair stored in the system keychain. The panel signs the CSR, revokes the old certificate, and updates the agent registry entry with the new serial and `enrollmentMethod: 'hardware-bound'`. Capabilities and allowed sites are preserved.
+
+**Authentication:** Agent-only. Agents can only upgrade their own certificate (the label is extracted from the calling certificate's CN).
+
+**Request:**
+
+```json
+{
+  "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...\n-----END CERTIFICATE REQUEST-----"
+}
+```
+
+| Field | Type     | Required | Description                                     |
+| ----- | -------- | -------- | ----------------------------------------------- |
+| `csr` | `string` | Yes      | PEM-encoded PKCS#10 Certificate Signing Request |
+
+```bash
+curl -s --cert agent.p12:password \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"csr":"-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----"}' \
+  https://203.0.113.42:9292/api/certs/agent/upgrade-cert | jq
+```
+
+**Response (200):**
+
+```json
+{
+  "ok": true,
+  "cert": "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----",
+  "caCert": "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----",
+  "serial": "ABC123DEF456...",
+  "expiresAt": "2028-03-23T00:00:00.000Z"
+}
+```
+
+| Field       | Type      | Description                                             |
+| ----------- | --------- | ------------------------------------------------------- |
+| `ok`        | `boolean` | `true` if the upgrade succeeded                         |
+| `cert`      | `string`  | PEM-encoded signed agent certificate                    |
+| `caCert`    | `string`  | PEM-encoded CA certificate for TLS verification         |
+| `serial`    | `string`  | Certificate serial number of the new certificate        |
+| `expiresAt` | `string`  | ISO 8601 expiry date (2-year validity)                  |
+
+**Errors:**
+
+| Status | Body                                                                                     | When                                                    |
+| ------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{...}}`                                          | Missing or malformed `csr` field                        |
+| 400    | `{"error":"CSR too large"}`                                                              | CSR exceeds 8192 bytes                                  |
+| 400    | `{"error":"Invalid CSR: structure or signature verification failed"}`                    | CSR fails OpenSSL validation                            |
+| 403    | `{"error":"Agent label not found in certificate"}`                                       | Calling certificate has no agent label                  |
+| 404    | `{"error":"Agent certificate \"macbook-pro\" not found"}`                                | No active (non-revoked) agent with this label           |
+| 500    | `{"error":"Agent certificate upgrade failed"}`                                           | OpenSSL signing or file operation failed                |
+
+---
+
 ## Certificate Types
 
 ### Let's Encrypt Certificates
@@ -783,6 +876,8 @@ curl -s --cert client.p12:password \
 | PATCH  | `/api/certs/agent/:label/allowed-sites`        | Update agent site access               |
 | DELETE | `/api/certs/agent/:label`                      | Revoke agent certificate               |
 | POST   | `/api/certs/agent/enroll`                      | Generate enrollment token (admin-only) |
+| DELETE | `/api/certs/agent/enroll/:label`               | Revoke unused enrollment token         |
+| POST   | `/api/certs/agent/upgrade-cert`                | Upgrade agent cert to hardware-bound   |
 | POST   | `/api/enroll`                                  | Enroll agent with token (public)       |
 | POST   | `/api/certs/admin/upgrade-to-hardware-bound`   | Upgrade admin to hardware-bound        |
 | GET    | `/api/certs/admin/auth-mode`                   | Get admin auth mode                    |
@@ -859,6 +954,11 @@ curl -s --cert client.p12:password \
   -d '{"label":"macbook-pro","capabilities":["tunnels:read","tunnels:write"]}' \
   https://203.0.113.42:9292/api/certs/agent/enroll | jq
 
+# Revoke an unused enrollment token
+curl -s --cert client.p12:password \
+  -X DELETE \
+  https://203.0.113.42:9292/api/certs/agent/enroll/macbook-pro | jq
+
 # Enroll agent with token and CSR (no mTLS required)
 curl -s -k \
   -X POST -H 'Content-Type: application/json' \
@@ -870,6 +970,12 @@ curl -s --cert client.p12:password \
   -X POST -H 'Content-Type: application/json' \
   -d '{"csr":"-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----"}' \
   https://203.0.113.42:9292/api/certs/admin/upgrade-to-hardware-bound | jq
+
+# Upgrade agent certificate to hardware-bound (agent-only)
+curl -s --cert agent.p12:password \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"csr":"-----BEGIN CERTIFICATE REQUEST-----\n...\n-----END CERTIFICATE REQUEST-----"}' \
+  https://203.0.113.42:9292/api/certs/agent/upgrade-cert | jq
 
 # Check admin auth mode
 curl -s --cert client.p12:password \

@@ -13,6 +13,9 @@ import {
   Check,
   Mail,
   XCircle,
+  ChevronDown,
+  ChevronUp,
+  Fingerprint,
 } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
@@ -857,6 +860,97 @@ export default function Users() {
 
       {/* TOTP Enrollment QR Code */}
       {totpUri && <TotpModal totpUri={totpUri} onClose={closeTotpModal} />}
+
+      {/* Identity & Groups Section */}
+      <IdentitySection />
+    </div>
+  );
+}
+
+function IdentitySection() {
+  const client = useAdminClient();
+  const [expanded, setExpanded] = useState(false);
+
+  const groupsQuery = useQuery({
+    queryKey: ['identity-groups'],
+    queryFn: () => client.getIdentityGroups(),
+    retry: false,
+    staleTime: 60000,
+  });
+
+  const selfQuery = useQuery({
+    queryKey: ['identity-self'],
+    queryFn: () => client.getIdentitySelf(),
+    retry: false,
+    staleTime: 60000,
+    enabled: expanded,
+  });
+
+  const groups = groupsQuery.data?.groups || [];
+
+  return (
+    <div className="mt-8 border-t border-zinc-700 pt-6">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-2 text-lg font-semibold text-white hover:text-zinc-300 w-full text-left"
+      >
+        <Fingerprint size={18} className="text-cyan-400" />
+        Identity & Groups
+        {expanded ? <ChevronUp size={16} className="text-zinc-500 ml-auto" /> : <ChevronDown size={16} className="text-zinc-500 ml-auto" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-4">
+          {/* Current Admin Identity */}
+          {selfQuery.data && (
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">Your Identity (via Authelia)</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-zinc-500">Username:</span>
+                <span className="text-zinc-200">{selfQuery.data.username || '—'}</span>
+                <span className="text-zinc-500">Display Name:</span>
+                <span className="text-zinc-200">{selfQuery.data.displayName || '—'}</span>
+                <span className="text-zinc-500">Email:</span>
+                <span className="text-zinc-200">{selfQuery.data.email || '—'}</span>
+                <span className="text-zinc-500">Groups:</span>
+                <span className="text-zinc-200">
+                  {selfQuery.data.groups?.length > 0 ? selfQuery.data.groups.join(', ') : '—'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {selfQuery.isError && (
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+              <p className="text-xs text-zinc-500">
+                Identity information is only available when accessing the panel through an Authelia-protected domain.
+              </p>
+            </div>
+          )}
+
+          {/* Groups */}
+          {groupsQuery.isLoading ? (
+            <div className="h-10 animate-pulse rounded-lg bg-zinc-900 border border-zinc-800" />
+          ) : groups.length > 0 ? (
+            <div>
+              <h3 className="text-sm font-medium text-zinc-400 mb-2">All Groups</h3>
+              <div className="flex flex-wrap gap-2">
+                {groups.map((group) => (
+                  <span
+                    key={group}
+                    className="text-xs px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                  >
+                    {group}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No groups defined in Authelia.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

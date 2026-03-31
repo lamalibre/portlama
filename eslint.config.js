@@ -38,6 +38,7 @@ export default [
       'packages/portlama-agent/**/*.js',
       'packages/install-portlama-desktop/**/*.js',
       'packages/install-portlama-admin/**/*.js',
+      'packages/install-portlama-agent/**/*.js',
     ],
     languageOptions: {
       globals: {

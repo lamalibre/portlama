@@ -286,6 +286,7 @@ There are two exceptions:
 | POST   | `/api/invite/:token/accept`               | Public     | Accept invitation                      |
 | POST   | `/api/enroll`                             | Public     | Enroll agent with token (hardware-bound)|
 | GET    | `/api/system/stats`                       | Management | System statistics                      |
+| POST   | `/api/system/update`                      | Management | Trigger background server update       |
 | GET    | `/api/tunnels/agent-config`               | Management | Get agent tunnel configuration         |
 | GET    | `/api/tunnels`                            | Management | List tunnels                           |
 | POST   | `/api/tunnels`                            | Management | Create tunnel                          |
@@ -320,6 +321,8 @@ There are two exceptions:
 | PATCH  | `/api/certs/agent/:label/allowed-sites`   | Management | Update agent site access               |
 | DELETE | `/api/certs/agent/:label`                 | Management | Revoke agent certificate               |
 | POST   | `/api/certs/agent/enroll`                 | Management | Generate enrollment token              |
+| DELETE | `/api/certs/agent/enroll/:label`          | Management | Revoke unused enrollment token         |
+| POST   | `/api/certs/agent/upgrade-cert`           | Management | Upgrade agent cert to hardware-bound   |
 | POST   | `/api/certs/admin/upgrade-to-hardware-bound` | Management | Upgrade admin to hardware-bound     |
 | GET    | `/api/certs/admin/auth-mode`              | Management | Get admin auth mode                    |
 | GET    | `/api/settings/2fa`                       | Management | Get 2FA status                         |
@@ -366,6 +369,13 @@ There are two exceptions:
 | PATCH  | `/api/tickets/sessions/:sessionId`        | Management | Update session status                  |
 | DELETE | `/api/tickets/sessions/:sessionId`        | Management | Kill session                           |
 | GET    | `/api/tickets/sessions`                   | Management | List sessions                          |
+| POST   | `/api/storage/servers`                    | Management | Register a storage server              |
+| GET    | `/api/storage/servers`                    | Management | List registered storage servers        |
+| DELETE | `/api/storage/servers/:id`                | Management | Remove a storage server                |
+| POST   | `/api/storage/bindings`                   | Management | Bind storage to plugin                 |
+| GET    | `/api/storage/bindings`                   | Management | List all bindings                      |
+| GET    | `/api/storage/bindings/:pluginName`       | Management | Get binding for plugin                 |
+| DELETE | `/api/storage/bindings/:pluginName`       | Management | Unbind storage from plugin             |
 
 ### Agent Capabilities
 
@@ -382,6 +392,9 @@ Agent certificates use capability-based access control. Base capabilities are al
 | `system:read`    | View system stats (CPU, RAM, disk)                              |
 | `sites:read`     | List sites and browse files                                     |
 | `sites:write`    | Upload and delete files on assigned sites                       |
+| `panel:expose`   | Expose agent management panel at `agent-<label>.<domain>`       |
+| `identity:read`  | Parse Authelia identity headers on plugin routes                |
+| `identity:query` | Query panel for Authelia user metadata                          |
 
 **Plugin-declared capabilities:** Plugins can declare additional capabilities in their `portlama-plugin.json` manifest using either a flat array (`"capabilities": ["scope:action"]`) or a nested object (`"capabilities": { "agent": ["scope:action"] }`). Both formats are normalized to a flat array internally. These are merged with base capabilities and available for assignment to agent certificates. Capabilities are validated dynamically via `getValidCapabilities()`.
 

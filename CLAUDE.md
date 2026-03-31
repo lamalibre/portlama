@@ -17,6 +17,7 @@ portlama/
 │   ├── portlama-identity/      @lamalibre/portlama-identity — SDK for Authelia identity header parsing and user metadata queries
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
 │   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
+│   ├── install-portlama-agent/ @lamalibre/install-portlama-agent — npx installer for agent cert upgrade to hardware-bound
 │   ├── install-portlama-e2e-mcp/ @lamalibre/install-portlama-e2e-mcp — npx installer + MCP server for E2E test infrastructure
 │   ├── portlama-tickets/      @lamalibre/portlama-tickets — SDK for ticket system (agent-to-agent authorization)
 │   └── portlama-cloud/        @lamalibre/portlama-cloud — cloud provider abstraction for server and storage provisioning
@@ -85,7 +86,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 - Shared HTTP helpers in `api.rs` — all panel API calls go through `curl_panel`
 - Service discovery in `services.rs` — detection via `which`/`pgrep`/`lsof`/TCP probe, Docker via `docker ps`
-- Cloud provisioning in `cloud.rs` — bridges React UI to `@lamalibre/portlama-cloud` Node.js CLI for both compute (droplets) and storage (Spaces buckets). Storage commands: `store_storage_credentials`, `get_storage_credentials`, `delete_storage_credentials`, `validate_storage_credentials`, `get_spaces_regions`, `provision_storage_server`, `get_storage_servers`, `remove_storage_server`, `destroy_storage_server`
+- Cloud provisioning in `cloud.rs` — bridges React UI to `@lamalibre/portlama-cloud` Node.js CLI for both compute (droplets) and storage (Spaces buckets). Storage commands: `store_storage_credentials`, `get_storage_credentials`, `delete_storage_credentials`, `validate_storage_credentials`, `get_spaces_regions`, `provision_storage_server`, `get_storage_servers`, `remove_storage_server`, `destroy_storage_server`. Storage-to-panel commands: `push_storage_to_panel`, `bind_plugin_storage`, `setup_plugin_storage`. Panel update commands: `check_panel_update`, `update_panel_server` (streams NDJSON as `panel-update-progress` Tauri events)
 - Local server installation in `local_install.rs` — spawns `create-portlama --json` via `pkexec`, streams NDJSON progress as Tauri events, auto-imports P12 certificates
 - OS credential storage in `credentials.rs` — macOS `security-framework` crate (direct Keychain API), Linux `secret-tool` (libsecret). Four services: `com.portlama.cloud` (API tokens), `com.portlama.server` (P12 passwords), `com.portlama.admin` (admin P12 passwords), `com.portlama.storage` (Spaces access key + secret key as JSON)
 - Multi-agent management in `agents.rs` — registry at `~/.portlama/agents.json`, per-agent data at `~/.portlama/agents/<label>/`, Tauri commands for agent start/stop/restart/logs/tunnels/config
@@ -135,7 +136,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Compute token scope validation: reject over-scoped tokens, require minimum necessary permissions. `domain:*` scopes are safe extras (opt-in DNS management)
 - DNS management (opt-in): if token has `domain:read`, wizard lists DO-managed domains; after droplet creation, `setup_dns` provisioning step creates A + wildcard A records. Existing records with different IPs are warned, not overwritten. DNS records are NOT auto-cleaned on server destroy
 - Storage provisioning: `StorageProvider` creates S3-compatible buckets (currently DigitalOcean Spaces). Uses AWS Signature V4 signing via `node:crypto` (no external S3 SDK). Hardcoded Spaces region list (DO has no API to list them). Storage servers are independent resources with their own lifecycle — not tied to compute servers
-- NDJSON progress protocol on stdout for Rust/Tauri integration (used by both compute and storage provisioners)
+- NDJSON progress protocol on stdout for Rust/Tauri integration (used by compute provisioner, storage provisioner, and updater)
 - SSH via `ssh-keygen`/`ssh`/`scp` commands — temporary ed25519 keys, secure-deleted after use. SSH TOFU accepted risk: first connection uses `accept-new`, pinned in per-session `known_hosts` for subsequent commands; DigitalOcean does not expose host fingerprints via API
 - Credential storage: macOS Keychain (`security-framework` crate, no CLI) / Linux libsecret (`secret-tool` with stdin) — never plaintext, never in process args. Four services: `com.portlama.cloud` (API tokens), `com.portlama.server` (P12 passwords, keyed by server UUID), `com.portlama.admin` (admin P12 passwords), `com.portlama.storage` (Spaces access key + secret key as JSON)
 - Compute token passed via `PORTLAMA_CLOUD_TOKEN` env var (never CLI args). Storage credentials via `PORTLAMA_SPACES_ACCESS_KEY` and `PORTLAMA_SPACES_SECRET_KEY` env vars
@@ -143,7 +144,8 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Storage server registry: `~/.portlama/storage-servers.json` with same atomic write pattern. Stores bucket name, region, endpoint — no credentials (those stay in OS keychain)
 - Droplet safety: only operate on droplets tagged `portlama:managed`
 - Cleanup stack (shared `cleanup.ts`): each resource creation registers a rollback; on failure, cleanup runs in reverse. `destroy-storage` deletes both the bucket and the registry entry — bucket must be empty (S3 returns 409 BucketNotEmpty otherwise)
-- Provisioning locks: `~/.portlama/.provisioning.lock` (compute) and `~/.portlama/.storage-provisioning.lock` (storage) prevent concurrent operations
+- Provisioning locks: `~/.portlama/.provisioning.lock` (compute and update — shared) and `~/.portlama/.storage-provisioning.lock` (storage) prevent concurrent operations
+- Updater (`updater.ts`): handles panel server updates via SSH. CLI command: `update --id <serverId> --version <version>`. SSHs into the server, runs `npx @lamalibre/create-portlama@<version>` in redeploy mode, verifies health after restart. Uses the same ephemeral SSH key pattern and provisioning lock as the compute provisioner
 
 **Installer:**
 
@@ -154,7 +156,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 **Agent CLI (`portlama-agent`):**
 
 - `--json` global flag on `setup` command — NDJSON progress output for desktop app integration, implies non-interactive (requires `--panel-url` + `PORTLAMA_ENROLLMENT_TOKEN`)
-- NDJSON protocol: `{event:"step",step:"<key>",status:"running|complete|skipped|failed"}`, `{event:"error",message:"...",recoverable:false}`, `{event:"complete",agent:{label,panelUrl,authMethod,domain,chiselVersion}}`
+- NDJSON protocol: `{event:"step",step:"<key>",status:"running|complete|skipped|failed"}`, `{event:"error",message:"...",recoverable:false}`, `{event:"complete",agent:{label,panelUrl,authMethod,p12Path,p12Password,domain,chiselVersion}}`
 
 ## Critical Constraints
 
@@ -172,7 +174,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - P12 password protection: curl uses a temporary config file (`-K`, O_EXCL + 0600, cleaned up in try/finally) and openssl uses `PORTLAMA_P12_PASS` environment variable — password never appears in process listings. Stale config files cleaned up at module load.
 - Agent directory `~/.portlama/` created with mode 0700. PEM private keys cleaned up after CA extraction during setup.
 - Hardware-bound certificates: agent private keys can be imported into macOS Keychain as non-extractable (`security import -x`). Temporary key files exist on disk for seconds only during enrollment, then are securely deleted (overwrite + unlink).
-- Enrollment tokens: one-time use, 10-minute expiry, stored at `/etc/portlama/pki/enrollment-tokens.json`. Public `/api/enroll` endpoint accepts token + CSR (no mTLS required — the token is the sole auth gate).
+- Enrollment tokens: one-time use, 10-minute expiry, stored at `/etc/portlama/pki/enrollment-tokens.json`. Creating a token for a label that already has an active (unused, unexpired) token silently replaces it (retried installations do not fail). Public `/api/enroll` endpoint accepts token + CSR (no mTLS required — the token is the sole auth gate).
 - Dual auth: agent config `authMethod` is `'p12'` (default, backwards compatible) or `'keychain'`. Panel API functions accept both calling conventions.
 - Admin auth mode: panel.json `adminAuthMode` is `'p12'` (default) or `'hardware-bound'`. When hardware-bound, `GET /certs/mtls/download` and `POST /certs/mtls/rotate` return 410 Gone. Recovery: `sudo portlama-reset-admin` on the server (root-only CLI).
 - Admin upgrade: `POST /certs/admin/upgrade-to-hardware-bound` accepts CSR, signs with CA, revokes old admin cert, sets `adminAuthMode: 'hardware-bound'`. One-way operation — reversible only via DO root console.
@@ -204,7 +206,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Manifest `config` field: declarative schema for plugin settings (`{ key: { type, default?, description?, enum? } }`) — stored in registry, used by plugin's settings UI
 - Server-side plugin code runs unsandboxed in the panel process — `@lamalibre/` scope is the trust boundary
 - All `npm install` calls use `--ignore-scripts` to block postinstall script execution
-- Plugin names and ticket scope names matching core API prefixes are rejected — single source of truth in `lib/constants.js`: `health`, `onboarding`, `invite`, `enroll`, `tunnels`, `sites`, `system`, `services`, `logs`, `users`, `certs`, `invitations`, `plugins`, `tickets`, `settings`, `identity`
+- Plugin names and ticket scope names matching core API prefixes are rejected — single source of truth in `lib/constants.js`: `health`, `onboarding`, `invite`, `enroll`, `tunnels`, `sites`, `system`, `services`, `logs`, `users`, `certs`, `invitations`, `plugins`, `tickets`, `settings`, `identity`, `storage`
 - Plugin server routes are mounted with two-level Fastify encapsulation: auth guard on outer scope (plugin cannot override), plugin code on inner scope
 - Plugin panel bundles served at `/{pluginName}/panel.js` with runtime `@lamalibre/` scope check
 - Disabled plugins return 503 via `onRequest` hook (Fastify cannot remove routes at runtime — clean state requires restart)

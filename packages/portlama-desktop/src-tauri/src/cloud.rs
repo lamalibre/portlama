@@ -1494,3 +1494,367 @@ fn build_server_admin_config(
         keychain_identity,
     })
 }
+
+// ---------------------------------------------------------------------------
+// Plugin storage binding
+// ---------------------------------------------------------------------------
+
+/// Helper: make an admin API call to a panel identified by label.
+fn admin_api_for_label(
+    label: &str,
+    method: &str,
+    path: &str,
+    body: Option<&str>,
+) -> Result<serde_json::Value, String> {
+    let cfg = config::load_admin_config_for_label(label)?;
+    let resp = crate::api::curl_panel_admin(&cfg, method, path, body)?;
+    serde_json::from_str(&resp).map_err(|e| {
+        let safe_body = if resp.len() <= 200 {
+            resp.clone()
+        } else {
+            let end = resp
+                .char_indices()
+                .take_while(|(i, _)| *i < 200)
+                .last()
+                .map(|(i, c)| i + c.len_utf8())
+                .unwrap_or(0);
+            format!("{}...(truncated)", &resp[..end])
+        };
+        format!("Failed to parse response: {} — body: {}", e, safe_body)
+    })
+}
+
+/// Push a storage server's credentials to a panel server.
+/// Loads the storage server entry from the local registry and credentials from
+/// the OS keychain, then POSTs them to the target panel's storage API.
+#[tauri::command]
+pub async fn push_storage_to_panel(
+    server_id: String,
+    panel_label: String,
+) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        // 1. Load storage server entry from local registry
+        let path = config::storage_servers_registry_path();
+        if !path.exists() {
+            return Err("No storage servers configured".to_string());
+        }
+        let content = std::fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read storage-servers.json: {}", e))?;
+        let entries: Vec<StorageServerEntry> = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse storage-servers.json: {}", e))?;
+        let entry = entries
+            .into_iter()
+            .find(|e| e.id == server_id)
+            .ok_or_else(|| format!("Storage server \"{}\" not found in local registry", server_id))?;
+
+        // 2. Load credentials from OS keychain
+        let creds = load_storage_credentials()?;
+
+        // 3. POST to panel
+        let body = serde_json::json!({
+            "id": entry.id,
+            "label": entry.label,
+            "provider": entry.provider,
+            "region": entry.region,
+            "bucket": entry.bucket,
+            "endpoint": entry.endpoint,
+            "accessKey": creds.access_key,
+            "secretKey": creds.secret_key,
+        })
+        .to_string();
+
+        admin_api_for_label(&panel_label, "POST", "/api/storage/servers", Some(&body))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+/// Bind a storage server to a plugin on a specific panel server.
+#[tauri::command]
+pub async fn bind_plugin_storage(
+    panel_label: String,
+    plugin_name: String,
+    storage_server_id: String,
+) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let body = serde_json::json!({
+            "pluginName": plugin_name,
+            "storageServerId": storage_server_id,
+        })
+        .to_string();
+
+        admin_api_for_label(&panel_label, "POST", "/api/storage/bindings", Some(&body))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+// ---------------------------------------------------------------------------
+// Panel server update
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PanelUpdateInfo {
+    pub current_version: String,
+    pub latest_version: String,
+    pub installer_version: String,
+    pub has_update: bool,
+}
+
+/// Check whether a panel server update is available.
+///
+/// Fetches the running panel-server version from /api/health, then
+/// queries the npm registry for the latest published versions of
+/// both @lamalibre/portlama-panel-server (for display) and
+/// @lamalibre/create-portlama (for install).
+#[tauri::command]
+pub async fn check_panel_update(server_id: String) -> Result<PanelUpdateInfo, String> {
+    // Fetch current version from health endpoint
+    let current_version = tokio::task::spawn_blocking(move || -> Result<String, String> {
+        let servers = load_servers_registry()?;
+        let server = servers.iter().find(|s| s.id == server_id)
+            .ok_or("Server not found")?;
+
+        validate_panel_url(&server.panel_url)?;
+        let health_url = format!("{}/api/health", server.panel_url);
+
+        let admin_cfg = build_server_admin_config(&server.id, server);
+
+        let mut args = vec![
+            "-s".to_string(), "-f".to_string(),
+            "--max-time".to_string(), "10".to_string(),
+            "-k".to_string(),
+            "--proto".to_string(), "=https".to_string(),
+        ];
+
+        let _auth_guard;
+        if let Ok(cfg) = &admin_cfg {
+            if let Ok(auth) = crate::api::build_curl_auth_for_server(cfg) {
+                args.extend(auth.auth_args());
+                _auth_guard = Some(auth);
+            }
+        }
+
+        args.push(health_url);
+
+        let output = std::process::Command::new("curl")
+            .args(&args)
+            .output()
+            .map_err(|e| format!("Failed to run curl: {}", e))?;
+
+        if !output.status.success() {
+            return Err("Server is offline".to_string());
+        }
+
+        let body = String::from_utf8_lossy(&output.stdout);
+        let parsed: serde_json::Value = serde_json::from_str(&body)
+            .map_err(|_| "Invalid health response".to_string())?;
+
+        Ok(parsed.get("version")
+            .and_then(|v| v.as_str())
+            .unwrap_or("0.0.0")
+            .to_string())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))??;
+
+    // Get latest versions from npm registry
+    let (latest_panel_version, installer_version) = tokio::task::spawn_blocking(|| -> Result<(String, String), String> {
+        let panel_output = std::process::Command::new("npm")
+            .args(["view", "@lamalibre/portlama-panel-server", "version", "--json", "--prefer-online"])
+            .output()
+            .map_err(|e| format!("Failed to run npm: {}", e))?;
+
+        let panel_ver = if panel_output.status.success() {
+            let raw = String::from_utf8_lossy(&panel_output.stdout);
+            raw.trim().trim_matches('"').to_string()
+        } else {
+            "0.0.0".to_string()
+        };
+
+        let installer_output = std::process::Command::new("npm")
+            .args(["view", "@lamalibre/create-portlama", "version", "--json", "--prefer-online"])
+            .output()
+            .map_err(|e| format!("Failed to run npm: {}", e))?;
+
+        let installer_ver = if installer_output.status.success() {
+            let raw = String::from_utf8_lossy(&installer_output.stdout);
+            raw.trim().trim_matches('"').to_string()
+        } else {
+            "0.0.0".to_string()
+        };
+
+        Ok((panel_ver, installer_ver))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))??;
+
+    let has_update = current_version != latest_panel_version && latest_panel_version != "0.0.0";
+
+    Ok(PanelUpdateInfo {
+        current_version,
+        latest_version: latest_panel_version,
+        installer_version,
+        has_update,
+    })
+}
+
+/// Update a panel server to a specific create-portlama version.
+///
+/// Sends POST /api/system/update to the panel server, which spawns a
+/// detached update script (stop → npx create-portlama@version → start).
+/// Then polls /api/health until the server comes back online.
+#[tauri::command]
+pub async fn update_panel_server(
+    app: tauri::AppHandle,
+    server_id: String,
+    version: String,
+) -> Result<(), String> {
+    let server_id_clone = server_id.clone();
+    let version_clone = version.clone();
+
+    // Step 1: Send update request to panel
+    let _ = app.emit("panel-update-progress", serde_json::json!({
+        "step": "update_panel",
+        "status": "running",
+    }));
+
+    let panel_url = tokio::task::spawn_blocking(move || -> Result<String, String> {
+        let servers = load_servers_registry()?;
+        let server = servers.iter().find(|s| s.id == server_id_clone)
+            .ok_or("Server not found")?;
+        validate_panel_url(&server.panel_url)?;
+
+        let update_url = format!("{}/api/system/update", server.panel_url);
+        let admin_cfg = build_server_admin_config(&server.id, server)?;
+        let auth = crate::api::build_curl_auth_for_server(&admin_cfg)
+            .map_err(|e| format!("Auth error: {}", e))?;
+
+        let body = serde_json::json!({ "version": version_clone }).to_string();
+
+        let mut args = vec![
+            "-s".to_string(), "-f".to_string(),
+            "--max-time".to_string(), "30".to_string(),
+            "-k".to_string(),
+            "--proto".to_string(), "=https".to_string(),
+            "-X".to_string(), "POST".to_string(),
+            "-H".to_string(), "Content-Type: application/json".to_string(),
+            "-d".to_string(), body,
+        ];
+        args.extend(auth.auth_args());
+        args.push(update_url.clone());
+
+        let output = std::process::Command::new("curl")
+            .args(&args)
+            .output()
+            .map_err(|e| format!("Failed to run curl: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            return Err(format!("Update request failed: {} {}", stderr, stdout));
+        }
+
+        Ok(server.panel_url.clone())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))??;
+
+    let _ = app.emit("panel-update-progress", serde_json::json!({
+        "step": "update_panel",
+        "status": "done",
+    }));
+
+    // Step 2: Poll health until server comes back with new version
+    let _ = app.emit("panel-update-progress", serde_json::json!({
+        "step": "verify_health",
+        "status": "running",
+    }));
+
+    let app_clone = app.clone();
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        let max_retries = 40; // 40 * 5s = ~3.5 minutes
+        let retry_delay = std::time::Duration::from_secs(5);
+
+        // Wait a few seconds for the panel to start shutting down
+        std::thread::sleep(std::time::Duration::from_secs(5));
+
+        let servers = load_servers_registry()?;
+        let server = servers.iter().find(|s| s.id == server_id)
+            .ok_or("Server not found")?;
+
+        for i in 0..max_retries {
+            let admin_cfg = build_server_admin_config(&server.id, server);
+            let health_url = format!("{}/api/health", panel_url);
+
+            let mut args = vec![
+                "-s".to_string(), "-f".to_string(),
+                "--max-time".to_string(), "10".to_string(),
+                "-k".to_string(),
+                "--proto".to_string(), "=https".to_string(),
+            ];
+
+            let _auth_guard;
+            if let Ok(cfg) = &admin_cfg {
+                if let Ok(auth) = crate::api::build_curl_auth_for_server(cfg) {
+                    args.extend(auth.auth_args());
+                    _auth_guard = Some(auth);
+                }
+            }
+
+            args.push(health_url);
+
+            if let Ok(output) = std::process::Command::new("curl").args(&args).output() {
+                if output.status.success() {
+                    let body = String::from_utf8_lossy(&output.stdout);
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body) {
+                        if parsed.get("status").and_then(|s| s.as_str()) == Some("ok") {
+                            let _ = app_clone.emit("panel-update-progress", serde_json::json!({
+                                "step": "verify_health",
+                                "status": "done",
+                            }));
+                            let _ = app_clone.emit("panel-update-progress", serde_json::json!({
+                                "step": "complete",
+                                "status": "done",
+                            }));
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+
+            if i < max_retries - 1 {
+                std::thread::sleep(retry_delay);
+            }
+        }
+
+        Err("Panel server did not come back online after update".to_string())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+/// Convenience command: push storage server to panel (idempotent) then bind to plugin.
+#[tauri::command]
+pub async fn setup_plugin_storage(
+    panel_label: String,
+    plugin_name: String,
+    storage_server_id: String,
+) -> Result<serde_json::Value, String> {
+    let pl = panel_label.clone();
+    let sid = storage_server_id.clone();
+
+    // Step 1: Push storage server (skip if 409 = already registered)
+    let push_result = push_storage_to_panel(sid.clone(), pl.clone()).await;
+    match &push_result {
+        Ok(_) => {}
+        Err(e) if e.contains("409") => {
+            // Already registered — that's fine, continue to bind
+        }
+        Err(e) => return Err(format!("Failed to push storage server: {}", e)),
+    }
+
+    // Step 2: Bind to plugin
+    bind_plugin_storage(panel_label, plugin_name, storage_server_id).await
+}

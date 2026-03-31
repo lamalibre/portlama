@@ -6,7 +6,7 @@
 
 | File                                     | Format     | Owner             | Mode | Purpose                       |
 | ---------------------------------------- | ---------- | ----------------- | ---- | ----------------------------- |
-| `/etc/portlama/panel.json`               | JSON       | portlama:portlama | 0640 | Panel server configuration    |
+| `/etc/portlama/panel.json`               | JSON       | portlama:portlama | 0600 | Panel server configuration    |
 | `/etc/portlama/tunnels.json`             | JSON       | portlama:portlama | 0600 | Tunnel definitions            |
 | `/etc/portlama/sites.json`               | JSON       | portlama:portlama | 0600 | Static site definitions       |
 | `/etc/authelia/configuration.yml`        | YAML       | root:root         | 0600 | Authelia server configuration |
@@ -14,6 +14,13 @@
 | `/etc/authelia/.secrets.json`            | JSON       | root:root         | 0600 | Authelia secrets              |
 | `/etc/portlama/ticket-scopes.json`       | JSON       | portlama:portlama | 0600 | Ticket scope registry         |
 | `/etc/portlama/tickets.json`             | JSON       | portlama:portlama | 0600 | Ticket and session store      |
+| `/etc/portlama/invitations.json`         | JSON       | portlama:portlama | 0600 | Pending user invitations                                                        |
+| `/etc/portlama/plugins.json`             | JSON       | portlama:portlama | 0600 | Plugin registry                                                                 |
+| `/etc/portlama/storage-config.json`      | JSON       | portlama:portlama | 0600 | Storage server registry and plugin bindings (credentials AES-256-GCM encrypted) |
+| `/etc/portlama/storage-master.key`       | Binary     | portlama:portlama | 0600 | 32-byte master key for storage credential encryption |
+| `/etc/portlama/pki/enrollment-tokens.json` | JSON     | portlama:portlama | 0600 | One-time enrollment tokens for hardware-bound enrollment |
+| `/etc/portlama/pki/revoked.json`         | JSON       | portlama:portlama | 0600 | Revoked certificate serial numbers |
+| `/etc/portlama/pki/agents/registry.json` | JSON       | portlama:portlama | 0600 | Agent certificate metadata |
 | `/etc/nginx/sites-available/portlama-*`  | nginx conf | root:root         | 0644 | Vhost configurations          |
 | `/etc/nginx/snippets/portlama-mtls.conf` | nginx conf | root:root         | 0644 | mTLS snippet                  |
 | `~/.portlama/servers.json`               | JSON       | user              | 0600 | Desktop app server registry   |
@@ -36,6 +43,7 @@ The primary configuration file for the panel server. Created by the installer, u
 | ------------------- | -------------- | -------- | --------------- | ----------------------------------------------------- |
 | `ip`                | string         | Yes      | —               | Server public IP address                              |
 | `domain`            | string \| null | Yes      | `null`          | Base domain (set during onboarding)                   |
+| `serverId`          | string         | No       | —               | Auto-generated UUIDv4, used as bucket prefix for multi-server storage isolation |
 | `email`             | string \| null | Yes      | `null`          | Admin email for Let's Encrypt (set during onboarding) |
 | `dataDir`           | string         | Yes      | `/etc/portlama` | Path to data/state directory                          |
 | `staticDir`         | string         | No       | —               | Path to panel-client dist directory                   |
@@ -694,7 +702,7 @@ This enables client certificate verification at the TLS level. The `optional` se
 | Path                                    | Owner             | Mode | Notes                |
 | --------------------------------------- | ----------------- | ---- | -------------------- |
 | `/etc/portlama/`                        | portlama:portlama | 0755 | State directory      |
-| `/etc/portlama/panel.json`              | portlama:portlama | 0640 | Panel config         |
+| `/etc/portlama/panel.json`              | portlama:portlama | 0600 | Panel config         |
 | `/etc/portlama/tunnels.json`            | portlama:portlama | 0600 | Tunnel state         |
 | `/etc/portlama/sites.json`              | portlama:portlama | 0600 | Site state           |
 | `/etc/portlama/pki/`                    | portlama:portlama | 0700 | PKI directory        |
@@ -708,6 +716,13 @@ This enables client certificate verification at the TLS level. The `optional` se
 | `/etc/portlama/pki/self-signed-key.pem` | root:root         | 0600 | Self-signed TLS key  |
 | `/etc/portlama/ticket-scopes.json`     | portlama:portlama | 0600 | Ticket scope registry |
 | `/etc/portlama/tickets.json`           | portlama:portlama | 0600 | Ticket/session store  |
+| `/etc/portlama/invitations.json`       | portlama:portlama | 0600 | Pending invitations    |
+| `/etc/portlama/plugins.json`           | portlama:portlama | 0600 | Plugin registry        |
+| `/etc/portlama/storage-config.json`    | portlama:portlama | 0600 | Storage registry       |
+| `/etc/portlama/storage-master.key`     | portlama:portlama | 0600 | Storage encryption key |
+| `/etc/portlama/pki/enrollment-tokens.json` | portlama:portlama | 0600 | Enrollment tokens  |
+| `/etc/portlama/pki/revoked.json`       | portlama:portlama | 0600 | Revocation list        |
+| `/etc/portlama/pki/agents/registry.json` | portlama:portlama | 0600 | Agent cert metadata  |
 | `/etc/authelia/configuration.yml`       | root:root         | 0600 | Auth config          |
 | `/etc/authelia/users.yml`               | root:root         | 0600 | User database        |
 | `/etc/authelia/.secrets.json`           | root:root         | 0600 | Auth secrets         |
@@ -728,6 +743,7 @@ This enables client certificate verification at the TLS level. The `optional` se
 | `sites.json`        | panel-server | panel-server (atomic write + fsync) | No                                         |
 | `ticket-scopes.json` | panel-server | panel-server (atomic write + mutex) | No                                        |
 | `tickets.json`      | panel-server | panel-server (atomic write + mutex) | No                                         |
+| `storage-config.json` | panel-server | panel-server (atomic write + mutex) | No                                       |
 | `configuration.yml` | authelia     | onboarding provisioning             | Yes (`systemctl restart authelia`)         |
 | `users.yml`         | authelia     | panel-server (via sudo)             | Yes (`systemctl restart authelia`)         |
 | `portlama-*` vhosts | nginx        | panel-server (via sudo)             | Yes (`nginx -t && systemctl reload nginx`) |

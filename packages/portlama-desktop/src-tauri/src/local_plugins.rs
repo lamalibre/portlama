@@ -101,25 +101,25 @@ fn curated_plugins() -> Vec<CuratedPlugin> {
     vec![
         CuratedPlugin {
             name: "herd".into(),
-            package_name: "@lamalibre/portlama-herd".into(),
+            package_name: "@lamalibre/herd-server".into(),
             description: "Zero-config LLM inference pooling".into(),
             icon: "cpu".into(),
         },
         CuratedPlugin {
             name: "shell".into(),
-            package_name: "@lamalibre/portlama-shell".into(),
+            package_name: "@lamalibre/shell-server".into(),
             description: "Secure remote terminal via tmux".into(),
             icon: "terminal".into(),
         },
         CuratedPlugin {
             name: "sync".into(),
-            package_name: "@lamalibre/portlama-sync".into(),
+            package_name: "@lamalibre/sync-server".into(),
             description: "Bidirectional file sync".into(),
             icon: "folder".into(),
         },
         CuratedPlugin {
             name: "gate".into(),
-            package_name: "@lamalibre/portlama-gate".into(),
+            package_name: "@lamalibre/gate-server".into(),
             description: "VPN tunnel management".into(),
             icon: "shield".into(),
         },
@@ -239,6 +239,40 @@ fn validate_plugin_name(name: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Resolve a package to a local file path for dev installs.
+///
+/// When `PORTLAMA_DEV_PLUGINS` is set (e.g., `/Users/me/lama/repositories/lamalibre`),
+/// maps `@lamalibre/sync-server` → `<root>/sync/packages/sync-server` by convention:
+/// the plugin name prefix (before `-server`/`-agent`) is the subdirectory name.
+///
+/// Returns `None` if the env var is unset or the resolved path doesn't exist,
+/// falling back to the npm registry.
+fn resolve_dev_source(package_name: &str) -> Option<String> {
+    let dev_root = std::env::var("PORTLAMA_DEV_PLUGINS").ok()?;
+    let dev_root = std::path::Path::new(&dev_root);
+    if !dev_root.is_dir() {
+        return None;
+    }
+
+    // @lamalibre/sync-server → suffix = "sync-server"
+    let suffix = package_name.strip_prefix("@lamalibre/")?;
+
+    // Try direct resolution: <root>/<plugin>/packages/<suffix>
+    // e.g., sync-server → sync/packages/sync-server
+    // e.g., herd-server → herd/packages/herd-server
+    let plugin_dir_name = suffix.split('-').next()?;
+    let candidate = dev_root
+        .join(plugin_dir_name)
+        .join("packages")
+        .join(suffix);
+
+    if candidate.join("package.json").is_file() {
+        Some(candidate.to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
 /// Read a manifest from installed node_modules.
 fn read_manifest(local_dir: &std::path::Path, package_name: &str) -> Result<PluginManifest, String> {
     // Compute path: @lamalibre/foo → node_modules/@lamalibre/foo/portlama-plugin.json
@@ -252,6 +286,25 @@ fn read_manifest(local_dir: &std::path::Path, package_name: &str) -> Result<Plug
 
     serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse portlama-plugin.json: {}", e))
+}
+
+/// Read the version field from an installed package's package.json.
+fn read_package_version(local_dir: &std::path::Path, package_name: &str) -> Result<String, String> {
+    let pkg_json_path = local_dir
+        .join("node_modules")
+        .join(package_name)
+        .join("package.json");
+
+    let content = std::fs::read_to_string(&pkg_json_path)
+        .map_err(|e| format!("Failed to read package.json: {}", e))?;
+
+    let parsed: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse package.json: {}", e))?;
+
+    parsed.get("version")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .ok_or_else(|| "No version field in package.json".into())
 }
 
 /// Normalize capabilities from manifest (handles flat array or { agent: [...] } format).
@@ -626,9 +679,15 @@ pub async fn local_install_plugin(package_name: String) -> Result<LocalPluginEnt
         }
 
         // npm install --ignore-scripts
+        // In dev mode, resolve from local monorepo via PORTLAMA_DEV_PLUGINS env var.
+        // The env var points to the lamalibre root directory. Package resolution:
+        // @lamalibre/sync-server → <root>/sync/packages/sync-server
+        // @lamalibre/herd-server → <root>/herd/packages/herd-server
+        let install_target = resolve_dev_source(&pkg).unwrap_or_else(|| pkg.clone());
+
         let _node = find_node()?; // Validate node is available
         let output = Command::new("npm")
-            .args(["install", "--ignore-scripts", &pkg])
+            .args(["install", "--ignore-scripts", &install_target])
             .current_dir(&local_dir)
             .output()
             .map_err(|e| format!("npm install failed: {}", e))?;
@@ -686,11 +745,13 @@ pub async fn local_install_plugin(package_name: String) -> Result<LocalPluginEnt
 
         // Build entry
         let capabilities = normalize_capabilities(manifest.capabilities.as_ref());
+        let pkg_version = read_package_version(&local_dir, &pkg)
+            .unwrap_or_else(|_| manifest.version.clone().unwrap_or_else(|| "unknown".into()));
         let entry = LocalPluginEntry {
             name: manifest.name,
             display_name: manifest.display_name,
             package_name: pkg,
-            version: manifest.version.unwrap_or_else(|| "unknown".into()),
+            version: pkg_version,
             description: manifest.description,
             status: "disabled".into(),
             capabilities: Some(capabilities),
@@ -839,13 +900,306 @@ pub async fn local_fetch_plugin_bundle(name: String) -> Result<String, String> {
             return Err("Server package scope violation".into());
         }
 
-        let panel_path = config::local_dir()
+        let pkg_root = config::local_dir()
             .join("node_modules")
-            .join(server_pkg)
-            .join("panel.js");
+            .join(server_pkg);
+
+        // Check common panel bundle locations: root, then dist/
+        let panel_path = pkg_root.join("panel.js");
+        let panel_path = if panel_path.exists() {
+            panel_path
+        } else {
+            pkg_root.join("dist").join("panel.js")
+        };
 
         std::fs::read_to_string(&panel_path)
             .map_err(|e| format!("Failed to read panel bundle: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginUpdateInfo {
+    pub name: String,
+    pub current_version: String,
+    pub latest_version: String,
+    pub has_update: bool,
+}
+
+#[tauri::command]
+pub async fn local_check_plugin_update(name: String) -> Result<PluginUpdateInfo, String> {
+    tokio::task::spawn_blocking(move || {
+        let registry = load_local_plugin_registry()?;
+        let plugin = registry
+            .plugins
+            .iter()
+            .find(|p| p.name == name)
+            .ok_or_else(|| format!("Plugin \"{}\" not found", name))?;
+
+        let pkg = &plugin.package_name;
+        if !pkg.starts_with("@lamalibre/") {
+            return Err("Invalid package scope".into());
+        }
+
+        let current = plugin.version.clone();
+
+        // npm view <pkg> version --json
+        let output = Command::new("npm")
+            .args(["view", pkg, "version", "--json"])
+            .output()
+            .map_err(|e| format!("Failed to check npm registry: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("npm view failed: {}", stderr));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let latest: String = serde_json::from_str(stdout.trim())
+            .unwrap_or_else(|_| stdout.trim().trim_matches('"').to_string());
+
+        let has_update = latest != current;
+
+        Ok(PluginUpdateInfo {
+            name,
+            current_version: current,
+            latest_version: latest,
+            has_update,
+        })
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn local_update_plugin(name: String) -> Result<LocalPluginEntry, String> {
+    tokio::task::spawn_blocking(move || {
+        let registry = load_local_plugin_registry()?;
+        let plugin = registry
+            .plugins
+            .iter()
+            .find(|p| p.name == name)
+            .ok_or_else(|| format!("Plugin \"{}\" not found", name))?;
+
+        let pkg = plugin.package_name.clone();
+        if !pkg.starts_with("@lamalibre/") {
+            return Err("Invalid package scope".into());
+        }
+
+        let was_enabled = plugin.status == "enabled";
+
+        // npm install to latest version
+        let local_dir = config::local_dir();
+        let install_target = resolve_dev_source(&pkg).unwrap_or_else(|| format!("{}@latest", pkg));
+
+        let output = Command::new("npm")
+            .args(["install", "--ignore-scripts", &install_target])
+            .current_dir(&local_dir)
+            .output()
+            .map_err(|e| format!("npm install failed: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("npm install failed: {}", stderr));
+        }
+
+        // Re-read manifest from updated package
+        let manifest = read_manifest(&local_dir, &pkg)?;
+
+        // Read version from package.json (authoritative) rather than manifest
+        let pkg_version = read_package_version(&local_dir, &pkg)
+            .unwrap_or_else(|_| manifest.version.clone().unwrap_or_else(|| "unknown".into()));
+
+        // Update registry entry
+        let mut registry = load_local_plugin_registry()?;
+        let entry = registry
+            .plugins
+            .iter_mut()
+            .find(|p| p.name == name)
+            .ok_or_else(|| format!("Plugin \"{}\" disappeared from registry", name))?;
+
+        entry.version = pkg_version;
+        entry.description = manifest.description;
+        entry.display_name = manifest.display_name;
+        entry.capabilities = Some(normalize_capabilities(manifest.capabilities.as_ref()));
+        entry.modes = manifest.modes;
+        entry.packages = manifest.packages;
+        entry.panel = manifest.panel;
+        entry.config = manifest.config;
+
+        let updated = entry.clone();
+        save_local_plugin_registry(&registry)?;
+
+        // Restart host if plugin was enabled so it picks up new code
+        if was_enabled {
+            let (running, _) = get_local_host_service_status();
+            if running {
+                let _ = restart_local_host_service();
+            }
+        }
+
+        Ok(updated)
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+/// Map plugin name → (bundle identifier, product name) for desktop app detection.
+fn desktop_app_info(plugin_name: &str) -> Option<(&'static str, &'static str)> {
+    match plugin_name {
+        "sync" => Some(("com.lamalibre.sync", "Sync")),
+        "herd" => Some(("com.lamalibre.herd", "Herd")),
+        "shell" => Some(("com.lamalibre.shell", "Shell")),
+        "gate" => Some(("com.lamalibre.gate", "Gate")),
+        _ => None,
+    }
+}
+
+/// Find the .app path for a bundle identifier using macOS `mdfind`.
+fn find_app_path(bundle_id: &str, product_name: &str) -> Option<String> {
+    // Try mdfind (Spotlight) first
+    if let Ok(output) = Command::new("mdfind")
+        .args(["kMDItemCFBundleIdentifier", "==", bundle_id])
+        .output()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for line in stdout.lines() {
+            if line.ends_with(".app") {
+                return Some(line.to_string());
+            }
+        }
+    }
+
+    // Fall back to common paths
+    let candidates = [
+        format!("/Applications/{}.app", product_name),
+        format!(
+            "{}/Applications/{}.app",
+            std::env::var("HOME").unwrap_or_default(),
+            product_name
+        ),
+    ];
+    for path in &candidates {
+        if std::path::Path::new(path).exists() {
+            return Some(path.clone());
+        }
+    }
+    None
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopAppStatus {
+    pub installed: bool,
+    pub app_path: Option<String>,
+    pub product_name: Option<String>,
+}
+
+#[tauri::command]
+pub async fn local_check_desktop_app(name: String) -> Result<DesktopAppStatus, String> {
+    tokio::task::spawn_blocking(move || {
+        let (bundle_id, product_name) = desktop_app_info(&name)
+            .ok_or_else(|| format!("No desktop app mapping for plugin \"{}\"", name))?;
+
+        let app_path = find_app_path(bundle_id, product_name);
+
+        Ok(DesktopAppStatus {
+            installed: app_path.is_some(),
+            app_path,
+            product_name: Some(product_name.to_string()),
+        })
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn local_open_desktop_app(name: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let (bundle_id, product_name) = desktop_app_info(&name)
+            .ok_or_else(|| format!("No desktop app mapping for plugin \"{}\"", name))?;
+
+        let app_path = find_app_path(bundle_id, product_name)
+            .ok_or_else(|| format!("{}.app not found", product_name))?;
+
+        Command::new("open")
+            .arg(&app_path)
+            .output()
+            .map_err(|e| format!("Failed to open app: {}", e))?;
+
+        Ok(format!("Opened {}", app_path))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn local_uninstall_desktop_app(name: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let (bundle_id, product_name) = desktop_app_info(&name)
+            .ok_or_else(|| format!("No desktop app mapping for plugin \"{}\"", name))?;
+
+        let app_path = find_app_path(bundle_id, product_name)
+            .ok_or_else(|| format!("{}.app not found", product_name))?;
+
+        // Quit the app if running
+        let _ = Command::new("osascript")
+            .args([
+                "-e",
+                &format!("tell application \"{}\" to quit", product_name),
+            ])
+            .output();
+
+        // Give it a moment to quit gracefully, then force-kill if still running
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        let _ = Command::new("pkill")
+            .args(["-f", &app_path])
+            .output();
+
+        // Move to Trash
+        Command::new("osascript")
+            .args([
+                "-e",
+                &format!(
+                    "tell application \"Finder\" to delete POSIX file \"{}\"",
+                    app_path
+                ),
+            ])
+            .output()
+            .map_err(|e| format!("Failed to move app to Trash: {}", e))?;
+
+        Ok(format!("Moved {} to Trash", app_path))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn local_install_desktop_app(name: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let registry = load_local_plugin_registry()?;
+        let plugin = registry
+            .plugins
+            .iter()
+            .find(|p| p.name == name)
+            .ok_or_else(|| format!("Plugin \"{}\" not found", name))?;
+
+        // Convention: @lamalibre/<name>-server → @lamalibre/install-<name>-desktop
+        let installer = format!("@lamalibre/install-{}-desktop", plugin.name);
+
+        let output = Command::new("npx")
+            .args(["--yes", &installer, "--yes"])
+            .output()
+            .map_err(|e| format!("Failed to run installer: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Installer failed: {}", stderr));
+        }
+
+        Ok(format!("Installed via npx {}", installer))
     })
     .await
     .map_err(|e| format!("Task failed: {}", e))?

@@ -111,6 +111,54 @@ curl -s --cert client.p12:password \
 | 500    | `{"error":"Failed to retrieve system stats"}`                    | `systeminformation` library call failed |
 | 503    | `{"error":"Onboarding not complete","onboardingStatus":"FRESH"}` | Onboarding has not finished             |
 
+---
+
+### `POST /api/system/update`
+
+Triggers a background update of the Portlama panel server to the specified version. The update is executed asynchronously via `systemd-run` so that the panel server process can restart without terminating the update.
+
+**Authentication:** Admin-only. Agent certificates cannot trigger updates.
+
+**Request:**
+
+```json
+{
+  "version": "1.0.43"
+}
+```
+
+| Field     | Type     | Required | Description                            |
+| --------- | -------- | -------- | -------------------------------------- |
+| `version` | `string` | Yes      | Target version to update to (e.g., `"1.0.43"`) |
+
+```bash
+curl -s --cert client.p12:password \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"version":"1.0.43"}' \
+  https://203.0.113.42:9292/api/system/update | jq
+```
+
+**Response (202):**
+
+```json
+{
+  "ok": true,
+  "message": "Update to create-portlama@1.0.43 initiated. The panel will restart shortly."
+}
+```
+
+The 202 status indicates the update has been accepted and is running in the background. The panel server will restart as part of the update process, so the client should expect the connection to drop and poll `/api/health` to detect when the new version is running.
+
+**Errors:**
+
+| Status | Body                                                             | When                                    |
+| ------ | ---------------------------------------------------------------- | --------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{"issues":[...]}}`       | Missing or invalid `version` field      |
+| 403    | `{"error":"Insufficient certificate scope"}`                     | Non-admin certificate                   |
+| 503    | `{"error":"Onboarding not complete","onboardingStatus":"FRESH"}` | Onboarding has not finished             |
+
+---
+
 ### Caching Behavior
 
 The stats response is cached for 2 seconds. Multiple requests within the cache window return the same data without querying the operating system again. This prevents performance degradation when the dashboard polls frequently or multiple browser tabs are open.
@@ -121,6 +169,7 @@ The stats response is cached for 2 seconds. Multiple requests within the cache w
 | ------ | ------------------- | ---------------------------------------- | ------------------------- |
 | GET    | `/api/health`       | None (no mTLS)                           | Health check with version |
 | GET    | `/api/system/stats` | mTLS (admin or agent with `system:read`) | CPU, memory, disk, uptime |
+| POST   | `/api/system/update`| mTLS (admin only)                        | Trigger background update |
 
 ### Response Shapes
 

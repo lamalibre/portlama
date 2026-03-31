@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-04-01
+
+### Added
+
+- Add server-side storage system — AES-256-GCM encrypted credential storage, plugin bindings, and admin API (`panel-server`)
+- Add `POST /api/system/update` endpoint for admin-triggered panel self-update via systemd-run (`panel-server`)
+- Add CSR-based agent certificate upgrade to hardware-bound via `POST /api/certs/agent/upgrade-cert` (`panel-server`)
+- Add enrollment token revocation via `DELETE /api/certs/agent/enroll/:label` (`panel-server`)
+- Add `@lamalibre/install-portlama-agent` package for agent cert upgrade to hardware-bound (new)
+- Add Storage admin page to panel and admin-panel shared package (`panel-client`, `portlama-admin-panel`)
+- Add panel server updater module with SSH-based remote update and health verification (`portlama-cloud`)
+- Add panel update commands to desktop app: `check_panel_update`, `update_panel_server` (`portlama-desktop`)
+- Add storage-to-panel bridge commands in desktop: `push_storage_to_panel`, `bind_plugin_storage`, `setup_plugin_storage` (`portlama-desktop`)
+
+### Changed
+
+- Migrate panel-client pages to portlama-admin-panel shared package — panel-client now consumes pages from the shared library (`panel-client`, `portlama-admin-panel`)
+- Replace P12-based agent enrollment with CSR-based token enrollment — agent generates keypair locally, sends CSR with one-time token (`portlama-agent`)
+- Remove macOS Keychain identity import from agent CLI — desktop app handles Keychain via Rust crate (`portlama-agent`)
+- Enrollment token creation now silently replaces existing active token for the same label instead of returning 409 (`panel-server`)
+
+### Fixed
+
+- Fix `panel.json` written with mode 0640 instead of 0600 — file contains session secrets (`panel-server`, `create-portlama`)
+- Fix missing fsync before rename in config auto-write and updateConfig — crash could corrupt config (`panel-server`)
+- Fix CORS `origin: true` on local plugin host reflecting arbitrary origins with credentials — restrict to Tauri and localhost origins (`portlama-agent`)
+- Fix sudoers wildcard for self-update allowing potential argument injection — tighten to require `.sh` extension (`create-portlama`)
+- Fix missing buffer length validation in `decryptCredential` — corrupted data could cause unpredictable crypto errors (`panel-server`)
+- Fix read-only storage operations unnecessarily holding write mutex (`panel-server`)
+- Fix update script not cleaned up when systemd-run launch fails (`panel-server`)
+
+### Security
+
+- Tighten sudoers rule for panel self-update: pin `.sh` extension, add descriptive comment about wildcard scope (`create-portlama`)
+- Restrict local plugin host CORS to explicit origin allowlist instead of echoing any origin (`portlama-agent`)
+- Change `panel.json` file permissions from 0640 to 0600 — contains `sessionSecret` and `panel2fa.secret` (`panel-server`, `create-portlama`)
+
+**Affected packages:** panel-server 0.1.26, panel-client 0.1.10, portlama-agent 1.0.21, create-portlama 1.0.49, portlama-admin-panel 0.1.2, portlama-cloud 0.1.3, portlama-desktop 0.1.12, install-portlama-agent 1.0.0 (new)
+
+---
+
 ## [Unreleased] - 2026-03-30
 
 ### Added

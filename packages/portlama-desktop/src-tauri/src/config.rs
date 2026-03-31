@@ -217,12 +217,17 @@ pub fn load_admin_config() -> Result<AdminApiConfig, String> {
     let active = servers.iter().find(|s| s.get("active").and_then(|v| v.as_bool()).unwrap_or(false))
         .ok_or("No active server")?;
 
-    let server_id = active.get("id").and_then(|v| v.as_str()).unwrap_or("");
-    let panel_url = active.get("panelUrl").and_then(|v| v.as_str())
-        .ok_or("Active server has no panelUrl")?.to_string();
+    admin_config_from_server(active)
+}
+
+/// Build AdminApiConfig from a raw serde_json::Value server entry.
+fn admin_config_from_server(server: &serde_json::Value) -> Result<AdminApiConfig, String> {
+    let server_id = server.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let panel_url = server.get("panelUrl").and_then(|v| v.as_str())
+        .ok_or("Server has no panelUrl")?.to_string();
 
     // Check for explicit admin_auth
-    if let Some(admin_auth) = active.get("adminAuth") {
+    if let Some(admin_auth) = server.get("adminAuth") {
         let method = admin_auth.get("method").and_then(|v| v.as_str()).unwrap_or("p12").to_string();
         let p12_path = admin_auth.get("p12Path").and_then(|v| v.as_str()).map(String::from);
         let keychain_identity = admin_auth.get("keychainIdentity").and_then(|v| v.as_str()).map(String::from);
@@ -244,9 +249,9 @@ pub fn load_admin_config() -> Result<AdminApiConfig, String> {
     }
 
     // Fall back to top-level auth (cloud-provisioned servers)
-    let auth_method = active.get("authMethod").and_then(|v| v.as_str()).unwrap_or("p12").to_string();
-    let p12_path = active.get("p12Path").and_then(|v| v.as_str()).map(String::from);
-    let keychain_identity = active.get("keychainIdentity").and_then(|v| v.as_str()).map(String::from);
+    let auth_method = server.get("authMethod").and_then(|v| v.as_str()).unwrap_or("p12").to_string();
+    let p12_path = server.get("p12Path").and_then(|v| v.as_str()).map(String::from);
+    let keychain_identity = server.get("keychainIdentity").and_then(|v| v.as_str()).map(String::from);
 
     let mut p12_password = None;
     if auth_method == "p12" {
@@ -262,6 +267,25 @@ pub fn load_admin_config() -> Result<AdminApiConfig, String> {
         p12_password,
         keychain_identity,
     })
+}
+
+/// Load the admin configuration for a server identified by label.
+pub fn load_admin_config_for_label(label: &str) -> Result<AdminApiConfig, String> {
+    let registry_path = servers_registry_path();
+    if !registry_path.exists() {
+        return Err("No servers configured".to_string());
+    }
+
+    let content = std::fs::read_to_string(&registry_path)
+        .map_err(|e| format!("Failed to read servers.json: {}", e))?;
+    let servers: Vec<serde_json::Value> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse servers.json: {}", e))?;
+
+    let server = servers.iter()
+        .find(|s| s.get("label").and_then(|v| v.as_str()) == Some(label))
+        .ok_or_else(|| format!("No server with label \"{}\"", label))?;
+
+    admin_config_from_server(server)
 }
 
 /// Get the active server's mode ("agent" or "admin").

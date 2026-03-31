@@ -14,8 +14,8 @@ import {
   updateAgentAllowedSites,
   getValidCapabilities,
 } from '../../lib/mtls.js';
-import { createEnrollmentToken } from '../../lib/enrollment.js';
-import { signAdminCSR } from '../../lib/csr-signing.js';
+import { createEnrollmentToken, revokeEnrollmentToken } from '../../lib/enrollment.js';
+import { signAdminCSR, rotateAgentCSR } from '../../lib/csr-signing.js';
 import { getConfig, updateConfig } from '../../lib/config.js';
 import { addToRevocationList } from '../../lib/revocation.js';
 import * as nginx from '../../lib/nginx.js';
@@ -95,6 +95,15 @@ const UpdateAllowedSitesSchema = z.object({
 });
 
 const AdminUpgradeSchema = z.object({
+  csr: z
+    .string()
+    .min(1, 'CSR is required')
+    .refine((v) => v.includes('BEGIN CERTIFICATE REQUEST'), {
+      message: 'CSR must be PEM-encoded',
+    }),
+});
+
+const AgentUpgradeSchema = z.object({
   csr: z
     .string()
     .min(1, 'CSR is required')
@@ -393,6 +402,41 @@ export default async function certsRoutes(fastify, _opts) {
   );
 
   // ------------------------------------------------------------------
+  // POST /certs/agent/upgrade-cert — upgrade agent cert to hardware-bound
+  // via CSR. Agent-role only — agents can only rotate their own cert.
+  // ------------------------------------------------------------------
+  fastify.post(
+    '/certs/agent/upgrade-cert',
+    {
+      preHandler: fastify.requireRole(['agent']),
+    },
+    async (request, reply) => {
+      const body = AgentUpgradeSchema.parse(request.body);
+      const label = request.certLabel;
+
+      if (!label) {
+        return reply.code(403).send({ error: 'Agent label not found in certificate' });
+      }
+
+      try {
+        const result = await rotateAgentCSR(body.csr, label, request.log);
+        return {
+          ok: true,
+          cert: result.certPem,
+          caCert: result.caCertPem,
+          serial: result.serial,
+          expiresAt: result.expiresAt,
+        };
+      } catch (err) {
+        const statusCode = err.statusCode || 500;
+        return reply.code(statusCode).send({
+          error: err.message || 'Agent certificate upgrade failed',
+        });
+      }
+    },
+  );
+
+  // ------------------------------------------------------------------
   // POST /certs/agent — generate a new agent certificate
   // ------------------------------------------------------------------
   fastify.post(
@@ -446,6 +490,23 @@ export default async function certsRoutes(fastify, _opts) {
           error: err.message || 'Enrollment token generation failed',
         });
       }
+    },
+  );
+
+  // ------------------------------------------------------------------
+  // DELETE /certs/agent/enroll/:label — revoke unused enrollment token
+  // Called by the desktop app when agent installation fails before
+  // enrollment, preventing the token from being used elsewhere.
+  // ------------------------------------------------------------------
+  fastify.delete(
+    '/certs/agent/enroll/:label',
+    {
+      preHandler: fastify.requireRole(['admin']),
+    },
+    async (request, _reply) => {
+      const params = AgentLabelParamSchema.parse(request.params);
+      const result = await revokeEnrollmentToken(params.label, request.log);
+      return { ok: true, ...result };
     },
   );
 

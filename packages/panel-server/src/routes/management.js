@@ -11,6 +11,7 @@ import pluginRoutes from './management/plugins.js';
 import settingsRoutes from './management/settings.js';
 import ticketRoutes from './management/tickets.js';
 import identityRoutes from './management/identity.js';
+import storageRoutes from './management/storage.js';
 
 export default async function managementRoutes(fastify, _opts) {
   fastify.addHook('onRequest', managementOnly());
@@ -27,4 +28,5 @@ export default async function managementRoutes(fastify, _opts) {
   await fastify.register(settingsRoutes);
   await fastify.register(ticketRoutes);
   await fastify.register(identityRoutes);
+  await fastify.register(storageRoutes);
 }

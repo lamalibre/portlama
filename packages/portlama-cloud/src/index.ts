@@ -28,6 +28,16 @@ export type {
   DnsSetupResult,
 } from './types.js';
 
+// Types — update
+export type {
+  UpdateStep,
+  UpdateStepEvent,
+  UpdateErrorEvent,
+  UpdateCompleteEvent,
+  UpdateProgressEvent,
+  UpdateOptions,
+} from './types.js';
+
 // Types — storage
 export { BUCKET_NAME_REGEX } from './types.js';
 export type {
@@ -59,6 +69,7 @@ export { DigitalOceanSpacesProvider } from './digitalocean/spaces.js';
 // Provisioners
 export { provision } from './provisioner.js';
 export { provisionStorage } from './storage-provisioner.js';
+export { update } from './updater.js';
 
 // SSH utilities (only safe functions exported; sshExec/scpDownload are internal
 // because their command/path parameters are shell-interpreted on the remote host)

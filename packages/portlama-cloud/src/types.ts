@@ -254,3 +254,49 @@ export interface StorageProvisionOptions {
   readonly label: string;
   readonly bucket?: string | undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Panel update progress (NDJSON protocol)
+// ---------------------------------------------------------------------------
+
+export type UpdateStep =
+  | 'generate_ssh_key'
+  | 'upload_ssh_key'
+  | 'wait_ssh'
+  | 'update_panel'
+  | 'verify_health'
+  | 'cleanup';
+
+export interface UpdateStepEvent {
+  readonly event: 'step';
+  readonly step: UpdateStep;
+  readonly status: StepStatus;
+  readonly data?: Record<string, unknown>;
+}
+
+export interface UpdateErrorEvent {
+  readonly event: 'error';
+  readonly step: UpdateStep;
+  readonly message: string;
+  readonly recoverable: boolean;
+}
+
+export interface UpdateCompleteEvent {
+  readonly event: 'complete';
+  readonly version: string;
+}
+
+export type UpdateProgressEvent =
+  | UpdateStepEvent
+  | UpdateErrorEvent
+  | UpdateCompleteEvent;
+
+// ---------------------------------------------------------------------------
+// Panel update options
+// ---------------------------------------------------------------------------
+
+export interface UpdateOptions {
+  readonly token: string;
+  readonly serverId: string;
+  readonly version: string;
+}

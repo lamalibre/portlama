@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-shell';
 import {
   Terminal,
   Activity,
@@ -10,7 +9,6 @@ import {
   ScrollText,
   Settings,
   AlertTriangle,
-  ExternalLink,
   Cloud,
   Server,
   FileText,
@@ -20,6 +18,7 @@ import {
   Package,
   ChevronLeft,
   Puzzle,
+  HardDrive,
 } from 'lucide-react';
 import {
   AdminClientProvider,
@@ -34,6 +33,7 @@ import {
   PluginsPage,
   TunnelsPage,
   SettingsPage as AdminSettingsPage,
+  StoragePage,
 } from '@lamalibre/portlama-admin-panel';
 import {
   AgentClientProvider,
@@ -67,6 +67,7 @@ const SERVER_ADMIN_TABS = [
   { id: 'server-certificates', label: 'Certificates', icon: ShieldCheck },
   { id: 'server-tickets', label: 'Tickets', icon: Ticket },
   { id: 'server-plugins', label: 'Plugins', icon: Package },
+  { id: 'server-storage', label: 'Storage', icon: HardDrive },
   { id: 'server-settings', label: 'Settings', icon: Settings },
 ];
 
@@ -228,18 +229,6 @@ export default function App() {
     );
   }
 
-  const handleOpenPanel = async () => {
-    try {
-      const url = await invoke('get_panel_url');
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        return;
-      }
-      await open(url);
-    } catch {
-      // silently ignore if config not loaded or URL invalid
-    }
-  };
 
   const renderServerDetailPage = () => {
     if (!managingHasAdmin) {
@@ -278,6 +267,8 @@ export default function App() {
         return <TicketsPage />;
       case 'server-plugins':
         return <PluginsPage />;
+      case 'server-storage':
+        return <StoragePage />;
       case 'server-settings':
         return <AdminSettingsPage hasDomain={managingHasDomain} />;
       default:
@@ -473,44 +464,25 @@ export default function App() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-zinc-800">
-          <button
-            type="button"
-            onClick={handleOpenPanel}
-            className="w-full flex items-center gap-2 px-4 py-2 text-xs text-zinc-500 hover:text-zinc-300"
-          >
-            <ExternalLink size={12} />
-            Open Panel
-          </button>
-          <div className="px-4 pb-3 flex items-center gap-2 text-xs">
-            {agents.length > 0 ? (
-              <>
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    agents.every((a) => a.running)
-                      ? 'bg-green-400'
-                      : agents.some((a) => a.running)
-                        ? 'bg-amber-400'
-                        : 'bg-red-400'
-                  }`}
-                />
-                <span className="text-zinc-500">
-                  {agents.filter((a) => a.running).length}/{agents.length} agents
-                </span>
-              </>
-            ) : (
-              <>
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    status?.chisel?.running ? 'bg-green-400' : 'bg-red-400'
-                  }`}
-                />
-                <span className="text-zinc-500">
-                  {status?.chisel?.running ? 'Connected' : 'Disconnected'}
-                </span>
-              </>
-            )}
-          </div>
+        <div className="border-t border-zinc-800 px-4 py-3 flex items-center gap-2 text-xs">
+          {agents.length > 0 ? (
+            <>
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  agents.every((a) => a.running)
+                    ? 'bg-green-400'
+                    : agents.some((a) => a.running)
+                      ? 'bg-amber-400'
+                      : 'bg-red-400'
+                }`}
+              />
+              <span className="text-zinc-500">
+                {agents.filter((a) => a.running).length}/{agents.length} agents
+              </span>
+            </>
+          ) : (
+            <span className="text-zinc-600 font-mono text-[10px]">v0.1.12</span>
+          )}
         </div>
       </div>
 

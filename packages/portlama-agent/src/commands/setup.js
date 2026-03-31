@@ -7,7 +7,6 @@ import { Listr } from 'listr2';
 import chalk from 'chalk';
 import {
   assertSupportedPlatform,
-  isDarwin,
   CHISEL_BIN_DIR,
   AGENT_DIR,
   agentDataDir,
@@ -161,9 +160,7 @@ async function runTokenSetup(flags) {
 
   console.log('');
   console.log(chalk.bold('  Portlama Agent Setup (Token-Based Enrollment)'));
-  console.log(chalk.dim(isDarwin()
-    ? '  Connect this Mac to your Portlama server using a Keychain-bound certificate.'
-    : '  Connect this machine to your Portlama server using a certificate.'));
+  console.log(chalk.dim('  Connect this machine to your Portlama server using a certificate.'));
   console.log('');
 
   let panelUrl = flags.panelUrl;
@@ -185,7 +182,6 @@ async function runTokenSetup(flags) {
     explicitLabel: flags.label,
     agentLabel: null,
     resolvedLabel: null,
-    keychainIdentity: null,
     p12Path: null,
     p12Password: null,
     chiselVersion: null,
@@ -247,7 +243,7 @@ async function runTokenSetup(flags) {
         },
       },
       {
-        title: isDarwin() ? 'Importing certificate into Keychain' : 'Storing certificate',
+        title: 'Storing certificate',
         task: async (_ctx, task) => {
           const result = await storeEnrolledCert(
             ctx._keyData.keyPath,
@@ -256,14 +252,9 @@ async function runTokenSetup(flags) {
             ctx.resolvedLabel,
             console,
           );
-          if (result.identity) {
-            ctx.keychainIdentity = result.identity;
-            task.output = `Identity "${result.identity}" imported (non-extractable)`;
-          } else {
-            ctx.p12Path = result.p12Path;
-            ctx.p12Password = result.p12Password;
-            task.output = `Certificate stored at ${result.p12Path}`;
-          }
+          ctx.p12Path = result.p12Path;
+          ctx.p12Password = result.p12Password;
+          task.output = `Certificate stored at ${result.p12Path}`;
         },
         rendererOptions: { persistentOutput: true },
       },
@@ -277,9 +268,7 @@ async function runTokenSetup(flags) {
       {
         title: 'Verifying panel connectivity',
         task: async (_ctx, task) => {
-          const authConfig = ctx.keychainIdentity
-            ? { panelUrl: ctx.panelUrl, authMethod: 'keychain', keychainIdentity: ctx.keychainIdentity }
-            : { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
+          const authConfig = { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
           const health = await fetchHealth(authConfig);
           task.output = `Panel is reachable (status: ${health.status || 'ok'})`;
         },
@@ -301,9 +290,7 @@ async function runTokenSetup(flags) {
       {
         title: 'Fetching tunnel configuration',
         task: async (_ctx, task) => {
-          const authConfig = ctx.keychainIdentity
-            ? { panelUrl: ctx.panelUrl, authMethod: 'keychain', keychainIdentity: ctx.keychainIdentity }
-            : { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
+          const authConfig = { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
 
           const agentConfig = await fetchAgentConfig(authConfig);
           ctx.domain = agentConfig.domain;
@@ -362,20 +349,14 @@ async function runTokenSetup(flags) {
         task: async () => {
           const configData = {
             panelUrl: ctx.panelUrl,
+            authMethod: 'p12',
+            p12Path: ctx.p12Path,
+            p12Password: ctx.p12Password,
             agentLabel: ctx.agentLabel,
             domain: ctx.domain,
             chiselVersion: ctx.chiselVersion,
             setupAt: new Date().toISOString(),
           };
-
-          if (ctx.keychainIdentity) {
-            configData.authMethod = 'keychain';
-            configData.keychainIdentity = ctx.keychainIdentity;
-          } else {
-            configData.authMethod = 'p12';
-            configData.p12Path = ctx.p12Path;
-            configData.p12Password = ctx.p12Password;
-          }
 
           await saveAgentConfig(ctx.resolvedLabel, configData);
 
@@ -383,9 +364,9 @@ async function runTokenSetup(flags) {
           await upsertAgent({
             label: ctx.resolvedLabel,
             panelUrl: ctx.panelUrl,
-            authMethod: configData.authMethod,
-            p12Path: configData.p12Path || null,
-            keychainIdentity: configData.keychainIdentity || null,
+            authMethod: 'p12',
+            p12Path: ctx.p12Path,
+            keychainIdentity: null,
             agentLabel: ctx.agentLabel,
             domain: ctx.domain,
             chiselVersion: ctx.chiselVersion,
@@ -440,7 +421,6 @@ async function runTokenSetupJson(flags) {
     explicitLabel: flags.label,
     agentLabel: null,
     resolvedLabel: null,
-    keychainIdentity: null,
     p12Path: null,
     p12Password: null,
     chiselVersion: null,
@@ -499,7 +479,7 @@ async function runTokenSetupJson(flags) {
     },
     {
       key: 'import_cert',
-      title: isDarwin() ? 'Importing certificate into Keychain' : 'Storing certificate',
+      title: 'Storing certificate',
       fn: async () => {
         const result = await storeEnrolledCert(
           ctx._keyData.keyPath,
@@ -508,12 +488,8 @@ async function runTokenSetupJson(flags) {
           ctx.resolvedLabel,
           { log: () => {}, warn: () => {}, error: () => {} },
         );
-        if (result.identity) {
-          ctx.keychainIdentity = result.identity;
-        } else {
-          ctx.p12Path = result.p12Path;
-          ctx.p12Password = result.p12Password;
-        }
+        ctx.p12Path = result.p12Path;
+        ctx.p12Password = result.p12Password;
       },
     },
     {
@@ -528,9 +504,7 @@ async function runTokenSetupJson(flags) {
       key: 'verify_connectivity',
       title: 'Verifying panel connectivity',
       fn: async () => {
-        const authConfig = ctx.keychainIdentity
-          ? { panelUrl: ctx.panelUrl, authMethod: 'keychain', keychainIdentity: ctx.keychainIdentity }
-          : { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
+        const authConfig = { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
         await fetchHealth(authConfig);
       },
     },
@@ -546,9 +520,7 @@ async function runTokenSetupJson(flags) {
       key: 'fetch_config',
       title: 'Fetching tunnel configuration',
       fn: async () => {
-        const authConfig = ctx.keychainIdentity
-          ? { panelUrl: ctx.panelUrl, authMethod: 'keychain', keychainIdentity: ctx.keychainIdentity }
-          : { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
+        const authConfig = { panelUrl: ctx.panelUrl, authMethod: 'p12', p12Path: ctx.p12Path, p12Password: ctx.p12Password };
 
         const agentConfig = await fetchAgentConfig(authConfig);
         ctx.domain = agentConfig.domain;
@@ -605,29 +577,23 @@ async function runTokenSetupJson(flags) {
       fn: async () => {
         const configData = {
           panelUrl: ctx.panelUrl,
+          authMethod: 'p12',
+          p12Path: ctx.p12Path,
+          p12Password: ctx.p12Password,
           agentLabel: ctx.agentLabel,
           domain: ctx.domain,
           chiselVersion: ctx.chiselVersion,
           setupAt: new Date().toISOString(),
         };
 
-        if (ctx.keychainIdentity) {
-          configData.authMethod = 'keychain';
-          configData.keychainIdentity = ctx.keychainIdentity;
-        } else {
-          configData.authMethod = 'p12';
-          configData.p12Path = ctx.p12Path;
-          configData.p12Password = ctx.p12Password;
-        }
-
         await saveAgentConfig(ctx.resolvedLabel, configData);
 
         await upsertAgent({
           label: ctx.resolvedLabel,
           panelUrl: ctx.panelUrl,
-          authMethod: configData.authMethod,
-          p12Path: configData.p12Path || null,
-          keychainIdentity: configData.keychainIdentity || null,
+          authMethod: 'p12',
+          p12Path: ctx.p12Path,
+          keychainIdentity: null,
           agentLabel: ctx.agentLabel,
           domain: ctx.domain,
           chiselVersion: ctx.chiselVersion,
@@ -650,12 +616,17 @@ async function runTokenSetupJson(flags) {
     process.exit(1);
   }
 
+  // The p12Password transits via stdout pipe to the parent process (Tauri desktop app),
+  // which stores it in the OS credential store. Pipes are not visible in process listings.
+  // This is the same trust boundary as the server provisioner's SCP-based P12 transfer.
   emitJson({
     event: 'complete',
     agent: {
       label: ctx.resolvedLabel,
       panelUrl: ctx.panelUrl,
-      authMethod: ctx.keychainIdentity ? 'keychain' : 'p12',
+      authMethod: 'p12',
+      p12Path: ctx.p12Path,
+      p12Password: ctx.p12Password,
       domain: ctx.domain,
       chiselVersion: ctx.chiselVersion,
     },
@@ -676,9 +647,7 @@ async function runP12Setup(options = {}) {
 
   console.log('');
   console.log(chalk.bold('  Portlama Agent Setup'));
-  console.log(chalk.dim(isDarwin()
-    ? '  Connect this Mac to your Portlama server.'
-    : '  Connect this machine to your Portlama server.'));
+  console.log(chalk.dim('  Connect this machine to your Portlama server.'));
   console.log('');
   console.log(chalk.dim('  The admin must generate an agent certificate from the panel first:'));
   console.log(chalk.dim('    Panel → Certificates → Agent Certificates → Generate'));

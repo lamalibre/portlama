@@ -1,4 +1,5 @@
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import crypto from 'node:crypto';
+import { readFile, writeFile, rename, open } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { z } from 'zod';
@@ -8,6 +9,7 @@ const ConfigSchema = z.object({
   domain: z.string().nullable(),
   email: z.string().email().nullable(),
   dataDir: z.string().min(1),
+  serverId: z.string().uuid().optional(),
   staticDir: z.string().optional(),
   maxSiteSize: z
     .number()
@@ -67,6 +69,21 @@ export async function loadConfig() {
   }
 
   const validated = ConfigSchema.parse(parsed);
+
+  // Auto-generate serverId if missing — used as bucket prefix for multi-server isolation
+  if (!validated.serverId) {
+    validated.serverId = crypto.randomUUID();
+    const tmpPath = `${configPath}.tmp`;
+    await writeFile(tmpPath, JSON.stringify(validated, null, 2) + '\n', {
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
+    const fd = await open(tmpPath, 'r');
+    await fd.sync();
+    await fd.close();
+    await rename(tmpPath, configPath);
+  }
+
   config = validated;
   return structuredClone(config);
 }
@@ -100,8 +117,11 @@ export async function updateConfig(patch) {
   const tmpPath = `${configPath}.tmp`;
   await writeFile(tmpPath, JSON.stringify(validated, null, 2) + '\n', {
     encoding: 'utf-8',
-    mode: 0o640,
+    mode: 0o600,
   });
+  const fd = await open(tmpPath, 'r');
+  await fd.sync();
+  await fd.close();
   await rename(tmpPath, configPath);
 
   config = validated;

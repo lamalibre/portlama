@@ -252,12 +252,21 @@ fn get_agent_systemd_status(label: &str) -> (bool, Option<u32>) {
 }
 
 /// Convert an AgentEntry to AgentConfig for API calls.
+/// If the P12 password is not in the entry (skip_serializing), retrieve it
+/// from the OS credential store.
 pub fn agent_entry_to_config(entry: &AgentEntry) -> config::AgentConfig {
+    let mut p12_password = entry.p12_password.clone();
+    if p12_password.is_none() && entry.auth_method == "p12" {
+        if let Ok(Some(pw)) = crate::credentials::get_agent_credential(&entry.label) {
+            p12_password = Some(pw);
+        }
+    }
+
     config::AgentConfig {
         panel_url: entry.panel_url.clone(),
         auth_method: entry.auth_method.clone(),
         p12_path: entry.p12_path.clone(),
-        p12_password: entry.p12_password.clone(),
+        p12_password,
         keychain_identity: entry.keychain_identity.clone(),
         agent_label: entry.agent_label.clone(),
         domain: entry.domain.clone(),
@@ -596,6 +605,10 @@ struct AgentInstallInfo {
     panel_url: String,
     #[allow(dead_code)]
     auth_method: String,
+    #[serde(default)]
+    p12_path: Option<String>,
+    #[serde(default)]
+    p12_password: Option<String>,
     #[allow(dead_code)]
     domain: Option<String>,
     #[allow(dead_code)]
@@ -631,55 +644,51 @@ fn find_or_install_agent_cli(app: &tauri::AppHandle) -> Result<PathBuf, String> 
     // Step: install_agent_cli
     emit_install_progress(app, "install_agent_cli", "running");
 
-    let agent_path = find_portlama_agent();
+    // Always install/update to the latest version so that bug fixes (e.g.
+    // Keychain partition list) are picked up without manual intervention.
+    let install_output = Command::new("npm")
+        .args(["install", "-g", "@lamalibre/portlama-agent@latest", "--ignore-scripts"])
+        .output()
+        .map_err(|e| format!("Failed to run npm install: {}", e))?;
 
-    let cli_path = match agent_path {
+    if !install_output.status.success() {
+        // If update fails but binary already exists, use the existing version
+        if find_portlama_agent().is_none() {
+            let stderr = String::from_utf8_lossy(&install_output.stderr);
+            emit_install_progress(app, "install_agent_cli", "failed");
+            return Err(format!(
+                "Failed to install portlama-agent: {}",
+                stderr.trim()
+            ));
+        }
+    }
+
+    let cli_path = match find_portlama_agent() {
         Some(p) => p,
         None => {
-            // Install globally via npm
-            let install_output = Command::new("npm")
-                .args(["install", "-g", "@lamalibre/portlama-agent", "--ignore-scripts"])
+            // Try npm prefix bin as fallback
+            let prefix_output = Command::new("npm")
+                .args(["config", "get", "prefix"])
                 .output()
-                .map_err(|e| format!("Failed to run npm install: {}", e))?;
+                .ok()
+                .and_then(|o| String::from_utf8(o.stdout).ok());
 
-            if !install_output.status.success() {
-                let stderr = String::from_utf8_lossy(&install_output.stderr);
-                emit_install_progress(app, "install_agent_cli", "failed");
-                return Err(format!(
-                    "Failed to install portlama-agent: {}",
-                    stderr.trim()
-                ));
-            }
-
-            // Re-check after install
-            match find_portlama_agent() {
-                Some(p) => p,
-                None => {
-                    // Try npm prefix bin as fallback
-                    let prefix_output = Command::new("npm")
-                        .args(["config", "get", "prefix"])
-                        .output()
-                        .ok()
-                        .and_then(|o| String::from_utf8(o.stdout).ok());
-
-                    if let Some(prefix) = prefix_output {
-                        let bin_path =
-                            PathBuf::from(prefix.trim()).join("bin").join("portlama-agent");
-                        if bin_path.exists() {
-                            bin_path
-                        } else {
-                            emit_install_progress(app, "install_agent_cli", "failed");
-                            return Err(
-                                "portlama-agent installed but not found in PATH. Check your npm prefix configuration.".to_string()
-                            );
-                        }
-                    } else {
-                        emit_install_progress(app, "install_agent_cli", "failed");
-                        return Err(
-                            "portlama-agent installed but not found in PATH".to_string(),
-                        );
-                    }
+            if let Some(prefix) = prefix_output {
+                let bin_path =
+                    PathBuf::from(prefix.trim()).join("bin").join("portlama-agent");
+                if bin_path.exists() {
+                    bin_path
+                } else {
+                    emit_install_progress(app, "install_agent_cli", "failed");
+                    return Err(
+                        "portlama-agent installed but not found in PATH. Check your npm prefix configuration.".to_string()
+                    );
                 }
+            } else {
+                emit_install_progress(app, "install_agent_cli", "failed");
+                return Err(
+                    "portlama-agent installed but not found in PATH".to_string(),
+                );
             }
         }
     };
@@ -776,6 +785,12 @@ pub async fn install_agent(
                         "complete" => {
                             if let Some(ref agent) = progress.agent {
                                 completed_label = Some(agent.label.clone());
+                                // Store P12 password in OS credential store
+                                if let (Some(ref pw), Some(ref _path)) = (&agent.p12_password, &agent.p12_path) {
+                                    if let Err(e) = crate::credentials::store_agent_credential(&agent.label, pw) {
+                                        eprintln!("Warning: failed to store agent credential: {}", e);
+                                    }
+                                }
                             }
                         }
                         "error" => {
@@ -854,3 +869,4 @@ pub async fn install_agent(
 
     result
 }
+

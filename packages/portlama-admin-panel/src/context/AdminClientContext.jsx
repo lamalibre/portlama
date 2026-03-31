@@ -51,6 +51,7 @@ const AdminClientContext = createContext(null);
  * @property {(data: {label, capabilities?, allowedSites?}) => Promise<any>} generateAgentCert
  * @property {(label: string) => Promise<{ok}>} revokeAgentCert
  * @property {(data: {label, capabilities?, allowedSites?}) => Promise<{ok, enrollmentToken, expiresAt}>} createEnrollmentToken
+ * @property {(label: string) => Promise<{ok}>} revokeEnrollmentToken
  * @property {(label: string, capabilities: string[]) => Promise<any>} updateAgentCapabilities
  * @property {(label: string, allowedSites: string[]) => Promise<any>} updateAgentAllowedSites
  * @property {(label: string) => Promise<any>} downloadAgentCert — returns a download trigger (host-specific)
@@ -59,6 +60,7 @@ const AdminClientContext = createContext(null);
  * @property {() => Promise<{services: Array}>} getServices
  * @property {(name: string, action: string) => Promise<any>} serviceAction
  * @property {() => Promise<Object>} getSystemStats
+ * @property {(data: {version: string}) => Promise<{ok, message}>} triggerPanelUpdate
  *
  * Logs:
  * @property {(service: string, onLine: (line: {timestamp, message}) => void) => (() => void)} startLogStream — returns a stop function
@@ -89,6 +91,7 @@ const AdminClientContext = createContext(null);
  * @property {() => Promise<{policies: Array}>} getPushInstallPolicies
  * @property {(data: Object) => Promise<any>} createPushInstallPolicy
  * @property {(id: string) => Promise<{ok}>} deletePushInstallPolicy
+ * @property {(id: string, data: {name?, description?, allowedIps?, deniedIps?, allowedPlugins?, allowedActions?}) => Promise<{ok, policy}>} updatePushInstallPolicy
  * @property {(label: string, data: {durationMinutes, policyId?}) => Promise<any>} enablePushInstall
  * @property {(label: string) => Promise<{ok}>} disablePushInstall
  * @property {(label: string, data: {action, packageName?}) => Promise<any>} pushInstallCommand
@@ -100,6 +103,21 @@ const AdminClientContext = createContext(null);
  * @property {(code: string) => Promise<{enabled}>} confirm2fa
  * @property {(code: string) => Promise<{verified}>} verify2fa
  * @property {(code: string) => Promise<{enabled}>} disable2fa
+ *
+ * Storage:
+ * @property {(data: {id, label, provider, region, bucket, endpoint, accessKey, secretKey}) => Promise<Object>} registerStorageServer
+ * @property {() => Promise<{servers: Array}>} getStorageServers
+ * @property {(id: string) => Promise<{ok}>} deleteStorageServer
+ * @property {(data: {pluginName, storageServerId}) => Promise<Object>} createStorageBinding
+ * @property {() => Promise<{bindings: Array}>} getStorageBindings
+ * @property {(pluginName: string) => Promise<Object>} getStorageBinding
+ * @property {(pluginName: string) => Promise<{ok}>} deleteStorageBinding
+ *
+ * Identity:
+ * @property {() => Promise<{username, displayName, email, groups}>} getIdentitySelf
+ * @property {() => Promise<{users: Array}>} getIdentityUsers
+ * @property {(username: string) => Promise<{user: Object}>} getIdentityUser
+ * @property {() => Promise<{groups: Array<string>}>} getIdentityGroups
  *
  * Tunnels:
  * @property {() => Promise<{tunnels: Array}>} getTunnels

@@ -84,6 +84,8 @@ Agent certificates are generated from the panel UI and should be used instead of
 | `sites:read`     | List assigned sites and browse their files |
 | `sites:write`    | Upload and delete files on assigned sites  |
 | `panel:expose`   | Expose agent management panel at `agent-<label>.<domain>` via mTLS-protected subdomain |
+| `identity:read`  | Parse Authelia identity headers on plugin routes |
+| `identity:query` | Query panel for Authelia user metadata           |
 
 Capabilities are stored server-side and can be updated without reissuing the certificate. Plugins can declare additional capabilities in their manifest (flat array or nested `{ agent: [...] }` format); these are merged with base capabilities dynamically and available for assignment to agent certificates. Ticket scopes also contribute capabilities dynamically: when a scope like `shell` declares `scopes: [{ name: 'shell:connect' }]`, the capability `shell:connect` becomes available for assignment alongside base and plugin capabilities. Users, certificates, agent management, and logs always remain admin-only. Site creation and deletion are also admin-only operations.
 

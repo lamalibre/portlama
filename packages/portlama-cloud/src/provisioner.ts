@@ -10,7 +10,8 @@
 
 import crypto from 'node:crypto';
 import { writeFile, mkdir, readFile, unlink, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -33,6 +34,22 @@ import { addServer } from './registry.js';
 import { CleanupStack } from './cleanup.js';
 
 const execFileAsync = promisify(execFile);
+
+// Read the create-portlama version from its package.json so we can
+// pin provisioning to the exact version instead of @latest.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+let installerVersion = 'latest';
+try {
+  // Works in both src/ (dev) and dist/ (compiled) — walks up to package root
+  const pkgPath = join(__dirname, '..', '..', 'create-portlama', 'package.json');
+  const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
+  if (pkg.version) {
+    installerVersion = pkg.version;
+  }
+} catch {
+  // Fallback to latest if package.json not readable (e.g. standalone install)
+}
 
 // ---------------------------------------------------------------------------
 // Input validation (defense in depth — UI also validates, but CLI bypasses UI)
@@ -437,7 +454,7 @@ export async function provision(options: ProvisionOptions): Promise<ServerEntry>
     await sshExec(
       ip,
       sshKeyPair.privateKeyPath,
-      'npx --yes @lamalibre/create-portlama@latest --yes',
+      `npx --yes @lamalibre/create-portlama@${installerVersion} --yes`,
       600_000, // 10 minute timeout for installation
       knownHostsPath,
     );

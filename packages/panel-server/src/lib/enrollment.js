@@ -124,17 +124,12 @@ export async function createEnrollmentToken(label, capabilities, allowedSites, l
     // Clean expired tokens lazily
     tokens = cleanExpiredTokens(tokens);
 
-    // Check for an active (unused, unexpired) token with the same label
+    // Replace any active (unused, unexpired) token for the same label so that
+    // retried installations don't fail with a 409.
     const now = Date.now();
-    const activeToken = tokens.find(
-      (t) => t.label === label && !t.used && new Date(t.expiresAt).getTime() > now,
+    tokens = tokens.filter(
+      (t) => !(t.label === label && !t.used && new Date(t.expiresAt).getTime() > now),
     );
-    if (activeToken) {
-      throw Object.assign(
-        new Error(`An active enrollment token for label "${label}" already exists`),
-        { statusCode: 409 },
-      );
-    }
 
     const token = crypto.randomBytes(32).toString('hex');
     const createdAt = new Date().toISOString();
@@ -200,5 +195,37 @@ export async function validateAndConsumeToken(token) {
       capabilities: entry.capabilities,
       allowedSites: entry.allowedSites,
     };
+  });
+}
+
+/**
+ * Revoke an unused enrollment token for a given label.
+ *
+ * Removes any active (unused, unexpired) token matching the label.
+ * This should be called when an agent installation fails before enrollment
+ * to prevent the token from being used on another machine.
+ *
+ * @param {string} label - Agent label whose token should be revoked
+ * @param {import('pino').Logger} logger
+ * @returns {Promise<{ revoked: boolean }>}
+ */
+export async function revokeEnrollmentToken(label, logger) {
+  return withTokenLock(async () => {
+    let tokens = await loadTokens();
+    tokens = cleanExpiredTokens(tokens);
+
+    const now = Date.now();
+    const before = tokens.length;
+    tokens = tokens.filter(
+      (t) => !(t.label === label && !t.used && new Date(t.expiresAt).getTime() > now),
+    );
+    const revoked = tokens.length < before;
+
+    if (revoked) {
+      await saveTokens(tokens);
+      logger.info({ label }, 'Revoked unused enrollment token');
+    }
+
+    return { revoked };
   });
 }

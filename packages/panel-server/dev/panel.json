@@ -3,7 +3,16 @@
   "domain": null,
   "email": null,
   "dataDir": "./data",
+  "maxSiteSize": 524288000,
+  "adminAuthMode": "p12",
+  "panel2fa": {
+    "enabled": false,
+    "secret": null,
+    "setupComplete": false
+  },
+  "sessionSecret": null,
   "onboarding": {
     "status": "FRESH"
-  }
+  },
+  "serverId": "8a6e17bb-65e2-4234-a242-d6a609ce9304"
 }

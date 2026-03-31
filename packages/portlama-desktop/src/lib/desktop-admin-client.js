@@ -47,6 +47,7 @@ export const desktopAdminClient = {
   generateAgentCert: (data) => invoke('admin_generate_agent_cert', { data }),
   revokeAgentCert: (label) => invoke('admin_revoke_agent_cert', { label }),
   createEnrollmentToken: (data) => invoke('admin_create_enrollment_token', { data }),
+  revokeEnrollmentToken: (label) => invoke('admin_revoke_enrollment_token', { label }),
   updateAgentCapabilities: (label, capabilities) =>
     invoke('admin_update_agent_capabilities', { label, capabilities }),
   updateAgentAllowedSites: (label, allowedSites) =>
@@ -57,6 +58,7 @@ export const desktopAdminClient = {
   getServices: () => invoke('admin_get_services'),
   serviceAction: (name, action) => invoke('admin_service_action', { name, action }),
   getSystemStats: () => invoke('admin_get_system_stats'),
+  triggerPanelUpdate: (data) => invoke('admin_trigger_panel_update', { data }),
 
   // --- Logs ---
   startLogStream: (service, onLine) => {
@@ -106,10 +108,26 @@ export const desktopAdminClient = {
   getPushInstallPolicies: () => invoke('admin_get_push_install_policies'),
   createPushInstallPolicy: (data) => invoke('admin_create_push_install_policy', { data }),
   deletePushInstallPolicy: (id) => invoke('admin_delete_push_install_policy', { id }),
+  updatePushInstallPolicy: (id, data) => invoke('admin_update_push_install_policy', { id, data }),
   enablePushInstall: (label, data) => invoke('admin_enable_push_install', { label, data }),
   disablePushInstall: (label) => invoke('admin_disable_push_install', { label }),
   pushInstallCommand: (label, data) => invoke('admin_push_install_command', { label, data }),
   getPushInstallSessions: () => invoke('admin_get_push_install_sessions'),
+
+  // --- Storage ---
+  registerStorageServer: (data) => invoke('admin_register_storage_server', { data }),
+  getStorageServers: () => invoke('admin_get_storage_servers'),
+  deleteStorageServer: (id) => invoke('admin_delete_storage_server', { id }),
+  createStorageBinding: (data) => invoke('admin_create_storage_binding', { data }),
+  getStorageBindings: () => invoke('admin_get_storage_bindings'),
+  getStorageBinding: (pluginName) => invoke('admin_get_storage_binding', { pluginName }),
+  deleteStorageBinding: (pluginName) => invoke('admin_delete_storage_binding', { pluginName }),
+
+  // --- Identity ---
+  getIdentitySelf: () => invoke('admin_get_identity_self'),
+  getIdentityUsers: () => invoke('admin_get_identity_users'),
+  getIdentityUser: (username) => invoke('admin_get_identity_user', { username }),
+  getIdentityGroups: () => invoke('admin_get_identity_groups'),
 
   // --- 2FA ---
   get2faStatus: () => invoke('admin_2fa_status'),

@@ -1,5 +1,5 @@
 import { execa } from 'execa';
-import { writeFile, readFile, cp, rm } from 'node:fs/promises';
+import { writeFile, readFile, cp, rm, rename, open } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -22,15 +22,13 @@ async function getInstalledVersion(installDir) {
 }
 
 /**
- * Read the vendor (new) panel-server's package.json version.
- * @param {string} vendorDir
+ * Fetch the latest published version of @lamalibre/portlama-panel-server from npm.
  * @returns {Promise<string | null>}
  */
-async function getVendorVersion(vendorDir) {
+async function getLatestNpmVersion() {
   try {
-    const pkgPath = join(vendorDir, 'panel-server', 'package.json');
-    const raw = await readFile(pkgPath, 'utf8');
-    return JSON.parse(raw).version || null;
+    const { stdout } = await execa('npm', ['view', '@lamalibre/portlama-panel-server', 'version']);
+    return stdout.trim() || null;
   } catch {
     return null;
   }
@@ -49,20 +47,19 @@ export function redeployTasks(ctx, task) {
   const installDir = ctx.installDir;
   const configDir = ctx.configDir;
 
+  // vendorDir still needed for panel-client (pre-built static dist)
   const thisFile = fileURLToPath(import.meta.url);
-  const thisDir = dirname(thisFile);
-  const packageRoot = join(thisDir, '..', '..');
-  const vendorDir = join(packageRoot, 'vendor');
+  const vendorDir = join(dirname(thisFile), '..', '..', 'vendor');
 
   return task.newListr([
     {
       title: 'Checking versions',
       task: async (_ctx, subtask) => {
         const installed = await getInstalledVersion(installDir);
-        const vendor = await getVendorVersion(vendorDir);
+        const latest = await getLatestNpmVersion();
         ctx.installedVersion = installed;
-        ctx.vendorVersion = vendor;
-        subtask.output = `Installed: ${installed || 'unknown'} → New: ${vendor || 'unknown'}`;
+        ctx.latestVersion = latest;
+        subtask.output = `Installed: ${installed || 'unknown'} → Latest: ${latest || 'unknown'}`;
       },
       rendererOptions: { persistentOutput: true },
     },
@@ -86,43 +83,56 @@ export function redeployTasks(ctx, task) {
     {
       title: 'Updating panel-server',
       task: async (_ctx, subtask) => {
-        const serverSrc = join(vendorDir, 'panel-server');
         const serverDest = join(installDir, 'panel-server');
+        const tmpDir = join('/tmp', `portlama-panel-update-${Date.now()}`);
 
-        if (!existsSync(serverSrc)) {
-          throw new Error(
-            `Panel server source not found at ${serverSrc}. Ensure the package is intact.`,
-          );
-        }
-
-        subtask.output = 'Copying panel-server files...';
-        await cp(join(serverSrc, 'package.json'), join(serverDest, 'package.json'));
-        await cp(join(serverSrc, 'src'), join(serverDest, 'src'), {
-          recursive: true,
-        });
-
-        subtask.output = 'Installing production dependencies...';
         try {
+          // Download the package tarball to a temp directory via npm pack,
+          // then extract. We cannot `npm install` inside serverDest because
+          // its package.json has the same name — npm refuses to install a
+          // package as a dependency of itself.
+          await execa('mkdir', ['-p', tmpDir]);
+
+          subtask.output = 'Downloading @lamalibre/portlama-panel-server from npm...';
+          const { stdout: tarball } = await execa('npm', [
+            'pack',
+            '@lamalibre/portlama-panel-server@latest',
+            '--prefer-online',
+            '--pack-destination',
+            tmpDir,
+          ]);
+          const tarballPath = join(tmpDir, tarball.trim());
+
+          subtask.output = 'Extracting package...';
+          await execa('tar', ['xzf', tarballPath, '-C', tmpDir]);
+
+          // npm pack extracts to a `package/` directory
+          const extracted = join(tmpDir, 'package');
+
+          subtask.output = 'Copying panel-server files...';
+          await rm(join(serverDest, 'src'), { recursive: true, force: true });
+          await cp(join(extracted, 'src'), join(serverDest, 'src'), { recursive: true });
+          await cp(join(extracted, 'package.json'), join(serverDest, 'package.json'));
+
+          subtask.output = 'Installing production dependencies...';
           await execa('npm', ['install', '--production', '--ignore-scripts'], {
             cwd: serverDest,
           });
-        } catch (err) {
-          throw new Error(
-            `Failed to install panel-server dependencies.\n${err.stderr || err.message}`,
-          );
+
+          await execa('chown', ['-R', 'portlama:portlama', serverDest]);
+
+          // Ensure CLI symlink for portlama-reset-admin
+          const resetAdminSrc = join(serverDest, 'src', 'cli', 'reset-admin.js');
+          const resetAdminDest = '/usr/local/bin/portlama-reset-admin';
+          if (existsSync(resetAdminSrc)) {
+            await execa('chmod', ['+x', resetAdminSrc]);
+            await execa('ln', ['-sf', resetAdminSrc, resetAdminDest]);
+          }
+
+          subtask.output = `Panel server updated to ${ctx.latestVersion || 'latest'}`;
+        } finally {
+          await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
         }
-
-        await execa('chown', ['-R', 'portlama:portlama', serverDest]);
-
-        // Ensure CLI symlink for portlama-reset-admin
-        const resetAdminSrc = join(serverDest, 'src', 'cli', 'reset-admin.js');
-        const resetAdminDest = '/usr/local/bin/portlama-reset-admin';
-        if (existsSync(resetAdminSrc)) {
-          await execa('chmod', ['+x', resetAdminSrc]);
-          await execa('ln', ['-sf', resetAdminSrc, resetAdminDest]);
-        }
-
-        subtask.output = 'Panel server updated';
       },
       rendererOptions: { persistentOutput: true },
     },
@@ -173,7 +183,12 @@ export function redeployTasks(ctx, task) {
           staticDir: join(installDir, 'panel-client', 'dist'),
         };
 
-        await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', { mode: 0o640 });
+        const tmpConfigPath = `${configPath}.tmp`;
+        await writeFile(tmpConfigPath, JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });
+        const fd = await open(tmpConfigPath, 'r');
+        await fd.sync();
+        await fd.close();
+        await rename(tmpConfigPath, configPath);
         await execa('chown', ['portlama:portlama', configPath]);
 
         subtask.output = 'Configuration updated';

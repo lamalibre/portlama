@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
-import { ShieldCheck, Copy, Check, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Copy, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
 
@@ -18,6 +18,9 @@ export default function Settings({ hasDomain }) {
   const [confirmCode, setConfirmCode] = useState('');
   const [disableCode, setDisableCode] = useState('');
   const [copied, setCopied] = useState(false);
+
+  const [updateVersion, setUpdateVersion] = useState('');
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
 
   const status = statusQuery.data || { enabled: false, setupComplete: false };
 
@@ -44,6 +47,18 @@ export default function Settings({ hasDomain }) {
       toast('Two-factor authentication disabled');
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (data) => client.triggerPanelUpdate(data),
+    onSuccess: () => {
+      toast('Update initiated. The panel will restart shortly.');
+      setUpdateVersion('');
+      setShowUpdateConfirm(false);
+    },
+    onError: (err) => toast(err.message, 'error'),
+  });
+
+  const isValidVersion = /^\d+\.\d+\.\d+$/.test(updateVersion);
 
   function handleCopySecret() {
     if (!setupData?.manualKey) return;
@@ -261,6 +276,84 @@ export default function Settings({ hasDomain }) {
                 {disableMutation.isPending ? 'Disabling...' : 'Disable Two-Factor Authentication'}
               </button>
             </form>
+          </div>
+        )}
+      </div>
+
+      {/* Panel Update Section */}
+      <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900 p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <RefreshCw className="h-5 w-5 text-cyan-400" />
+          <h2 className="text-lg font-bold text-white">Panel Update</h2>
+        </div>
+
+        <p className="mb-4 text-sm text-zinc-400">
+          Trigger an update of the panel server to a specific version. The server will restart
+          automatically after the update completes.
+        </p>
+
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="mb-1 block text-sm text-zinc-400" htmlFor="update-version">
+              Version
+            </label>
+            <input
+              id="update-version"
+              type="text"
+              value={updateVersion}
+              onChange={(e) => setUpdateVersion(e.target.value.trim())}
+              placeholder="1.0.43"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white placeholder-zinc-600 focus:border-cyan-500 focus:outline-none font-mono"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={!isValidVersion || updateMutation.isPending}
+            onClick={() => setShowUpdateConfirm(true)}
+            className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Update Panel
+          </button>
+        </div>
+
+        {!isValidVersion && updateVersion.length > 0 && (
+          <p className="mt-2 text-xs text-red-400">Version must be in semver format (e.g. 1.0.43)</p>
+        )}
+
+        {updateMutation.error && (
+          <p className="mt-2 text-sm text-red-400">{updateMutation.error.message}</p>
+        )}
+
+        {/* Update confirmation modal */}
+        {showUpdateConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+            <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
+              <div className="mb-4 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+                <h3 className="text-lg font-semibold text-white">Confirm Update</h3>
+              </div>
+              <p className="mb-4 text-sm text-zinc-400">
+                This will update the panel server to version <strong className="text-white">{updateVersion}</strong> and
+                restart the service. The panel will be unavailable for 1-2 minutes.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowUpdateConfirm(false)}
+                  className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={updateMutation.isPending}
+                  onClick={() => updateMutation.mutate({ version: updateVersion })}
+                  className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+                >
+                  {updateMutation.isPending ? 'Updating...' : 'Update Now'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

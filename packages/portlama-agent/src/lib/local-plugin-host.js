@@ -7,6 +7,7 @@
  */
 
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -58,6 +59,17 @@ export async function startLocalPluginHost({ port = 9293 } = {}) {
 
   const hostToken = await getOrCreateHostToken();
 
+  // Allow Tauri webview and localhost origins to call plugin APIs.
+  // Restrict to known origins — never echo arbitrary origins with credentials.
+  await server.register(cors, {
+    origin: [
+      'tauri://localhost',
+      'https://tauri.localhost',
+      /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/,
+    ],
+    credentials: true,
+  });
+
   await server.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
@@ -73,10 +85,13 @@ export async function startLocalPluginHost({ port = 9293 } = {}) {
   });
 
   // --- Bearer token auth for management endpoints ---
-  // Health endpoint is exempt (used for status checks).
+  // Exempt: /api/health (status probes), plugin routes (/<pluginName>/...).
+  // Only /api/* management endpoints require the Bearer token.
   server.addHook('onRequest', async (request, reply) => {
     if (request.url === '/api/health') return;
-    // Plugin panel bundles and plugin routes also require auth
+    // Plugin routes are mounted at /<pluginName>/... (not under /api/)
+    // They are already protected by localhost-only binding + DNS rebinding check.
+    if (!request.url.startsWith('/api/')) return;
     const auth = request.headers.authorization || '';
     if (auth !== `Bearer ${hostToken}`) {
       return reply.code(401).send({ error: 'Unauthorized' });
@@ -153,8 +168,22 @@ export async function startLocalPluginHost({ port = 9293 } = {}) {
 
       try {
         const require = createRequire(path.join(localDir(), '/'));
-        const serverModule = require(plugin.packages.server);
-        const pluginFn = serverModule.default || serverModule;
+        const modulePath = require.resolve(plugin.packages.server);
+        let serverModule;
+        try {
+          // Try require first (CJS packages)
+          serverModule = require(plugin.packages.server);
+        } catch {
+          // Fall back to dynamic import (ESM packages)
+          serverModule = await import(modulePath);
+        }
+        // Resolve the Fastify plugin function from the module.
+        // Plugins may export: default (direct plugin), buildPlugin() (factory),
+        // or the module itself may be the plugin function.
+        let pluginFn = serverModule.default || serverModule;
+        if (typeof pluginFn !== 'function' && typeof serverModule.buildPlugin === 'function') {
+          pluginFn = serverModule.buildPlugin();
+        }
 
         if (typeof pluginFn === 'function') {
           const pluginDir = path.join(localPluginsDir(), pluginName) + '/';

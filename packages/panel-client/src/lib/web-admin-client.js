@@ -96,6 +96,7 @@ export const webAdminClient = {
   generateAgentCert: (data) => jsonPost('/api/certs/agent', data),
   revokeAgentCert: (label) => jsonDelete(`/api/certs/agent/${encodeURIComponent(label)}`),
   createEnrollmentToken: (data) => jsonPost('/api/certs/agent/enroll', data),
+  revokeEnrollmentToken: (label) => jsonDelete(`/api/certs/agent/enroll/${encodeURIComponent(label)}`),
   updateAgentCapabilities: (label, capabilities) =>
     jsonPatch(`/api/certs/agent/${encodeURIComponent(label)}/capabilities`, { capabilities }),
   updateAgentAllowedSites: (label, allowedSites) =>
@@ -117,6 +118,7 @@ export const webAdminClient = {
   serviceAction: (name, action) =>
     jsonPost(`/api/services/${encodeURIComponent(name)}/${encodeURIComponent(action)}`),
   getSystemStats: () => apiFetch('/api/system/stats'),
+  triggerPanelUpdate: (data) => jsonPost('/api/system/update', data),
 
   // --- Logs ---
   startLogStream: (service, onLine) => {
@@ -168,6 +170,8 @@ export const webAdminClient = {
   createPushInstallPolicy: (data) => jsonPost('/api/plugins/push-install/policies', data),
   deletePushInstallPolicy: (id) =>
     jsonDelete(`/api/plugins/push-install/policies/${encodeURIComponent(id)}`),
+  updatePushInstallPolicy: (id, data) =>
+    jsonPatch(`/api/plugins/push-install/policies/${encodeURIComponent(id)}`, data),
   enablePushInstall: (label, data) =>
     jsonPost(`/api/plugins/push-install/enable/${encodeURIComponent(label)}`, data),
   disablePushInstall: (label) =>
@@ -175,6 +179,24 @@ export const webAdminClient = {
   pushInstallCommand: (label, data) =>
     jsonPost(`/api/plugins/push-install/${encodeURIComponent(label)}`, data),
   getPushInstallSessions: () => apiFetch('/api/plugins/push-install/sessions'),
+
+  // --- Storage ---
+  registerStorageServer: (data) => jsonPost('/api/storage/servers', data),
+  getStorageServers: () => apiFetch('/api/storage/servers'),
+  deleteStorageServer: (id) => jsonDelete(`/api/storage/servers/${encodeURIComponent(id)}`),
+  createStorageBinding: (data) => jsonPost('/api/storage/bindings', data),
+  getStorageBindings: () => apiFetch('/api/storage/bindings'),
+  getStorageBinding: (pluginName) =>
+    apiFetch(`/api/storage/bindings/${encodeURIComponent(pluginName)}`),
+  deleteStorageBinding: (pluginName) =>
+    jsonDelete(`/api/storage/bindings/${encodeURIComponent(pluginName)}`),
+
+  // --- Identity ---
+  getIdentitySelf: () => apiFetch('/api/identity/self'),
+  getIdentityUsers: () => apiFetch('/api/identity/users'),
+  getIdentityUser: (username) =>
+    apiFetch(`/api/identity/users/${encodeURIComponent(username)}`),
+  getIdentityGroups: () => apiFetch('/api/identity/groups'),
 
   // --- 2FA ---
   get2faStatus: () => apiFetch('/api/settings/2fa'),

@@ -24,6 +24,11 @@ This approach works because Portlama manages a small amount of state (one admin,
 ├── tunnels.json            ← Tunnel definitions
 ├── sites.json              ← Static site definitions
 ├── invitations.json        ← Pending user invitations
+├── plugins.json            ← Plugin registry (installed plugins, enabled state)
+├── ticket-scopes.json      ← Ticket scope registry (scopes, instances, assignments)
+├── tickets.json            ← Ticket and session store
+├── storage-config.json     ← Storage server registry and plugin bindings
+├── storage-master.key      ← 32-byte master key for storage credential encryption
 └── pki/
     ├── ca.key              ← CA private key
     ├── ca.crt              ← CA certificate
@@ -32,7 +37,15 @@ This approach works because Portlama manages a small amount of state (one admin,
     ├── client.p12          ← PKCS12 bundle for browser import
     ├── .p12-password       ← PKCS12 password
     ├── self-signed.pem     ← Self-signed TLS cert for IP vhost
-    └── self-signed-key.pem ← Self-signed TLS key for IP vhost
+    ├── self-signed-key.pem ← Self-signed TLS key for IP vhost
+    ├── revoked.json        ← Revoked certificate serial numbers
+    ├── enrollment-tokens.json ← One-time enrollment tokens
+    └── agents/             ← Agent certificate storage
+        ├── registry.json   ← Metadata for all agent certs
+        └── <label>/        ← Per-agent directory
+            ├── client.key  ← Agent private key
+            ├── client.crt  ← Agent certificate
+            └── client.p12  ← Agent PKCS12 bundle
 
 /etc/authelia/
 ├── configuration.yml       ← Authelia main config
@@ -120,8 +133,12 @@ The central configuration file, validated by Zod on every load and update.
 | `domain`            | `string \| null`         | Yes      | Base domain (set during onboarding, null before)         |
 | `email`             | `string (email) \| null` | Yes      | Admin email for Let's Encrypt (set during onboarding)    |
 | `dataDir`           | `string`                 | Yes      | Path to state directory (`/etc/portlama`)                |
+| `serverId`          | `string (uuid)`          | No       | Auto-generated UUIDv4, bucket prefix for multi-server storage isolation |
 | `staticDir`         | `string`                 | No       | Path to panel-client dist (overrides default resolution) |
 | `maxSiteSize`       | `number`                 | No       | Maximum static site size in bytes (default: 500 MB)      |
+| `adminAuthMode`     | `enum`                   | No       | `"p12"` (default) or `"hardware-bound"`                  |
+| `panel2fa`          | `object`                 | No       | Built-in TOTP 2FA configuration                         |
+| `sessionSecret`     | `string \| null`         | No       | HMAC key for signed session cookies (default: null)      |
 | `onboarding.status` | `enum`                   | Yes      | Current onboarding state                                 |
 
 **Zod validation:**
@@ -132,11 +149,19 @@ const ConfigSchema = z.object({
   domain: z.string().nullable(),
   email: z.string().email().nullable(),
   dataDir: z.string().min(1),
+  serverId: z.string().uuid().optional(),
   staticDir: z.string().optional(),
   maxSiteSize: z
     .number()
     .optional()
     .default(500 * 1024 * 1024),
+  adminAuthMode: z.enum(['p12', 'hardware-bound']).optional().default('p12'),
+  panel2fa: z.object({
+    enabled: z.boolean(),
+    secret: z.string().nullable(),
+    setupComplete: z.boolean(),
+  }).optional().default({ enabled: false, secret: null, setupComplete: false }),
+  sessionSecret: z.string().nullable().optional().default(null),
   onboarding: z.object({
     status: z.enum(['FRESH', 'DOMAIN_SET', 'DNS_READY', 'PROVISIONING', 'COMPLETED']),
   }),
@@ -168,10 +193,12 @@ export async function updateConfig(patch) {
   // Deep clone current config
   const merged = structuredClone(config);
 
-  // Merge patch (onboarding is merged as sub-object, others replaced)
+  // Merge patch (onboarding and panel2fa are merged as sub-objects, others replaced)
   for (const key of Object.keys(patch)) {
-    if (key === 'onboarding' && typeof patch.onboarding === 'object') {
+    if (key === 'onboarding' && typeof patch.onboarding === 'object' && patch.onboarding !== null) {
       merged.onboarding = { ...merged.onboarding, ...patch.onboarding };
+    } else if (key === 'panel2fa' && typeof patch.panel2fa === 'object' && patch.panel2fa !== null) {
+      merged.panel2fa = { ...merged.panel2fa, ...patch.panel2fa };
     } else {
       merged[key] = patch[key];
     }
@@ -182,7 +209,13 @@ export async function updateConfig(patch) {
 
   // Atomic write
   const tmpPath = `${configPath}.tmp`;
-  await writeFile(tmpPath, JSON.stringify(validated, null, 2) + '\n', 'utf-8');
+  await writeFile(tmpPath, JSON.stringify(validated, null, 2) + '\n', { encoding: 'utf-8', mode: 0o600 });
+
+  // fsync: flush data to disk before rename
+  const fd = await open(tmpPath, 'r');
+  await fd.sync();
+  await fd.close();
+
   await rename(tmpPath, configPath);
 
   // Update cache
@@ -191,7 +224,7 @@ export async function updateConfig(patch) {
 }
 ```
 
-The `onboarding` field gets special merge treatment — updating `{ onboarding: { status: 'COMPLETED' } }` preserves other onboarding sub-fields rather than replacing the entire object.
+The `onboarding` and `panel2fa` fields get special merge treatment — updating `{ onboarding: { status: 'COMPLETED' } }` or `{ panel2fa: { enabled: true } }` preserves other sub-fields rather than replacing the entire object.
 
 All reads via `getConfig()` return a `structuredClone`, preventing callers from accidentally mutating the cached config.
 
@@ -341,6 +374,47 @@ The `sudo mv` is atomic (same-filesystem rename). The scoped `sudoers` rules all
 
 **Safety rule:** The Panel Server prevents deleting the last user in the Authelia database. Without at least one user, no one could authenticate to access tunneled apps.
 
+## Storage Server Registry (`storage-config.json`)
+
+The storage system manages S3-compatible object storage servers and their bindings to plugins. Storage credentials (access key, secret key) are encrypted at rest using AES-256-GCM with scrypt key derivation.
+
+**Encryption scheme:**
+
+1. A 32-byte master key is generated once and stored at `/etc/portlama/storage-master.key` (mode 0600)
+2. For each credential, a random 16-byte salt is generated
+3. The master key is passed through scrypt (N=16384, r=8, p=1) with the salt to derive a 32-byte encryption key
+4. The credential is encrypted with AES-256-GCM using a random 12-byte IV
+5. The output is packed as `[salt (16)] [iv (12)] [authTag (16)] [ciphertext (...)]` and base64-encoded
+
+**State file (`storage-config.json`):**
+
+```json
+{
+  "servers": [
+    {
+      "id": "uuid",
+      "label": "my-storage",
+      "provider": "digitalocean",
+      "region": "fra1",
+      "bucket": "my-bucket",
+      "endpoint": "https://fra1.digitaloceanspaces.com",
+      "accessKeyEncrypted": "<base64-encoded encrypted credential>",
+      "secretKeyEncrypted": "<base64-encoded encrypted credential>",
+      "registeredAt": "2026-03-30T10:00:00.000Z"
+    }
+  ],
+  "bindings": [
+    {
+      "pluginName": "sync",
+      "storageServerId": "uuid",
+      "boundAt": "2026-03-30T10:05:00.000Z"
+    }
+  ]
+}
+```
+
+**Concurrency:** All read-modify-write operations are serialized via a promise-chain mutex. Writes use the same atomic pattern (temp file, fsync, rename).
+
 ## Config Path Resolution
 
 Different config files are resolved through different mechanisms:
@@ -360,10 +434,12 @@ Environment variables allow overriding paths for development and testing without
 
 | File                | Mode   | Owner               | Rationale                               |
 | ------------------- | ------ | ------------------- | --------------------------------------- |
-| `panel.json`        | `0640` | `portlama:portlama` | Readable by service, writable by owner  |
+| `panel.json`        | `0600` | `portlama:portlama` | Contains sensitive config, owner-only access |
 | `tunnels.json`      | `0600` | `portlama:portlama` | Written by Panel Server                 |
 | `sites.json`        | `0600` | `portlama:portlama` | Written by Panel Server                 |
 | `invitations.json`  | `0600` | `portlama:portlama` | Written by Panel Server                 |
+| `storage-config.json` | `0600` | `portlama:portlama` | Storage registry (credentials AES-256-GCM encrypted) |
+| `storage-master.key`  | `0600` | `portlama:portlama` | 32-byte master key for storage encryption |
 | `pki/ca.key`        | `0600` | `root:root`         | CA private key — most sensitive file    |
 | `pki/ca.crt`        | `0644` | `root:root`         | CA cert — needs to be readable by nginx |
 | `pki/client.key`    | `0600` | `root:root`         | Client private key                      |
@@ -409,6 +485,7 @@ This ensures that concurrent tunnel creation requests do not trigger multiple si
 
 | File                                          | Role                                           |
 | --------------------------------------------- | ---------------------------------------------- |
+| `packages/panel-server/src/lib/storage.js`    | Storage server registry, plugin bindings, AES-256-GCM encryption |
 | `packages/panel-server/src/lib/config.js`     | Config loading, Zod validation, atomic updates |
 | `packages/panel-server/src/lib/state.js`      | tunnels.json + sites.json atomic read/write    |
 | `packages/panel-server/src/lib/authelia.js`   | users.yml read/write via sudo                  |

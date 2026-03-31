@@ -92,7 +92,7 @@ Registered as a global `onRequest` hook that runs on every request before route 
 
 **Development behavior:**
 
-- When `NODE_ENV` is `development` (or unset), the check is bypassed
+- When `NODE_ENV` is `development`, the check is bypassed
 - Logs a warning on the first bypassed request
 - Sets `request.certRole = 'admin'` by default
 
@@ -297,7 +297,19 @@ protectedContext (mTLS + role-guard):
         ├── POST   /api/tickets/sessions/:sessionId/heartbeat
         ├── PATCH  /api/tickets/sessions/:sessionId
         ├── DELETE /api/tickets/sessions/:sessionId
-        └── GET    /api/tickets/sessions
+        ├── GET    /api/tickets/sessions
+        ├── GET    /api/identity/self
+        ├── GET    /api/identity/users
+        ├── GET    /api/identity/users/:username
+        ├── GET    /api/identity/groups
+        ├── POST   /api/storage/servers
+        ├── GET    /api/storage/servers
+        ├── DELETE /api/storage/servers/:id
+        ├── POST   /api/storage/bindings
+        ├── GET    /api/storage/bindings
+        ├── GET    /api/storage/bindings/:pluginName
+        ├── DELETE /api/storage/bindings/:pluginName
+        └── POST   /api/system/update
 
   server.register(pluginRouter, { prefix: '/api' })
     └── [guarded: managementOnly() + per-plugin admin-only auth scope]
@@ -350,6 +362,8 @@ export default async function managementRoutes(fastify, _opts) {
   await fastify.register(pluginRoutes);
   await fastify.register(settingsRoutes);
   await fastify.register(ticketRoutes);
+  await fastify.register(identityRoutes);
+  await fastify.register(storageRoutes);
 }
 ```
 
@@ -372,8 +386,10 @@ Config schema:
   domain: string | null,                           // Set during onboarding
   email: string (email) | null,                    // Set during onboarding
   dataDir: string,                                 // /etc/portlama
+  serverId?: string (uuid),                        // Auto-generated, bucket prefix for multi-server storage isolation
   staticDir?: string,                              // /opt/portlama/panel-client/dist
   maxSiteSize?: number,                            // Default: 500 MB
+  adminAuthMode?: "p12" | "hardware-bound",        // Default: "p12"
   onboarding: {
     status: "FRESH" | "DOMAIN_SET" | "DNS_READY" | "PROVISIONING" | "COMPLETED"
   },
@@ -382,7 +398,7 @@ Config schema:
     secret: string | null,                         // TOTP secret (base32)
     setupComplete: boolean                         // Default: false
   },
-  sessionSecret?: string                           // HMAC key for signed session cookies
+  sessionSecret?: string | null                    // HMAC key for signed session cookies (default: null)
 }
 ```
 
@@ -458,7 +474,7 @@ See [nginx-configuration.md](./nginx-configuration.md) for detailed coverage.
 - Manages the agent registry: create, list, revoke, update capabilities and allowed sites
 - Provides the PKCS12 download path for the certs API
 - Manages dynamic capability sets: base capabilities + plugin capabilities + ticket scope capabilities via `getValidCapabilities()`
-- Base capabilities: `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`, `panel:expose`
+- Base capabilities: `tunnels:read`, `tunnels:write`, `services:read`, `services:write`, `system:read`, `sites:read`, `sites:write`, `panel:expose`, `identity:read`, `identity:query`
 
 ### tickets.js — Ticket System
 
@@ -476,6 +492,19 @@ Agent-to-agent authorization with scopes, instances, tickets, and sessions. Prov
 Client SDK: `@lamalibre/portlama-tickets` (TypeScript, undici) provides `TicketClient`, `TicketInstanceManager` (source side), and `TicketSessionManager` (target side) for plugin integration.
 
 State files: `/etc/portlama/ticket-scopes.json` (scopes, instances, assignments) and `/etc/portlama/tickets.json` (tickets, sessions).
+
+### storage.js — Storage Server Registry
+
+- Manages S3-compatible storage servers and their bindings to plugins
+- Credentials (access key, secret key) encrypted at rest with AES-256-GCM
+- Key derivation via scrypt (N=16384, r=8, p=1) from a 32-byte master key at `/etc/portlama/storage-master.key`
+- Encryption format: `[salt (16)] [iv (12)] [authTag (16)] [ciphertext]` base64-encoded
+- Master key auto-generated on first use, persisted with mode 0600
+- Server CRUD: register, remove (cascades to bindings), list (credentials redacted)
+- Plugin bindings: bind, unbind, get (with redacted server info), list
+- `getPluginStorageConfig(pluginName)` returns decrypted credentials for bound plugins
+- Promise-chain mutex serializes all read-modify-write operations
+- Atomic writes (temp file, fsync, rename) for crash safety
 
 ### services.js — Service Management
 
@@ -588,6 +617,10 @@ The shutdown sequence stops the periodic instance liveness check (`livenessInter
 | `packages/panel-server/src/lib/session.js`                   | Signed session cookie creation and validation                  |
 | `packages/panel-server/src/lib/tickets.js`                   | Ticket system: scopes, instances, assignments, sessions        |
 | `packages/panel-server/src/routes/management/tickets.js`     | Ticket management HTTP route handlers                          |
+| `packages/panel-server/src/lib/storage.js`                   | Storage server registry, plugin bindings, AES-256-GCM encryption |
+| `packages/panel-server/src/routes/management/identity.js`    | Identity system HTTP route handlers                            |
+| `packages/panel-server/src/routes/management/storage.js`     | Storage management HTTP route handlers                         |
+| `packages/panel-server/src/routes/management/system.js`      | System stats + panel update HTTP route handlers                |
 | `packages/panel-server/src/lib/app-error.js`                 | Operational error class                                        |
 
 ## Design Decisions

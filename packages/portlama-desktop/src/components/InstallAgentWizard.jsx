@@ -26,7 +26,7 @@ const INSTALL_STEPS = [
   { key: 'generate_keypair', label: 'Generating keypair' },
   { key: 'enroll_panel', label: 'Enrolling with panel' },
   { key: 'create_agent_dirs', label: 'Creating agent directories' },
-  { key: 'import_cert', label: 'Importing certificate' },
+  { key: 'import_cert', label: 'Storing certificate' },
   { key: 'save_ca', label: 'Saving CA certificate' },
   { key: 'verify_connectivity', label: 'Verifying connectivity' },
   { key: 'install_chisel', label: 'Installing Chisel' },
@@ -309,6 +309,8 @@ export default function InstallAgentWizard({ onClose }) {
   const [installError, setInstallError] = useState(null);
   const [installSuccess, setInstallSuccess] = useState(false);
   const [tokenGenerating, setTokenGenerating] = useState(false);
+  // Cache managed-server token + URL so retries reuse the same token
+  const managedTokenRef = useRef(null);
 
   const serversQuery = useQuery({
     queryKey: ['servers'],
@@ -333,6 +335,10 @@ export default function InstallAgentWizard({ onClose }) {
       const { step: s, status } = event.payload;
       if (s && (status === 'running' || status === 'complete' || status === 'skipped')) {
         setInstalling(s);
+        // Token was consumed by enrollment — clear cache so retry creates a fresh one
+        if (s === 'enroll_panel' && status === 'complete') {
+          managedTokenRef.current = null;
+        }
       }
     });
     return () => {
@@ -348,6 +354,9 @@ export default function InstallAgentWizard({ onClose }) {
     return manualPanelUrl.startsWith('https://') && manualToken.length > 0;
   };
 
+  /**
+   * Resolve credentials (panelUrl + token), then launch the install.
+   */
   const startInstall = async () => {
     setWizardStep(1);
     setInstallError(null);
@@ -359,36 +368,76 @@ export default function InstallAgentWizard({ onClose }) {
       let token;
 
       if (serverSource === 'managed') {
-        // Auto-generate enrollment token from managed server
-        setTokenGenerating(true);
-        const server = servers.find((s) => s.id === selectedServerId);
-        if (!server) {
-          throw new Error('Selected server no longer available. Please try again.');
+        // Reuse cached token on retry (avoids 409 "active token already exists")
+        if (managedTokenRef.current && managedTokenRef.current.label === label
+            && managedTokenRef.current.serverId === selectedServerId) {
+          panelUrl = managedTokenRef.current.panelUrl;
+          token = managedTokenRef.current.token;
+        } else {
+          // Auto-generate enrollment token from managed server
+          setTokenGenerating(true);
+          const server = servers.find((s) => s.id === selectedServerId);
+          if (!server) {
+            throw new Error('Selected server no longer available. Please try again.');
+          }
+          panelUrl = server.panelUrl;
+
+          // Ensure this server is active for admin commands
+          await invoke('set_active_server', { serverId: selectedServerId });
+
+          // Revoke any stale token and agent cert from a previous failed attempt
+          try {
+            await invoke('admin_revoke_enrollment_token', { label });
+          } catch {
+            // Ignore — no stale token or endpoint not yet deployed
+          }
+          try {
+            await invoke('admin_revoke_agent_cert', { label });
+          } catch {
+            // Ignore — no existing cert for this label
+          }
+
+          const result = await invoke('admin_create_enrollment_token', {
+            data: { label, capabilities: DEFAULT_CAPABILITIES, allowedSites: [] },
+          });
+          token = result.token;
+          managedTokenRef.current = { label, serverId: selectedServerId, panelUrl, token };
+          setTokenGenerating(false);
         }
-        panelUrl = server.panel_url;
-
-        // Ensure this server is active for admin commands
-        await invoke('set_active_server', { serverId: selectedServerId });
-
-        const result = await invoke('admin_create_enrollment_token', {
-          data: { label, capabilities: DEFAULT_CAPABILITIES, allowedSites: [] },
-        });
-        token = result.token;
-        setTokenGenerating(false);
       } else {
         panelUrl = manualPanelUrl.replace(/\/+$/, '');
         token = manualToken.trim();
       }
 
-      // Start the actual installation
+      await runInstall(panelUrl, token);
+    } catch (err) {
+      setTokenGenerating(false);
+      setInstallError(err.toString());
+      revokeTokenOnFailure();
+    }
+  };
+
+  /**
+   * Run the actual agent install after credentials and Keychain are ready.
+   */
+  const runInstall = async (panelUrl, token) => {
+    try {
       setInstalling(INSTALL_STEPS[0].key);
       await invoke('install_agent', { label, panelUrl, token });
       setInstallSuccess(true);
       setInstalling('save_config');
       queryClient.invalidateQueries({ queryKey: ['agents'] });
     } catch (err) {
-      setTokenGenerating(false);
       setInstallError(err.toString());
+      revokeTokenOnFailure();
+    }
+  };
+
+  /** Best-effort revoke of managed-server enrollment token on failure. */
+  const revokeTokenOnFailure = () => {
+    if (serverSource === 'managed' && managedTokenRef.current) {
+      invoke('admin_revoke_enrollment_token', { label: managedTokenRef.current.label }).catch(() => {});
+      managedTokenRef.current = null;
     }
   };
 
@@ -504,6 +553,7 @@ export default function InstallAgentWizard({ onClose }) {
           ) : null}
         </div>
       </div>
+
     </div>
   );
 }

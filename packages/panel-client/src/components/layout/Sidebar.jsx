@@ -77,6 +77,7 @@ const baseNavItems = [
   { type: 'link', to: '/services', icon: Server, label: 'Services' },
   { type: 'link', to: '/tickets', icon: Ticket, label: 'Tickets' },
   { type: 'link', to: '/plugins', icon: Package, label: 'Plugins' },
+  { type: 'link', to: '/storage', icon: HardDrive, label: 'Storage' },
   { type: 'link', to: '/settings', icon: Settings, label: 'Settings' },
   { type: 'link', to: '/docs', icon: BookOpen, label: 'Documentation' },
 ];

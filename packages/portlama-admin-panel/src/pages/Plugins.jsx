@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Power, PowerOff, Trash2, Download, AlertCircle } from 'lucide-react';
+import { Package, Power, PowerOff, Trash2, Download, AlertCircle, Shield, Pencil, X, Loader2 } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
 
@@ -167,6 +167,245 @@ function InstallForm({ onInstall, isInstalling }) {
   );
 }
 
+const ACTIONS = ['install', 'update', 'uninstall', 'check-prerequisites'];
+
+function PolicyEditModal({ policy, onClose }) {
+  const client = useAdminClient();
+  const queryClient = useQueryClient();
+  const addToast = useToast();
+
+  const [name, setName] = useState(policy.name || '');
+  const [description, setDescription] = useState(policy.description || '');
+  const [allowedIps, setAllowedIps] = useState((policy.allowedIps || []).join('\n'));
+  const [deniedIps, setDeniedIps] = useState((policy.deniedIps || []).join('\n'));
+  const [allowedPlugins, setAllowedPlugins] = useState((policy.allowedPlugins || []).join('\n'));
+  const [allowedActions, setAllowedActions] = useState(policy.allowedActions || ACTIONS.slice(0, 3));
+
+  const mutation = useMutation({
+    mutationFn: (data) => client.updatePushInstallPolicy(policy.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['push-install-policies'] });
+      addToast('Policy updated');
+      onClose();
+    },
+    onError: (err) => addToast(err.message, 'error'),
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const toArray = (str) => str.split('\n').map((s) => s.trim()).filter(Boolean);
+    mutation.mutate({
+      name,
+      description,
+      allowedIps: toArray(allowedIps),
+      deniedIps: toArray(deniedIps),
+      allowedPlugins: toArray(allowedPlugins),
+      allowedActions,
+    });
+  };
+
+  const toggleAction = (action) => {
+    setAllowedActions((prev) =>
+      prev.includes(action) ? prev.filter((a) => a !== action) : [...prev, action],
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="w-full max-w-lg rounded-xl bg-zinc-900 border border-zinc-700 p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Edit Policy</h3>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">Description</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">Allowed IPs (one per line)</label>
+            <textarea
+              value={allowedIps}
+              onChange={(e) => setAllowedIps(e.target.value)}
+              rows={3}
+              placeholder="192.168.1.0/24"
+              className="w-full rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 font-mono placeholder-zinc-600 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">Denied IPs (one per line)</label>
+            <textarea
+              value={deniedIps}
+              onChange={(e) => setDeniedIps(e.target.value)}
+              rows={2}
+              className="w-full rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 font-mono focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">Allowed Plugins (one per line)</label>
+            <textarea
+              value={allowedPlugins}
+              onChange={(e) => setAllowedPlugins(e.target.value)}
+              rows={2}
+              placeholder="@lamalibre/portlama-herd-plugin"
+              className="w-full rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 font-mono placeholder-zinc-600 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">Allowed Actions</label>
+            <div className="flex flex-wrap gap-3">
+              {ACTIONS.map((action) => (
+                <label key={action} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={allowedActions.includes(action)}
+                    onChange={() => toggleAction(action)}
+                    className="accent-cyan-500"
+                  />
+                  <span className="text-zinc-300">{action}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim() || mutation.isPending}
+              className="rounded bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+            >
+              {mutation.isPending ? (
+                <Loader2 size={14} className="animate-spin inline mr-1" />
+              ) : null}
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PushInstallPolicies() {
+  const client = useAdminClient();
+  const queryClient = useQueryClient();
+  const addToast = useToast();
+  const [editPolicy, setEditPolicy] = useState(null);
+
+  const policiesQuery = useQuery({
+    queryKey: ['push-install-policies'],
+    queryFn: () => client.getPushInstallPolicies(),
+    refetchInterval: 30000,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => client.deletePushInstallPolicy(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['push-install-policies'] });
+      addToast('Policy deleted');
+    },
+    onError: (err) => addToast(err.message, 'error'),
+  });
+
+  const policies = policiesQuery.data?.policies || [];
+
+  if (policiesQuery.isLoading) return null;
+  if (policies.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="border-t border-zinc-700 pt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield size={18} className="text-cyan-400" />
+          <h2 className="text-lg font-semibold text-white">Push Install Policies</h2>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-zinc-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-700 bg-zinc-900">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400 hidden md:table-cell">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400 hidden lg:table-cell">Actions</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-zinc-400">Manage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policies.map((policy) => (
+                <tr key={policy.id} className="border-b border-zinc-700 bg-zinc-800">
+                  <td className="px-4 py-3 text-zinc-200 font-semibold">{policy.name}</td>
+                  <td className="px-4 py-3 text-zinc-400 hidden md:table-cell">{policy.description || '—'}</td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <div className="flex flex-wrap gap-1">
+                      {(policy.allowedActions || []).map((a) => (
+                        <span key={a} className="text-xs px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-300">
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditPolicy(policy)}
+                        className="inline-flex items-center gap-1.5 rounded bg-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-zinc-600"
+                        title="Edit policy"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteMutation.mutate(policy.id)}
+                        disabled={deleteMutation.isPending}
+                        className="inline-flex items-center gap-1.5 rounded bg-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-red-600/20 hover:text-red-400"
+                        title="Delete policy"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {editPolicy && <PolicyEditModal policy={editPolicy} onClose={() => setEditPolicy(null)} />}
+    </div>
+  );
+}
+
 export default function Plugins() {
   const client = useAdminClient();
   const queryClient = useQueryClient();
@@ -295,6 +534,8 @@ export default function Plugins() {
           ))}
         </div>
       )}
+
+      <PushInstallPolicies />
     </div>
   );
 }

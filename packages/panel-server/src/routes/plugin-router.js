@@ -1,5 +1,7 @@
 import { readPlugins } from '../lib/plugins.js';
 import { RESERVED_API_PREFIXES } from '../lib/constants.js';
+import { getPluginStorageConfig } from '../lib/storage.js';
+import { getConfig } from '../lib/config.js';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { managementOnly } from '../middleware/onboarding-guard.js';
@@ -49,6 +51,26 @@ export default async function pluginRouter(fastify, _opts) {
         const pluginFn = serverModule.default || serverModule;
 
         if (typeof pluginFn === 'function') {
+          // Resolve storage config for this plugin (null if unbound)
+          let storageOpts = {};
+          try {
+            const storageConfig = await getPluginStorageConfig(pluginName);
+            if (storageConfig) {
+              const panelConfig = getConfig();
+              storageOpts = {
+                storage: {
+                  ...storageConfig,
+                  prefix: panelConfig.serverId,
+                },
+              };
+            }
+          } catch (storageErr) {
+            fastify.log.warn(
+              { plugin: pluginName, err: storageErr.message },
+              'Failed to load storage config for plugin — mounting without storage',
+            );
+          }
+
           // Two-level encapsulation: auth guard on outer scope (plugin cannot override),
           // plugin code on inner scope (isolated from the auth hook)
           await fastify.register(async function authScope(outer) {
@@ -57,6 +79,7 @@ export default async function pluginRouter(fastify, _opts) {
               await inner.register(pluginFn, {
                 pluginDir: `${PLUGINS_DIR}/${pluginName}/`,
                 logger: fastify.log,
+                ...storageOpts,
               });
             });
           }, { prefix: `/${pluginName}` });

@@ -85,6 +85,11 @@
         },
         { "title": "Static Sites", "slug": "static-sites", "file": "02-guides/static-sites.md" },
         {
+          "title": "Cloud Provisioning",
+          "slug": "cloud-provisioning",
+          "file": "02-guides/cloud-provisioning.md"
+        },
+        {
           "title": "Disaster Recovery",
           "slug": "disaster-recovery",
           "file": "02-guides/disaster-recovery.md"

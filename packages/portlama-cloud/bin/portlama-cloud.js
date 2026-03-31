@@ -15,6 +15,7 @@
  */
 
 import { provision } from '../dist/provisioner.js';
+import { update } from '../dist/updater.js';
 import { provisionStorage } from '../dist/storage-provisioner.js';
 import { DigitalOceanProvider } from '../dist/digitalocean/index.js';
 import { DigitalOceanSpacesProvider } from '../dist/digitalocean/spaces.js';
@@ -28,6 +29,7 @@ function usage() {
 
 Compute commands:
   provision  --provider <name> --region <slug> --label <name> [--size <slug>] [--domain <fqdn> --email <addr>] [--do-domain <name> --do-subdomain <prefix>] [--override-dns]
+  update     --id <serverId> --version <version>  Update panel server to a specific version
   validate   Validate the cloud API token
   regions    List available regions with latency probes
   sizes      --region <slug>  List available droplet sizes for a region
@@ -95,6 +97,20 @@ async function main() {
 
       const platform = os.platform() === 'darwin' ? 'darwin' : 'linux';
       await provision({ provider, token, region, label, size, domain, email, platform, doDomain, doSubdomain, overrideDns });
+      break;
+    }
+
+    case 'update': {
+      const id = getArg(args, 'id');
+      const version = getArg(args, 'version');
+      const token = getToken();
+
+      if (!id || !version) {
+        console.error('Error: --id and --version are required');
+        process.exit(1);
+      }
+
+      await update({ token, serverId: id, version });
       break;
     }
 

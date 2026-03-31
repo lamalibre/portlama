@@ -14,6 +14,7 @@ import {
   PluginsPage,
   SettingsPage,
   TicketsPage,
+  StoragePage,
 } from '@lamalibre/portlama-admin-panel';
 import { webAdminClient } from './lib/web-admin-client.js';
 import Layout from './components/layout/Layout.jsx';
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/plugins" element={<PluginsPage />} />
+        <Route path="/storage" element={<StoragePage />} />
         <Route path="/plugins/:pluginName/*" element={<PluginLoaderRoute />} />
         <Route path="/settings" element={<SettingsPage hasDomain={!!domain} />} />
         <Route path="/docs/*" element={<DocsPage />} />

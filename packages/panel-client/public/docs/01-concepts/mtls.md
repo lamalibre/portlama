@@ -115,6 +115,8 @@ Agent certificates have capability-based access. By default, a new agent can onl
 | `sites:read`     | List sites and browse files               |
 | `sites:write`    | Upload and delete files on assigned sites |
 | `panel:expose`   | Expose agent management panel at `agent-<label>.<domain>` via mTLS-protected subdomain |
+| `identity:read`  | Parse Authelia identity headers on plugin routes |
+| `identity:query` | Query panel for Authelia user metadata           |
 
 Capabilities are stored server-side, so changing what an agent can do does not require reissuing its certificate. Users, certificates, agent management, and logs always remain admin-only.
 
@@ -246,12 +248,12 @@ The installer writes an nginx snippet at `/etc/nginx/snippets/portlama-mtls.conf
 
 ```nginx
 ssl_client_certificate /etc/portlama/pki/ca.crt;
-ssl_verify_client on;
+ssl_verify_client optional;
 ```
 
-This snippet is included in every nginx vhost that should require mTLS. The `ssl_verify_client on` directive tells nginx to demand a client certificate during the TLS handshake. If the client does not present one, or presents one not signed by the specified CA, nginx returns a 495 or 496 error — before any HTTP processing occurs.
+This snippet is included in every nginx vhost that should require mTLS. The `ssl_verify_client optional` directive enables client certificate verification at the TLS level while still allowing connections without a certificate (needed for public endpoints like `/api/enroll` and `/api/invite`). Protected locations enforce mTLS via `if ($ssl_client_verify != SUCCESS) { return 496; }` in each vhost's location blocks. If a client presents a certificate not signed by the specified CA, nginx returns a 495 or 496 error — before any application code runs.
 
-The panel vhost includes this snippet:
+The panel vhost includes this snippet and uses per-location `if` checks to enforce mTLS on protected locations while allowing public endpoints through:
 
 ```nginx
 map $http_upgrade $connection_upgrade {
@@ -275,41 +277,61 @@ server {
         internal;
     }
 
-    # Proxy to panel-server
+    # Protected locations — reject if client cert missing or invalid
     location / {
+        if ($ssl_client_verify != SUCCESS) {
+            return 496;
+        }
         proxy_pass http://127.0.0.1:3100;
-
         proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
         proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
         proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
-
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # API paths with WebSocket upgrade support
-    location /api {
+    # Public API paths — no mTLS check, cert headers cleared
+    location /api/enroll {
         proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+        # ... standard proxy headers
+    }
 
+    location /api/invite {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+        # ... standard proxy headers
+    }
+
+    # API paths with WebSocket upgrade support (mTLS required)
+    location /api {
+        if ($ssl_client_verify != SUCCESS) {
+            return 496;
+        }
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
         proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
         proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
         proxy_set_header X-SSL-Client-Serial $ssl_client_serial;
-
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
     }
 }
 ```
 
-The `error_page 495 496` directive shows a help page explaining how to import the certificate, rather than showing a cryptic TLS error.
+The `error_page 495 496` directive shows a help page explaining how to import the certificate, rather than showing a cryptic TLS error. Public endpoints (`/api/enroll` for agent enrollment and `/api/invite` for user invitations) clear the client certificate headers so that the Fastify server treats them as unauthenticated requests, matching their registration in the `publicContext` (no mTLS middleware).
 
 ### Certificate help page
 
@@ -423,11 +445,11 @@ if (alreadyProvisioned) {
 
 ### nginx directives
 
-| Directive                | Value                      | Effect                                 |
-| ------------------------ | -------------------------- | -------------------------------------- |
-| `ssl_client_certificate` | `/etc/portlama/pki/ca.crt` | CA that signs valid client certs       |
-| `ssl_verify_client`      | `on`                       | Require client certificate (hard fail) |
-| `error_page 495 496`     | `/cert-help.html`          | Show help when cert is missing         |
+| Directive                | Value                      | Effect                                                      |
+| ------------------------ | -------------------------- | ----------------------------------------------------------- |
+| `ssl_client_certificate` | `/etc/portlama/pki/ca.crt` | CA that signs valid client certs                            |
+| `ssl_verify_client`      | `optional`                 | Enable client cert verification (per-location `if` enforces) |
+| `error_page 495 496`     | `/cert-help.html`          | Show help when cert is missing                              |
 
 ### OpenSSL commands
 

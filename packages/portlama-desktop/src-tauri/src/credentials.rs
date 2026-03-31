@@ -17,6 +17,9 @@ const ADMIN_SERVICE: &str = "com.portlama.admin";
 /// Service name for storage provider credentials (e.g., Spaces access key + secret key).
 const STORAGE_SERVICE: &str = "com.portlama.storage";
 
+/// Service name for per-agent P12 passwords (keyed by agent label).
+const AGENT_SERVICE: &str = "com.portlama.agent";
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -223,4 +226,25 @@ pub fn get_storage_credential(account: &str) -> Result<Option<String>, String> {
 /// Delete storage provider credentials from the OS credential store.
 pub fn delete_storage_credential(account: &str) -> Result<(), String> {
     delete_credential_impl(STORAGE_SERVICE, account)
+}
+
+// ---------------------------------------------------------------------------
+// Agent P12 password API (service: com.portlama.agent)
+// ---------------------------------------------------------------------------
+
+/// Store an agent's P12 password in the OS credential store (keyed by agent label).
+pub fn store_agent_credential(label: &str, password: &str) -> Result<(), String> {
+    store_credential_impl(AGENT_SERVICE, label, password)
+}
+
+/// Retrieve an agent's P12 password from the OS credential store.
+/// Returns None if no credential is found.
+pub fn get_agent_credential(label: &str) -> Result<Option<String>, String> {
+    get_credential_impl(AGENT_SERVICE, label)
+}
+
+/// Delete an agent's P12 password from the OS credential store.
+#[allow(dead_code)]
+pub fn delete_agent_credential(label: &str) -> Result<(), String> {
+    delete_credential_impl(AGENT_SERVICE, label)
 }

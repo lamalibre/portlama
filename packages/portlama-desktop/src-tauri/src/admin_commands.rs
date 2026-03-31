@@ -388,6 +388,15 @@ pub async fn admin_create_enrollment_token(data: serde_json::Value) -> Result<se
 }
 
 #[tauri::command]
+pub async fn admin_revoke_enrollment_token(label: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/certs/agent/enroll/{}", url_encode(&label));
+        admin_delete(&path, None)
+    })
+    .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
 pub async fn admin_update_agent_capabilities(label: String, capabilities: serde_json::Value) -> Result<serde_json::Value, String> {
     tokio::task::spawn_blocking(move || {
         let path = format!("/api/certs/agent/{}/capabilities", url_encode(&label));
@@ -659,6 +668,116 @@ pub async fn admin_push_install_command(label: String, data: serde_json::Value) 
 pub async fn admin_get_push_install_sessions() -> Result<serde_json::Value, String> {
     tokio::task::spawn_blocking(|| admin_get("/api/plugins/push-install/sessions"))
         .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// ===========================================================================
+// System Update
+// ===========================================================================
+
+#[tauri::command]
+pub async fn admin_trigger_panel_update(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_post("/api/system/update", Some(&data.to_string())))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// ===========================================================================
+// Storage
+// ===========================================================================
+
+#[tauri::command]
+pub async fn admin_register_storage_server(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_post("/api/storage/servers", Some(&data.to_string())))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_get_storage_servers() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/storage/servers"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_delete_storage_server(id: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        validate_server_id(&id)?;
+        let path = format!("/api/storage/servers/{}", url_encode(&id));
+        admin_delete(&path, None)
+    })
+    .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_create_storage_binding(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_post("/api/storage/bindings", Some(&data.to_string())))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_get_storage_bindings() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/storage/bindings"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_get_storage_binding(plugin_name: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/storage/bindings/{}", url_encode(&plugin_name));
+        admin_get(&path)
+    })
+    .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_delete_storage_binding(plugin_name: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/storage/bindings/{}", url_encode(&plugin_name));
+        admin_delete(&path, None)
+    })
+    .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// ===========================================================================
+// Identity
+// ===========================================================================
+
+#[tauri::command]
+pub async fn admin_get_identity_self() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/identity/self"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_get_identity_users() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/identity/users"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_get_identity_user(username: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/identity/users/{}", url_encode(&username));
+        admin_get(&path)
+    })
+    .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_get_identity_groups() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/identity/groups"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// ===========================================================================
+// Plugins: Push Install Policy Update
+// ===========================================================================
+
+#[tauri::command]
+pub async fn admin_update_push_install_policy(id: String, data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/plugins/push-install/policies/{}", url_encode(&id));
+        admin_patch(&path, &data.to_string())
+    })
+    .await.map_err(|e| format!("Task failed: {}", e))?
 }
 
 // ===========================================================================

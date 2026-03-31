@@ -166,5 +166,10 @@ portlama ALL=(root) NOPASSWD: /usr/bin/chmod 644 /etc/authelia/*
 # --- test file existence ---
 portlama ALL=(root) NOPASSWD: /usr/bin/test -f /etc/nginx/sites-available/*
 portlama ALL=(root) NOPASSWD: /usr/bin/test -r /etc/portlama/pki/*
+
+# --- self-update: run update script in its own cgroup (survives panel restart) ---
+# Each argument is pinned except the script ID suffix (16-char hex from randomBytes).
+# The sudoers wildcard only matches within a single argument — no trailing args accepted.
+portlama ALL=(root) NOPASSWD: /usr/bin/systemd-run --unit portlama-update-* --no-block /usr/bin/bash /etc/portlama/portlama-update-*.sh
 `;
 }
