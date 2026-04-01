@@ -67,8 +67,14 @@ export async function startPanelServer(label, { port = 9393 } = {}) {
     // Allow health check without auth
     if (request.url === '/api/health') return;
 
-    // Static assets don't need API-level auth (nginx already verified mTLS)
-    if (!request.url.startsWith('/api')) return;
+    // Plugin bundles are intentionally public (loaded via <script> tag)
+    if (request.url.startsWith('/plugin-bundles/')) return;
+
+    // Auth is required for /api/* routes AND plugin server routes (/<pluginName>/api/...).
+    // Static assets (SPA files) are served by fastify-static and don't need auth.
+    const needsAuth = request.url.startsWith('/api') ||
+      /^\/[a-z0-9-]+\/api\//.test(request.url);
+    if (!needsAuth) return;
 
     const verify = request.headers['x-ssl-client-verify'];
     if (verify !== 'SUCCESS') {

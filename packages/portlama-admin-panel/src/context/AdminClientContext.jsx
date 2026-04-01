@@ -119,6 +119,11 @@ const AdminClientContext = createContext(null);
  * @property {(username: string) => Promise<{user: Object}>} getIdentityUser
  * @property {() => Promise<{groups: Array<string>}>} getIdentityGroups
  *
+ * User Plugin Access:
+ * @property {() => Promise<{grants: Array}>} getUserAccessGrants
+ * @property {(data: {username, pluginName}) => Promise<{ok, grant}>} createUserAccessGrant
+ * @property {(grantId: string) => Promise<{ok}>} revokeUserAccessGrant
+ *
  * Tunnels:
  * @property {() => Promise<{tunnels: Array}>} getTunnels
  * @property {(data: {subdomain, port, description?}) => Promise<{ok, tunnel}>} createTunnel

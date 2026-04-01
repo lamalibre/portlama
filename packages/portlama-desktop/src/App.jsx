@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
   Terminal,
   Activity,
@@ -19,6 +20,9 @@ import {
   ChevronLeft,
   Puzzle,
   HardDrive,
+  LogIn,
+  LogOut,
+  UserCheck,
 } from 'lucide-react';
 import {
   AdminClientProvider,
@@ -34,6 +38,7 @@ import {
   TunnelsPage,
   SettingsPage as AdminSettingsPage,
   StoragePage,
+  UserPluginAccessPage,
 } from '@lamalibre/portlama-admin-panel';
 import {
   AgentClientProvider,
@@ -47,9 +52,12 @@ import {
 } from '@lamalibre/portlama-agent-panel';
 import { desktopAdminClient } from './lib/desktop-admin-client.js';
 import { createDesktopAgentClient } from './lib/desktop-agent-client.js';
+import { desktopUserAccessClient } from './lib/desktop-user-access-client.js';
 import Servers from './pages/Servers.jsx';
 import Agents from './pages/Agents.jsx';
 import LocalPlugins from './pages/LocalPlugins.jsx';
+import UserLogin from './pages/UserLogin.jsx';
+import UserPlugins from './pages/UserPlugins.jsx';
 
 const AGENT_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity },
@@ -70,6 +78,7 @@ const SERVER_ADMIN_TABS = [
   { id: 'server-tickets', label: 'Tickets', icon: Ticket },
   { id: 'server-plugins', label: 'Plugins', icon: Package },
   { id: 'server-storage', label: 'Storage', icon: HardDrive },
+  { id: 'server-user-access', label: 'User Plugin Access', icon: UserCheck },
   { id: 'server-settings', label: 'Settings', icon: Settings },
 ];
 
@@ -112,6 +121,42 @@ export default function App() {
   const [skipSetup, setSkipSetup] = useState(false);
   const [managingServer, setManagingServer] = useState(null);
   const [managingAgent, setManagingAgent] = useState(null);
+  const [userSession, setUserSession] = useState(null);
+
+  // Check for existing user session on mount
+  useEffect(() => {
+    desktopUserAccessClient.getSession().then((session) => {
+      if (session) setUserSession(session);
+    }).catch(() => {});
+  }, []);
+
+  // Listen for deep link callback from Authelia OAuth flow
+  useEffect(() => {
+    let unlisten;
+    listen('user-access-callback', async (event) => {
+      const { token, domain } = event.payload || {};
+      if (token && domain) {
+        try {
+          const result = await desktopUserAccessClient.exchangeToken(token, domain);
+          if (result?.ok) {
+            setUserSession({ username: result.username, domain: result.domain, expiresAt: result.expiresAt });
+            setManagingAgent(null);
+            setManagingServer(null);
+            setActiveTab('user-plugins');
+          }
+        } catch (err) {
+          console.error('Token exchange failed:', err);
+        }
+      }
+    }).then((fn) => { unlisten = fn; });
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+
+  const handleUserLogout = useCallback(async () => {
+    await desktopUserAccessClient.logout();
+    setUserSession(null);
+    setActiveTab('agent-list');
+  }, []);
 
   const statusQuery = useQuery({
     queryKey: ['status'],
@@ -271,6 +316,8 @@ export default function App() {
         return <PluginsPage />;
       case 'server-storage':
         return <StoragePage />;
+      case 'server-user-access':
+        return <UserPluginAccessPage />;
       case 'server-settings':
         return <AdminSettingsPage hasDomain={managingHasDomain} />;
       default:
@@ -465,6 +512,57 @@ export default function App() {
               Plugins
             </button>
           </div>
+
+          {/* USER section */}
+          <div className="mt-3 pt-2 border-t border-zinc-800">
+            <div className="px-3 py-1.5">
+              <span className={`text-[10px] font-semibold uppercase tracking-wider ${
+                activeTab === 'user-login' || activeTab === 'user-plugins' ? 'text-zinc-400' : 'text-zinc-500'
+              }`}>
+                User
+              </span>
+            </div>
+            {userSession ? (
+              <>
+                <div className="px-3 py-1 mb-1">
+                  <span className="text-[10px] text-zinc-500 truncate block">{userSession.username}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setManagingAgent(null); setManagingServer(null); setActiveTab('user-plugins'); }}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs mb-0.5 ${
+                    activeTab === 'user-plugins'
+                      ? 'bg-zinc-800 text-cyan-400'
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <Puzzle size={13} />
+                  My Plugins
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUserLogout}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs mb-0.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                >
+                  <LogOut size={13} />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setManagingAgent(null); setManagingServer(null); setActiveTab('user-login'); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs mb-0.5 ${
+                  activeTab === 'user-login'
+                    ? 'bg-zinc-800 text-cyan-400'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                }`}
+              >
+                <LogIn size={13} />
+                User Login
+              </button>
+            )}
+          </div>
         </nav>
 
         {/* Footer */}
@@ -492,7 +590,11 @@ export default function App() {
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === 'local-plugins' ? (
+        {activeTab === 'user-login' ? (
+          <UserLogin />
+        ) : activeTab === 'user-plugins' && userSession ? (
+          <UserPlugins />
+        ) : activeTab === 'local-plugins' ? (
           <LocalPlugins />
         ) : managingServer ? (
           <AdminClientProvider client={desktopAdminClient}>

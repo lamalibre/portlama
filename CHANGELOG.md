@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add Authelia login to desktop app — non-admin users authenticate via browser-based OAuth-like flow and install plugins they've been granted access to (`panel-server`, `portlama-desktop`, `portlama-admin-panel`)
+- Add "User Plugin Access" admin page for granting per-user, per-plugin enrollment rights (`portlama-admin-panel`, `portlama-desktop`)
+- Add user-access API endpoints: grant CRUD (admin), OAuth authorize/exchange flow (public), plugin listing and enrollment (user session) (`panel-server`)
+- Add HMAC-SHA256 signed user session tokens with 12h expiry and 2h inactivity timeout, distinct from 2FA sessions via `type: 'user-access'` field (`panel-server`)
+- Add `portlama://` deep link scheme for desktop app OAuth callback with domain verification against stored pending login (`portlama-desktop`)
+- Add User Login and My Plugins pages to desktop app sidebar (`portlama-desktop`)
+- Add `user-access` to reserved API prefixes (`panel-server`, `portlama-agent`)
+- Add nginx Authelia forward auth location for `/api/user-access/authorize` on auth vhost and public locations for exchange/plugins/enroll on panel domain vhost (`panel-server`)
+
+### Security
+
+- Add domain validation in desktop user-access login to prevent URL injection via crafted domain strings (`portlama-desktop`)
+- Add deep link domain verification — store expected domain before opening browser, reject callbacks with mismatched domains to prevent MITM token theft (`portlama-desktop`)
+- Add OTP hard cap (50 active tokens) and rate limiting on all user-access nginx locations to prevent DoS (`panel-server`)
+- Fix agent plugin server routes bypassing authentication hook — auth now covers `/<plugin>/api/` routes in addition to `/api/*` (`portlama-agent`)
+- Fix grant-to-plugin mismatch — desktop validates that the requested package matches the grant's plugin name before installation (`portlama-desktop`)
+- Remove enrollment token from desktop frontend response to reduce credential exposure window (`portlama-desktop`)
+- Upgrade OTP timing-safe comparison to use HMAC-digest pattern matching ticket system for defense-in-depth (`panel-server`)
+- Add consumed grant cleanup (90-day retention) and stale OTP cleanup to prevent unbounded state file growth (`panel-server`)
+
 - Add agent plugin hosting — agents serve plugins on their panel server (port 9393) with routes at `/<name>/...`, matching local plugin host URL pattern (`portlama-agent`)
 - Add agent plugin lifecycle library with install, enable, disable, uninstall, update, and bundle read operations (`portlama-agent`)
 - Add plugin CRUD endpoints to agent panel API: list, install, enable, disable, uninstall, update, and bundle serving (`portlama-agent`)
@@ -59,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restrict local plugin host CORS to explicit origin allowlist instead of echoing any origin (`portlama-agent`)
 - Change `panel.json` file permissions from 0640 to 0600 — contains `sessionSecret` and `panel2fa.secret` (`panel-server`, `create-portlama`)
 
-**Affected packages:** panel-server 0.1.27, panel-client 0.1.10, portlama-agent 1.0.22, portlama-agent-panel 0.1.2, create-portlama 1.0.49, portlama-admin-panel 0.1.2, portlama-cloud 0.1.3, portlama-desktop 0.1.13, install-portlama-agent 1.0.0 (new)
+**Affected packages:** panel-server 0.1.28, panel-client 0.1.10, portlama-agent 1.0.22, portlama-agent-panel 0.1.2, create-portlama 1.0.51, portlama-admin-panel 0.1.3, portlama-cloud 0.1.3, portlama-desktop 0.1.14, install-portlama-agent 1.0.0 (new)
 
 ---
 

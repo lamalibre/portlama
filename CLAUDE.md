@@ -165,7 +165,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 
 **Security rules:**
 
-- Panel vhost: `ssl_verify_client optional` at server level, `if ($ssl_client_verify != SUCCESS) { return 496; }` at protected locations — public endpoints (`/api/enroll`, `/api/invite`) skip the check
+- Panel vhost: `ssl_verify_client optional` at server level, `if ($ssl_client_verify != SUCCESS) { return 496; }` at protected locations — public endpoints (`/api/enroll`, `/api/invite`, `/api/user-access/exchange`, `/api/user-access/plugins`, `/api/user-access/enroll`) skip the check
 - All services bind `127.0.0.1` — nginx is the sole public-facing service
 - `https://<ip>:9292` always works (mTLS) — fallback if domain is lost. Exception: when panel 2FA is enabled, the IP vhost is disabled (domain-only access)
 - Secrets: `crypto.randomBytes`, never hardcoded
@@ -180,6 +180,23 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Admin auth mode: panel.json `adminAuthMode` is `'p12'` (default) or `'hardware-bound'`. When hardware-bound, `GET /certs/mtls/download` and `POST /certs/mtls/rotate` return 410 Gone. Recovery: `sudo portlama-reset-admin` on the server (root-only CLI).
 - Admin upgrade: `POST /certs/admin/upgrade-to-hardware-bound` accepts CSR, signs with CA, revokes old admin cert, sets `adminAuthMode: 'hardware-bound'`. One-way operation — reversible only via DO root console.
 - Panel 2FA: opt-in TOTP two-factor authentication for admin panel (on top of mTLS). Config fields: `panel2fa: { enabled, secret, setupComplete }` and `sessionSecret` in `panel.json`. Agents bypass 2FA entirely (only admin cert holders need it). Enabling 2FA disables IP:9292 vhost (domain required). Session: HMAC-SHA256 signed cookie (`portlama_2fa_session`), 12h absolute expiry, 2h inactivity timeout, `HttpOnly`/`Secure`/`SameSite=Strict`. TOTP uses RFC 6238 with SHA-1, 30s period, +/-1 step drift window, replay protection. Rate limiting: 5 attempts / 2 min per IP, 5-min ban. Endpoints: `GET /settings/2fa` (status, exempt), `POST /settings/2fa/setup`, `POST /settings/2fa/confirm`, `POST /settings/2fa/verify` (exempt), `POST /settings/2fa/disable`. Recovery: `sudo portlama-reset-admin` clears 2FA, re-enables IP vhost, resets admin auth to P12. Middleware: `twofa-session.js` (Fastify plugin, runs after mTLS, before roleGuard). Dependency: `@fastify/cookie`.
+
+**User plugin access (Authelia login to desktop):**
+
+- Non-admin Authelia users can log into the desktop app and install plugins they've been granted access to by an admin
+- Admin grants per-user, per-plugin enrollment rights via `POST /api/user-access/grants` (admin-only, mTLS). State file: `/etc/portlama/user-plugin-access.json` with atomic writes + promise-chain mutex
+- OAuth-like auth flow: desktop opens browser to `https://auth.<domain>/api/user-access/authorize` (Authelia-protected via nginx forward auth), panel generates 60-second OTP, redirects to `portlama://callback?token=<otp>&domain=<domain>` deep link
+- Desktop captures deep link via `tauri-plugin-deep-link`, exchanges OTP for HMAC-SHA256 signed user session token via `POST /api/user-access/exchange` (public, rate-limited). Session: 12h expiry, 2h inactivity, carries `username` and `type: 'user-access'` (prevents cross-use with 2FA sessions)
+- User session passed as `Authorization: Bearer <token>` header (not cookie — desktop uses Rust reqwest, not browser)
+- User-session-protected endpoints: `GET /api/user-access/plugins` (list granted plugins), `POST /api/user-access/enroll` (consume grant, generate enrollment token). Middleware: `user-access-session.js` (Fastify plugin, reads Bearer token, validates signature/expiry/inactivity)
+- Admin endpoints: `GET /api/user-access/grants`, `POST /api/user-access/grants` (`{ username, pluginName }`), `DELETE /api/user-access/grants/:grantId` (revoke unused)
+- Grant consumption is atomic (mutex-serialized) to prevent double-enrollment races. Consumed grants are kept for audit (not deleted)
+- OTP tokens: 32-byte random hex, 60-second expiry, single-use, timing-safe comparison. Expired tokens cleaned after 5 minutes
+- Desktop UI: "User" sidebar section with Login/My Plugins views. Login opens browser, callback auto-exchanges token. My Plugins shows granted plugins with Install/Uninstall
+- Installed plugins reuse local plugin infrastructure (`127.0.0.1:9293` Fastify host)
+- Admin UI: "User Plugin Access" tab in server admin panel. Table of grants with Create/Revoke actions
+- nginx: auth vhost gets `/api/user-access/authorize` with Authelia forward auth + `/internal/authelia/authz` internal location. Panel domain vhost gets public locations for `/api/user-access/exchange`, `/api/user-access/plugins`, `/api/user-access/enroll`
+- Reserved API prefix: `user-access` added to `RESERVED_API_PREFIXES` in `lib/constants.js`
 
 **Certificate scoping:**
 
@@ -207,7 +224,7 @@ Build before considering a task complete. Avoid commands that hang (e.g., `npm s
 - Manifest `config` field: declarative schema for plugin settings (`{ key: { type, default?, description?, enum? } }`) — stored in registry, used by plugin's settings UI
 - Server-side plugin code runs unsandboxed in the panel process — `@lamalibre/` scope is the trust boundary
 - All `npm install` calls use `--ignore-scripts` to block postinstall script execution
-- Plugin names and ticket scope names matching core API prefixes are rejected — single source of truth in `lib/constants.js`: `health`, `onboarding`, `invite`, `enroll`, `tunnels`, `sites`, `system`, `services`, `logs`, `users`, `certs`, `invitations`, `plugins`, `tickets`, `settings`, `identity`, `storage`, `agents`
+- Plugin names and ticket scope names matching core API prefixes are rejected — single source of truth in `lib/constants.js`: `health`, `onboarding`, `invite`, `enroll`, `tunnels`, `sites`, `system`, `services`, `logs`, `users`, `certs`, `invitations`, `plugins`, `tickets`, `settings`, `identity`, `storage`, `agents`, `user-access`
 - Plugin server routes are mounted with two-level Fastify encapsulation: auth guard on outer scope (plugin cannot override), plugin code on inner scope
 - Plugin panel bundles served at `/{pluginName}/panel.js` with runtime `@lamalibre/` scope check
 - Disabled plugins return 503 via `onRequest` hook (Fastify cannot remove routes at runtime — clean state requires restart)

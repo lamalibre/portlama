@@ -18,6 +18,12 @@ import managementRoutes from './routes/management.js';
 import pluginRouter from './routes/plugin-router.js';
 import inviteRoutes from './routes/invite.js';
 import enrollmentRoutes from './routes/enrollment.js';
+import {
+  userAccessAdminRoutes,
+  userAccessPublicRoutes,
+  userAccessProtectedRoutes,
+} from './routes/user-access.js';
+import userAccessSessionMiddleware from './middleware/user-access-session.js';
 import { getPluginCapabilities } from './lib/plugins.js';
 import { setPluginCapabilities } from './lib/mtls.js';
 import {
@@ -96,6 +102,7 @@ async function start() {
     app.register(errorHandler);
     app.register(inviteRoutes, { prefix: '/api/invite' });
     app.register(enrollmentRoutes, { prefix: '/api/enroll' });
+    app.register(userAccessPublicRoutes, { prefix: '/api/user-access' });
   });
 
   // --- Protected routes (mTLS + onboarding guard) ---
@@ -107,7 +114,15 @@ async function start() {
     app.register(healthRoutes, { prefix: '/api' });
     app.register(onboardingRoutes, { prefix: '/api/onboarding' });
     app.register(managementRoutes, { prefix: '/api' });
+    app.register(userAccessAdminRoutes, { prefix: '/api' });
     app.register(pluginRouter, { prefix: '/api' });
+  });
+
+  // --- User-access session-protected routes (Bearer token, no mTLS) ---
+  server.register(async function userAccessContext(app) {
+    app.register(userAccessSessionMiddleware);
+    app.register(errorHandler);
+    app.register(userAccessProtectedRoutes, { prefix: '/api/user-access' });
   });
 
   // --- SPA fallback ---

@@ -941,3 +941,26 @@ pub async fn admin_stop_log_stream(
 
 /// State container for active log streams.
 pub struct LogStreamState(pub std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<std::sync::atomic::AtomicBool>>>);
+
+// --- User Plugin Access ---
+
+#[tauri::command]
+pub async fn admin_get_user_access_grants() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/user-access/grants"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_create_user_access_grant(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_post("/api/user-access/grants", Some(&data.to_string())))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_revoke_user_access_grant(grant_id: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/user-access/grants/{}", url_encode(&grant_id));
+        admin_delete(&path, None)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}

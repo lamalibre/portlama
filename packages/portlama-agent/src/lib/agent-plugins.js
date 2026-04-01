@@ -21,7 +21,7 @@ import { agentDataDir, agentPluginsFile, agentPluginsDir } from './platform.js';
 const RESERVED_NAMES = [
   'health', 'onboarding', 'invite', 'enroll', 'tunnels', 'sites', 'system',
   'services', 'logs', 'users', 'certs', 'invitations', 'plugins', 'tickets',
-  'settings', 'identity', 'storage', 'agents',
+  'settings', 'identity', 'storage', 'agents', 'user-access',
 ];
 
 // --- Promise-chain mutex (serialises registry modifications) ---

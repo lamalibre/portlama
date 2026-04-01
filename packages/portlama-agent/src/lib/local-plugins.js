@@ -7,7 +7,8 @@ import { localDir, localPluginsFile, localPluginsDir } from './platform.js';
 // Reserved names that cannot be used as plugin names (matches panel-server constants).
 const RESERVED_NAMES = [
   'health', 'onboarding', 'invite', 'enroll', 'tunnels', 'sites', 'system',
-  'services', 'logs', 'users', 'certs', 'invitations', 'plugins', 'tickets', 'settings',
+  'services', 'logs', 'users', 'certs', 'invitations', 'plugins', 'tickets',
+  'settings', 'identity', 'storage', 'agents', 'user-access',
 ];
 
 // --- Promise-chain mutex (serialises registry modifications) ---

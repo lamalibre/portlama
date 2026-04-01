@@ -130,6 +130,67 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # User access public endpoints (no mTLS — Bearer token auth handled by panel server)
+    location /api/user-access/exchange {
+        limit_req zone=enroll_domain burst=5 nodelay;
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/user-access/plugins {
+        limit_req zone=enroll_domain burst=5 nodelay;
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/user-access/enroll {
+        limit_req zone=enroll_domain burst=5 nodelay;
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+
+        proxy_set_header X-SSL-Client-Verify "";
+        proxy_set_header X-SSL-Client-DN "";
+        proxy_set_header X-SSL-Client-Serial "";
+
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # API paths with WebSocket upgrade support (mTLS required)
     location /api {
         if ($ssl_client_verify != SUCCESS) {
@@ -171,7 +232,10 @@ server {
  */
 export async function writeAuthVhost(domain) {
   const fqdn = `auth.${domain}`;
-  const config = `server {
+  const config = `# Rate limit zone for user access authorize endpoint (5 requests/minute per IP)
+limit_req_zone $binary_remote_addr zone=user_access_auth:1m rate=5r/m;
+
+server {
     listen 443 ssl;
     server_name ${fqdn};
 
@@ -200,6 +264,49 @@ export async function writeAuthVhost(domain) {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # User access authorization — Authelia forward auth protects this endpoint
+    # so Remote-User header is set by Authelia on successful authentication.
+    location /internal/authelia/authz {
+        internal;
+
+        proxy_pass http://127.0.0.1:9091/api/authz/auth-request;
+        proxy_pass_request_body off;
+
+        proxy_set_header Content-Length "";
+        proxy_set_header Connection "";
+        proxy_set_header X-Original-Method $request_method;
+        proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+        proxy_set_header X-Forwarded-For $remote_addr;
+
+        proxy_http_version 1.1;
+        proxy_buffers 4 32k;
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    }
+
+    location /api/user-access/authorize {
+        limit_req zone=user_access_auth burst=3 nodelay;
+
+        # Clear client-supplied identity headers (Authelia re-injects on success)
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        auth_request /internal/authelia/authz;
+        auth_request_set $user $upstream_http_remote_user;
+        auth_request_set $redirection_url $upstream_http_location;
+
+        proxy_set_header Remote-User $user;
+
+        proxy_pass http://127.0.0.1:3100;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        error_page 401 =302 $redirection_url;
     }
 
     # Default — proxy to Authelia

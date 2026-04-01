@@ -1,5 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use tauri::Emitter;
+use tauri::Listener;
+
 mod admin_commands;
 mod agents;
 mod api;
@@ -14,13 +17,74 @@ mod mode;
 mod services;
 mod plugins;
 mod tray;
+mod user_access;
+
+/// Simple percent-decoding for URL query parameter values.
+fn urlencoding_decode(input: &str) -> String {
+    let mut result = Vec::new();
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(byte) = u8::from_str_radix(
+                &input[i + 1..i + 3],
+                16,
+            ) {
+                result.push(byte);
+                i += 3;
+                continue;
+            }
+        }
+        if bytes[i] == b'+' {
+            result.push(b' ');
+        } else {
+            result.push(bytes[i]);
+        }
+        i += 1;
+    }
+    String::from_utf8_lossy(&result).into_owned()
+}
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_deep_link::init())
         .manage(admin_commands::LogStreamState(std::sync::Mutex::new(std::collections::HashMap::new())))
         .setup(|app| {
             tray::setup_tray(app)?;
+
+            // Listen for deep link events (portlama://callback?token=...&domain=...)
+            let handle = app.handle().clone();
+            app.listen("deep-link://new-url", move |event| {
+                if let Some(urls) = event.payload().strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+                    // Payload is a JSON array of URL strings
+                    if let Ok(url_list) = serde_json::from_str::<Vec<String>>(&format!("[{}]", urls)) {
+                        for url in url_list {
+                            if url.starts_with("portlama://callback") {
+                                // Parse query parameters from the deep link URL
+                                if let Some(query) = url.split('?').nth(1) {
+                                    let mut token = String::new();
+                                    let mut domain = String::new();
+                                    for param in query.split('&') {
+                                        if let Some(val) = param.strip_prefix("token=") {
+                                            token = urlencoding_decode(val);
+                                        } else if let Some(val) = param.strip_prefix("domain=") {
+                                            domain = urlencoding_decode(val);
+                                        }
+                                    }
+                                    if !token.is_empty() && !domain.is_empty() {
+                                        let _ = handle.emit("user-access-callback", serde_json::json!({
+                                            "token": token,
+                                            "domain": domain,
+                                        }));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -231,6 +295,18 @@ fn main() {
             // Admin: Log Streaming
             admin_commands::admin_start_log_stream,
             admin_commands::admin_stop_log_stream,
+            // Admin: User Plugin Access
+            admin_commands::admin_get_user_access_grants,
+            admin_commands::admin_create_user_access_grant,
+            admin_commands::admin_revoke_user_access_grant,
+            // User access (Authelia login)
+            user_access::user_access_start_login,
+            user_access::user_access_exchange_token,
+            user_access::user_access_get_session,
+            user_access::user_access_logout,
+            user_access::user_access_get_plugins,
+            user_access::user_access_enroll_plugin,
+            user_access::user_access_install_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running portlama desktop");
