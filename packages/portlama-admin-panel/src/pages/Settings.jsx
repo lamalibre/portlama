@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { ShieldCheck, Copy, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 
 // --- Settings Page ---
 
@@ -55,7 +56,7 @@ export default function Settings({ hasDomain }) {
       setUpdateVersion('');
       setShowUpdateConfirm(false);
     },
-    onError: (err) => toast(err.message, 'error'),
+    onError: (err) => toast(errorMessage(err), 'error'),
   });
 
   const isValidVersion = /^\d+\.\d+\.\d+$/.test(updateVersion);

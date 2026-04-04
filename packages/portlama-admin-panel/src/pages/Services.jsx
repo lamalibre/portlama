@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Play, Square, RotateCw, Server } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 
 function StatusBadge({ status }) {
   const styles =
@@ -220,7 +221,7 @@ export default function Services() {
       addToast(`${data.name} ${data.action}ed successfully`);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
     },
   });
 

@@ -288,6 +288,25 @@ pub fn load_admin_config_for_label(label: &str) -> Result<AdminApiConfig, String
     admin_config_from_server(server)
 }
 
+/// Load the admin configuration for a specific server by ID.
+pub fn load_admin_config_for_server_id(server_id: &str) -> Result<AdminApiConfig, String> {
+    let registry_path = servers_registry_path();
+    if !registry_path.exists() {
+        return Err("No servers configured".to_string());
+    }
+
+    let content = std::fs::read_to_string(&registry_path)
+        .map_err(|e| format!("Failed to read servers.json: {}", e))?;
+    let servers: Vec<serde_json::Value> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse servers.json: {}", e))?;
+
+    let server = servers.iter()
+        .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(server_id))
+        .ok_or_else(|| format!("No server with ID \"{}\"", server_id))?;
+
+    admin_config_from_server(server)
+}
+
 /// Get the active server's mode ("agent" or "admin").
 pub fn get_active_mode() -> Result<String, String> {
     let registry_path = servers_registry_path();

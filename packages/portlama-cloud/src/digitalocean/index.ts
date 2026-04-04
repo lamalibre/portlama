@@ -251,6 +251,36 @@ export class DigitalOceanProvider implements CloudProvider {
     );
   }
 
+  // --- Droplet discovery ---
+
+  async listManagedDroplets(): Promise<Server[]> {
+    const servers: Server[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    while (true) {
+      const { body } = await doGet(
+        `/v2/droplets?tag_name=${encodeURIComponent(MANAGED_TAG)}&page=${page}&per_page=${perPage}`,
+        { token: this.token },
+      );
+
+      assertObject(body, 'list droplets response');
+      assertField(body, 'droplets', 'array', 'list droplets response');
+      const items = body.droplets as Array<Record<string, unknown>>;
+
+      for (const d of items) {
+        servers.push(parseDroplet(d));
+      }
+
+      const meta = body.meta as Record<string, unknown> | undefined;
+      const total = typeof meta?.total === 'number' ? meta.total : 0;
+      if (page * perPage >= total || page >= 10) break;
+      page++;
+    }
+
+    return servers;
+  }
+
   // --- DNS management (opt-in, requires domain:* scopes) ---
 
   async listDomains(): Promise<DODomain[]> {

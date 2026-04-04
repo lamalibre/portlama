@@ -273,50 +273,6 @@ pub async fn update_agent() -> Result<String, String> {
     Ok("Agent updated successfully".to_string())
 }
 
-#[tauri::command]
-pub async fn uninstall_agent() -> Result<String, String> {
-    let plist_path = config::plist_path();
-
-    // 1. Unload agent (ignore errors — may not be loaded)
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("launchctl")
-            .args(["unload", &plist_path.to_string_lossy()])
-            .output();
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let _ = std::process::Command::new("systemctl")
-            .args(["--user", "stop", "portlama-chisel"])
-            .output();
-    }
-
-    // 2. Remove plist/service file
-    if plist_path.exists() {
-        std::fs::remove_file(&plist_path)
-            .map_err(|e| format!("Failed to remove plist: {}", e))?;
-    }
-
-    // 3. Remove ~/.portlama directory (with symlink attack protection)
-    let agent_dir = config::agent_dir();
-    if agent_dir.exists() {
-        let canonical = agent_dir.canonicalize()
-            .map_err(|e| format!("Failed to resolve agent directory: {}", e))?;
-        let home = dirs::home_dir().ok_or("Could not determine home directory")?;
-        let expected = home.join(".portlama");
-        if canonical != expected {
-            return Err(format!(
-                "Agent directory resolves to unexpected path: {:?}", canonical
-            ));
-        }
-        std::fs::remove_dir_all(&canonical)
-            .map_err(|e| format!("Failed to remove agent directory: {}", e))?;
-    }
-
-    Ok("Agent uninstalled".to_string())
-}
-
 // --- Certificate management ---
 
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-04-04
+
+### Added
+
+- Add server discovery — find existing Portlama-managed DigitalOcean droplets with DNS domain resolution and panel URL detection (`portlama-cloud`, `portlama-desktop`)
+- Add SSH-based admin recovery — recover admin access when P12 certificate is lost via ephemeral SSH key pair and `portlama-reset-admin` (`portlama-cloud`, `portlama-desktop`)
+- Add Discover Server wizard — desktop UI for discovering existing servers, registering them, and recovering admin certificates via SSH (`portlama-desktop`)
+- Add `--json` non-interactive mode to admin certificate upgrade CLI with NDJSON progress output for desktop integration (`install-portlama-admin`)
+- Add step-by-step progress reporting to agent uninstall with per-step status (complete/skipped/warning/failed) (`portlama-desktop`)
+- Add type-to-confirm safety dialog for agent uninstall requiring the agent label to be typed (`portlama-agent-panel`)
+- Add gatekeeper design document for future tunnel access control system (`panel-client`)
+
+### Changed
+
+- Rewrite desktop admin certificate upgrade as thin shell-out to `install-portlama-admin --json` replacing ~250 lines of Rust reimplementation (`portlama-desktop`)
+- Move agent uninstall from `commands.rs` to `agents.rs` with per-agent scoping instead of removing the entire `~/.portlama` directory (`portlama-desktop`)
+
+### Fixed
+
+- Fix Keychain identity invisible after admin certificate upgrade — trust the Portlama CA in the login keychain via `security add-trusted-cert` (`install-portlama-admin`)
+- Fix macOS curl unable to use Keychain identities — create a P12 file with the upgraded certificate for curl-based tools alongside the non-extractable Keychain import (`install-portlama-admin`)
+- Fix `portlama-reset-admin` not restarting panel-server after config change — cached `adminAuthMode` prevented the reset from taking effect (`panel-server`)
+- Fix Tauri error messages not displayed in admin and agent panel toasts — normalize plain string errors from `invoke()` via `errorMessage()` helper (`portlama-admin-panel`, `portlama-agent-panel`)
+- Fix agent uninstall not navigating back to agent list after completion (`portlama-agent-panel`, `portlama-desktop`)
+- Fix domain detection only matching 2-part TLDs — use DigitalOcean zone names for base domain identification (`portlama-cloud`)
+
+### Security
+
+- Add symlink attack protection to server directory cleanup on server removal (`portlama-desktop`)
+- Add path traversal protection to SSH recovery cleanup — canonicalize paths before validation and use canonical path for operations (`portlama-cloud`, `portlama-desktop`)
+- Fix TOCTOU in recovery cleanup — pass canonicalized directory path to Node.js CLI instead of original user input (`portlama-desktop`)
+
 ## [Unreleased] - 2026-04-02
 
 ### Added

@@ -485,6 +485,7 @@ pub async fn start_local_install(
             keychain_identity: None,
             p12_path: Some(p12_dest),
             p12_password: None,
+            admin_auth: None,
         };
 
         servers.push(entry.clone());
@@ -580,6 +581,7 @@ pub async fn import_existing_local_install(
             keychain_identity: None,
             p12_path: Some(p12_dest),
             p12_password: None,
+            admin_auth: None,
         };
 
         servers.push(entry.clone());

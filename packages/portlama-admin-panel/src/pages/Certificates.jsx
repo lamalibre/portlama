@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 import {
   ShieldCheck,
   RefreshCw,
@@ -435,7 +436,7 @@ function AgentGenerateModal({ onClose }) {
       queryClient.invalidateQueries({ queryKey: ['agent-certs'] });
     },
     onError: (err) => {
-      setError(err.message);
+      setError(errorMessage(err));
     },
   });
 
@@ -713,7 +714,7 @@ function AgentEditCapsModal({ agent, onClose }) {
       onClose();
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
     },
   });
 
@@ -786,7 +787,7 @@ function AgentEditSitesModal({ agent, onClose }) {
       onClose();
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
     },
   });
 
@@ -889,7 +890,7 @@ function AgentEnrollTokenModal({ onClose }) {
       queryClient.invalidateQueries({ queryKey: ['agent-certs'] });
     },
     onError: (err) => {
-      setError(err.message);
+      setError(errorMessage(err));
     },
   });
 
@@ -1106,7 +1107,7 @@ function AgentEnrollTokenModal({ onClose }) {
                     queryClient.invalidateQueries({ queryKey: ['agent-certs'] });
                     onClose();
                   } catch (err) {
-                    setError(err.message);
+                    setError(errorMessage(err));
                     setRevoking(false);
                   }
                 }}
@@ -1160,7 +1161,7 @@ function AgentCertsSection() {
       setRevokeTarget(null);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
       setRevokeTarget(null);
     },
   });
@@ -1432,7 +1433,7 @@ function RotationModal({ onClose }) {
       queryClient.invalidateQueries({ queryKey: ['certs'] });
     },
     onError: (err) => {
-      setError(err.message);
+      setError(errorMessage(err));
       setStage('error');
     },
   });
@@ -1458,7 +1459,7 @@ function RotationModal({ onClose }) {
     try {
       await client.downloadMtls();
     } catch (err) {
-      addToast(err.message || 'Download failed', 'error');
+      addToast(errorMessage(err) || 'Download failed', 'error');
     }
   }, [client, addToast]);
 
@@ -1720,7 +1721,7 @@ export default function Certificates() {
       setRenewingDomain(null);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
       setRenewingDomain(null);
     },
   });

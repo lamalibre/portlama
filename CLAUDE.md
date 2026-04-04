@@ -16,7 +16,7 @@ portlama/
 │   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop app (dual-mode: agent management + server admin panel)
 │   ├── portlama-identity/      @lamalibre/portlama-identity — SDK for Authelia identity header parsing and user metadata queries
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
-│   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound
+│   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound (interactive + --json NDJSON mode for desktop)
 │   ├── install-portlama-agent/ @lamalibre/install-portlama-agent — npx installer for agent cert upgrade to hardware-bound
 │   ├── install-portlama-e2e-mcp/ @lamalibre/install-portlama-e2e-mcp — npx installer + MCP server for E2E test infrastructure
 │   ├── portlama-tickets/      @lamalibre/portlama-tickets — SDK for ticket system (agent-to-agent authorization)
@@ -132,7 +132,7 @@ feria setup / teardown / status                # manage .npmrc without starting 
 - Cloud provisioning in `cloud.rs` — bridges React UI to `@lamalibre/portlama-cloud` Node.js CLI for both compute (droplets) and storage (Spaces buckets). Storage commands: `store_storage_credentials`, `get_storage_credentials`, `delete_storage_credentials`, `validate_storage_credentials`, `get_spaces_regions`, `provision_storage_server`, `get_storage_servers`, `remove_storage_server`, `destroy_storage_server`. Storage-to-panel commands: `push_storage_to_panel`, `bind_plugin_storage`, `setup_plugin_storage`. Panel update commands: `check_panel_update`, `update_panel_server` (streams NDJSON as `panel-update-progress` Tauri events)
 - Local server installation in `local_install.rs` — spawns `create-portlama --json` via `pkexec`, streams NDJSON progress as Tauri events, auto-imports P12 certificates
 - OS credential storage in `credentials.rs` — macOS `security-framework` crate (direct Keychain API), Linux `secret-tool` (libsecret). Four services: `com.portlama.cloud` (API tokens), `com.portlama.server` (P12 passwords), `com.portlama.admin` (admin P12 passwords), `com.portlama.storage` (Spaces access key + secret key as JSON)
-- Multi-agent management in `agents.rs` — registry at `~/.portlama/agents.json`, per-agent data at `~/.portlama/agents/<label>/`, Tauri commands for agent start/stop/restart/logs/tunnels/config
+- Multi-agent management in `agents.rs` — registry at `~/.portlama/agents.json`, per-agent data at `~/.portlama/agents/<label>/`, Tauri commands for agent start/stop/restart/uninstall/logs/tunnels/config. `uninstall_agent(label)` returns `{ label, steps }` JSON with per-step results (`{ step, status, detail }`) — stops services, removes registry entry, cleans data directory (with symlink protection), removes credentials
 - Agent installation in `agents.rs` — `install_agent(label, panel_url, token)` checks Node.js, installs CLI via npm, spawns `portlama-agent setup --json`, streams NDJSON progress as `agent-install-progress` Tauri events
 - `config.rs` `load_effective_config()` — checks `agents.json` (multi-agent registry) first, then `servers.json` (active entry), then falls back to `agent.json` (legacy)
 - `tokio::task::spawn_blocking` for subprocess calls and file I/O — never block the Tauri event loop
@@ -190,6 +190,9 @@ feria setup / teardown / status                # manage .npmrc without starting 
 - Cleanup stack (shared `cleanup.ts`): each resource creation registers a rollback; on failure, cleanup runs in reverse. `destroy-storage` deletes both the bucket and the registry entry — bucket must be empty (S3 returns 409 BucketNotEmpty otherwise)
 - Provisioning locks: `~/.portlama/.provisioning.lock` (compute and update — shared) and `~/.portlama/.storage-provisioning.lock` (storage) prevent concurrent operations
 - Updater (`updater.ts`): handles panel server updates via SSH. CLI command: `update --id <serverId> --version <version>`. SSHs into the server, runs `npx @lamalibre/create-portlama@<version>` in redeploy mode, verifies health after restart. Uses the same ephemeral SSH key pattern and provisioning lock as the compute provisioner
+- Discovery (`discover.ts`): finds existing Portlama-managed droplets (tagged `portlama:managed`), resolves DNS domains pointing to each droplet's IP, determines panel URL. CLI command: `discover`. Desktop Tauri commands in `cloud.rs`: `discover_servers`, `register_discovered_server`
+- SSH Recovery (`recover.ts`): recovers admin access when P12 certificate is lost. Generates ephemeral ed25519 SSH key pair, user adds public key via DO console, SSHs in to run `sudo portlama-reset-admin`, downloads new P12. CLI commands: `recover-generate-key`, `recover-test-ssh`, `recover-admin`, `recover-cleanup`. Recovery directory is path-validated (canonicalize + prefix check) to prevent traversal. Desktop Tauri commands in `cloud.rs`: `generate_recovery_ssh_key`, `test_recovery_ssh`, `recover_admin_via_ssh`, `cleanup_recovery_ssh_key`
+- Desktop admin upgrade (`upgrade_admin.rs`): `upgrade_admin_to_hardware_bound` Tauri command shells out to `install-portlama-admin --json` with NDJSON progress parsing (same pattern as `cloud.rs`). Stores new P12 password in credential store, updates `servers.json` with new P12 path
 
 **Installer:**
 

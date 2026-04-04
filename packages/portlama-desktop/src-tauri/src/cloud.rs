@@ -81,6 +81,8 @@ pub struct ServerEntry {
     pub keychain_identity: Option<String>,
     pub p12_path: Option<String>,
     pub p12_password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub admin_auth: Option<config::AdminAuth>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -561,6 +563,151 @@ pub async fn validate_cloud_token(
 }
 
 // ---------------------------------------------------------------------------
+// Server discovery
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveredServer {
+    pub droplet_id: String,
+    pub name: String,
+    pub status: String,
+    pub ip: Option<String>,
+    pub region: String,
+    pub created_at: String,
+    pub domains: Vec<String>,
+    pub panel_url: Option<String>,
+    pub healthy: bool,
+}
+
+#[tauri::command]
+pub async fn discover_servers(token: String) -> Result<Vec<DiscoveredServer>, String> {
+    let effective_token = if token.is_empty() {
+        let provider = "digitalocean".to_string();
+        tokio::task::spawn_blocking(move || credentials::get_credential(&provider))
+            .await
+            .map_err(|e| format!("Task failed: {}", e))??
+            .ok_or("No cloud token stored. Please provide your API token.")?
+    } else {
+        token
+    };
+
+    tokio::task::spawn_blocking(move || {
+        let output = run_cloud_cmd(&["discover"], &effective_token)?;
+
+        // Parse the discover output (array of servers without health status)
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct RawDiscovered {
+            droplet_id: String,
+            name: String,
+            status: String,
+            ip: Option<String>,
+            region: String,
+            created_at: String,
+            domains: Vec<String>,
+            panel_url: Option<String>,
+        }
+
+        let raw: Vec<RawDiscovered> = serde_json::from_str(output.trim())
+            .map_err(|e| format!("Failed to parse discover result: {}", e))?;
+
+        // Health-check each panel URL
+        let results: Vec<DiscoveredServer> = raw.into_iter().map(|r| {
+            let healthy = r.panel_url.as_ref().is_some_and(|url| {
+                let health_url = format!("{}/api/health", url.trim_end_matches('/'));
+                std::process::Command::new("curl")
+                    .args(["-s", "-f", "--max-time", "10", "-k", "--proto", "=https", &health_url])
+                    .output()
+                    .is_ok_and(|o| o.status.success())
+            });
+
+            DiscoveredServer {
+                droplet_id: r.droplet_id,
+                name: r.name,
+                status: r.status,
+                ip: r.ip,
+                region: r.region,
+                created_at: r.created_at,
+                domains: r.domains,
+                panel_url: r.panel_url,
+                healthy,
+            }
+        }).collect();
+
+        Ok(results)
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn register_discovered_server(
+    droplet_id: String,
+    ip: String,
+    region: String,
+    created_at: String,
+    domain: Option<String>,
+    panel_url: String,
+    label: String,
+) -> Result<ServerEntry, String> {
+    validate_label(&label)?;
+    validate_panel_url(&panel_url)?;
+
+    let panel_url_clone = panel_url.clone();
+    tokio::task::spawn_blocking(move || {
+        // Prevent duplicate registration
+        let path = config::servers_registry_path();
+        let dir = path.parent().unwrap();
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
+                .map_err(|e| format!("Failed to set directory permissions: {}", e))?;
+        }
+
+        let mut servers: Vec<ServerEntry> = if path.exists() {
+            let content = std::fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read: {}", e))?;
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+        if servers.iter().any(|s| s.provider_id.as_deref() == Some(&droplet_id)) {
+            return Err(format!("Server with droplet ID {} is already registered", droplet_id));
+        }
+
+        let entry = ServerEntry {
+            id: uuid::Uuid::new_v4().to_string(),
+            label,
+            panel_url: panel_url_clone.trim_end_matches('/').to_string(),
+            ip,
+            domain,
+            provider: Some("digitalocean".to_string()),
+            provider_id: Some(droplet_id),
+            region: Some(region),
+            created_at,
+            active: servers.is_empty(),
+            auth_method: "p12".to_string(),
+            keychain_identity: None,
+            p12_path: None,
+            p12_password: None,
+            admin_auth: None,
+        };
+
+        servers.push(entry.clone());
+        save_servers_registry(&path, &servers)?;
+
+        Ok(entry)
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+// ---------------------------------------------------------------------------
 // Region listing
 // ---------------------------------------------------------------------------
 
@@ -930,6 +1077,7 @@ pub fn load_servers_registry() -> Result<Vec<ServerEntry>, String> {
                 keychain_identity: cfg.keychain_identity,
                 p12_path: cfg.p12_path,
                 p12_password: cfg.p12_password,
+                admin_auth: None,
             };
 
             let mut entries = vec![entry];
@@ -1043,6 +1191,7 @@ pub async fn add_managed_server(
         keychain_identity: None,
         p12_path: None,
         p12_password: None,
+        admin_auth: None,
     };
 
     // Add to registry (blocking I/O wrapped in spawn_blocking)
@@ -1100,6 +1249,21 @@ pub async fn remove_server(server_id: String) -> Result<(), String> {
         save_servers_registry(&path, &filtered)?;
         // Clean up P12 password from credential store
         let _ = credentials::delete_server_credential(&server_id);
+        // Clean up admin P12 password from credential store
+        let _ = credentials::delete_admin_credential(&server_id);
+        // Clean up server directory (admin.p12 etc.)
+        // Symlink attack protection: verify canonical path is under ~/.portlama/servers/
+        let server_dir = config::agent_dir().join("servers").join(&server_id);
+        if server_dir.exists() {
+            if let Ok(canonical) = server_dir.canonicalize() {
+                let expected_parent = config::agent_dir().join("servers");
+                if let Ok(canonical_parent) = expected_parent.canonicalize() {
+                    if canonical.starts_with(&canonical_parent) {
+                        let _ = std::fs::remove_dir_all(&canonical);
+                    }
+                }
+            }
+        }
         Ok(())
     })
     .await
@@ -1857,4 +2021,119 @@ pub async fn setup_plugin_storage(
 
     // Step 2: Bind to plugin
     bind_plugin_storage(panel_label, plugin_name, storage_server_id).await
+}
+
+// ---------------------------------------------------------------------------
+// SSH recovery commands
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryKeyPair {
+    pub public_key: String,
+    pub private_key_path: String,
+    pub known_hosts_path: String,
+    pub dir: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryResult {
+    pub p12_path: String,
+    pub p12_password: String,
+}
+
+/// Generate an ephemeral SSH key pair for admin certificate recovery.
+#[tauri::command]
+pub async fn generate_recovery_ssh_key() -> Result<RecoveryKeyPair, String> {
+    tokio::task::spawn_blocking(|| {
+        let output = run_cloud_cmd_no_credentials(&["recover-generate-key"])?;
+        serde_json::from_str::<RecoveryKeyPair>(output.trim())
+            .map_err(|e| format!("Failed to parse recovery key pair: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+/// Test SSH connectivity to a server using the recovery SSH key.
+#[tauri::command]
+pub async fn test_recovery_ssh(
+    ip: String,
+    private_key_path: String,
+    known_hosts_path: String,
+) -> Result<(), String> {
+    // Validate IP is not empty and not a private address
+    if ip.is_empty() {
+        return Err("IP address is required".to_string());
+    }
+
+    tokio::task::spawn_blocking(move || {
+        let output = run_cloud_cmd_no_credentials(&[
+            "recover-test-ssh",
+            "--ip", &ip,
+            "--key", &private_key_path,
+            "--known-hosts", &known_hosts_path,
+        ])?;
+        // Command succeeds if SSH is reachable
+        let _: serde_json::Value = serde_json::from_str(output.trim())
+            .map_err(|e| format!("Unexpected output: {}", e))?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+/// Reset the admin certificate on the server via SSH and download the new P12.
+#[tauri::command]
+pub async fn recover_admin_via_ssh(
+    ip: String,
+    private_key_path: String,
+    known_hosts_path: String,
+) -> Result<RecoveryResult, String> {
+    if ip.is_empty() {
+        return Err("IP address is required".to_string());
+    }
+
+    tokio::task::spawn_blocking(move || {
+        let output = run_cloud_cmd_no_credentials(&[
+            "recover-admin",
+            "--ip", &ip,
+            "--key", &private_key_path,
+            "--known-hosts", &known_hosts_path,
+        ])?;
+        serde_json::from_str::<RecoveryResult>(output.trim())
+            .map_err(|e| format!("Failed to parse recovery result: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
+/// Clean up the ephemeral SSH key pair and any downloaded recovery files.
+#[tauri::command]
+pub async fn cleanup_recovery_ssh_key(dir: String) -> Result<(), String> {
+    if dir.is_empty() {
+        return Err("Directory path is required".to_string());
+    }
+
+    // Validate the dir is under ~/.portlama/tmp/ to prevent path traversal
+    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
+    let expected_prefix = home.join(".portlama").join("tmp");
+    let dir_path = std::path::Path::new(&dir);
+    // Canonicalize to resolve any .. components before checking prefix
+    let canonical_dir = dir_path.canonicalize()
+        .map_err(|_| "Recovery directory does not exist or cannot be resolved".to_string())?;
+    let canonical_prefix = expected_prefix.canonicalize()
+        .map_err(|_| "Base tmp directory does not exist".to_string())?;
+    if !canonical_dir.starts_with(&canonical_prefix) {
+        return Err("Recovery directory must be under ~/.portlama/tmp/".to_string());
+    }
+
+    // Pass the canonical path to eliminate TOCTOU between validation and use
+    let canonical_dir_str = canonical_dir.to_string_lossy().to_string();
+    tokio::task::spawn_blocking(move || {
+        run_cloud_cmd_no_credentials(&["recover-cleanup", "--dir", &canonical_dir_str])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
 }

@@ -36,8 +36,15 @@ Compute commands:
   domains    List DigitalOcean-managed domains (requires domain:read scope)
   create-domain --name <fqdn>  Register a new domain in DigitalOcean DNS
   domain-records --domain <name>  List DNS records for a domain
+  discover   Discover existing Portlama-managed droplets (resolves DNS domains)
   destroy    --provider <name> --id <dropletId>
   servers    List registered servers
+
+Recovery commands:
+  recover-generate-key   Generate ephemeral SSH key pair for admin recovery
+  recover-test-ssh       --ip <addr> --key <path> --known-hosts <path>  Test SSH connectivity
+  recover-admin          --ip <addr> --key <path> --known-hosts <path>  Reset admin cert via SSH
+  recover-cleanup        --dir <path>  Secure-delete recovery temp files
 
 Storage commands:
   provision-storage  --region <slug> --label <name> [--bucket <name>]
@@ -140,6 +147,14 @@ async function main() {
       const provider = new DigitalOceanProvider(token);
       const sizes = await provider.getSizes(region);
       process.stdout.write(JSON.stringify(sizes) + '\n');
+      break;
+    }
+
+    case 'discover': {
+      const token = getToken();
+      const { discover } = await import('../dist/discover.js');
+      const results = await discover(token);
+      process.stdout.write(JSON.stringify(results) + '\n');
       break;
     }
 
@@ -283,6 +298,57 @@ async function main() {
     case 'storage-servers': {
       const storageServers = await loadStorageServers();
       process.stdout.write(JSON.stringify(storageServers) + '\n');
+      break;
+    }
+
+    // -----------------------------------------------------------------
+    // Recovery commands (no cloud token required)
+    // -----------------------------------------------------------------
+
+    case 'recover-generate-key': {
+      const { generateRecoveryKeyPair } = await import('../dist/recover.js');
+      const keyPair = await generateRecoveryKeyPair();
+      process.stdout.write(JSON.stringify(keyPair) + '\n');
+      break;
+    }
+
+    case 'recover-test-ssh': {
+      const ip = getArg(args, 'ip');
+      const key = getArg(args, 'key');
+      const knownHosts = getArg(args, 'known-hosts');
+      if (!ip || !key || !knownHosts) {
+        console.error('Error: --ip, --key, and --known-hosts are required');
+        process.exit(1);
+      }
+      const { testRecoverySSH } = await import('../dist/recover.js');
+      await testRecoverySSH(ip, key, knownHosts);
+      process.stdout.write(JSON.stringify({ ok: true }) + '\n');
+      break;
+    }
+
+    case 'recover-admin': {
+      const ip = getArg(args, 'ip');
+      const key = getArg(args, 'key');
+      const knownHosts = getArg(args, 'known-hosts');
+      if (!ip || !key || !knownHosts) {
+        console.error('Error: --ip, --key, and --known-hosts are required');
+        process.exit(1);
+      }
+      const { recoverAdmin } = await import('../dist/recover.js');
+      const result = await recoverAdmin(ip, key, knownHosts);
+      process.stdout.write(JSON.stringify(result) + '\n');
+      break;
+    }
+
+    case 'recover-cleanup': {
+      const dir = getArg(args, 'dir');
+      if (!dir) {
+        console.error('Error: --dir is required');
+        process.exit(1);
+      }
+      const { cleanupRecovery } = await import('../dist/recover.js');
+      await cleanupRecovery(dir);
+      process.stdout.write(JSON.stringify({ ok: true }) + '\n');
       break;
     }
 

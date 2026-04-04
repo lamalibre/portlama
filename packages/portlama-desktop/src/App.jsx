@@ -28,6 +28,7 @@ import {
   Eye,
   Trash2,
   Folder,
+  Search,
 } from 'lucide-react';
 import {
   AdminClientProvider,
@@ -64,6 +65,7 @@ import Agents from './pages/Agents.jsx';
 import LocalPlugins from './pages/LocalPlugins.jsx';
 import UserLogin from './pages/UserLogin.jsx';
 import UserPlugins from './pages/UserPlugins.jsx';
+import DiscoverServerWizard from './components/DiscoverServerWizard.jsx';
 
 const AGENT_TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity },
@@ -107,7 +109,7 @@ const PLUGIN_ICON_MAP = {
   'terminal': Terminal,
 };
 
-function SetupRequired({ message, onCreateServer }) {
+function SetupRequired({ message, onCreateServer, onDiscoverServer }) {
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 p-8">
       <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-8 max-w-md text-center">
@@ -124,13 +126,22 @@ function SetupRequired({ message, onCreateServer }) {
           <p className="text-zinc-500 text-xs mb-3">
             Don&apos;t have a server yet?
           </p>
-          <button
-            onClick={onCreateServer}
-            className="text-sm px-4 py-2 rounded bg-cyan-400/10 text-cyan-400 hover:bg-cyan-400/20 inline-flex items-center gap-2"
-          >
-            <Cloud size={14} />
-            Create a new server
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={onCreateServer}
+              className="text-sm px-4 py-2 rounded bg-cyan-400/10 text-cyan-400 hover:bg-cyan-400/20 inline-flex items-center gap-2"
+            >
+              <Cloud size={14} />
+              Create a new server
+            </button>
+            <button
+              onClick={onDiscoverServer}
+              className="text-sm px-4 py-2 rounded bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 inline-flex items-center gap-2"
+            >
+              <Search size={14} />
+              Discover existing
+            </button>
+          </div>
         </div>
         <p className="text-zinc-500 text-xs mt-4">
           The app will automatically detect the configuration once setup is complete.
@@ -147,6 +158,8 @@ export default function App() {
   const [managingServer, setManagingServer] = useState(null);
   const [managingAgent, setManagingAgent] = useState(null);
   const [userSession, setUserSession] = useState(null);
+
+  const [showDiscoverWizard, setShowDiscoverWizard] = useState(false);
 
   // Plugin sidebar injection state
   const [openPluginName, setOpenPluginName] = useState(null);
@@ -300,19 +313,6 @@ export default function App() {
     setOpenPluginCurrentPage('');
   };
 
-  if (status && !status.configured && agents.length === 0 && !skipSetup) {
-    return (
-      <SetupRequired
-        message={status.setupMessage}
-        onCreateServer={() => {
-          setSkipSetup(true);
-          setActiveTab('server-list');
-        }}
-      />
-    );
-  }
-
-
   const renderServerDetailPage = () => {
     if (!managingHasAdmin) {
       return (
@@ -375,6 +375,20 @@ export default function App() {
     setActiveTab('plugins');
   }, []);
 
+  // All hooks must be above this line — React requires consistent hook count across renders
+  if (status && !status.configured && agents.length === 0 && servers.length === 0 && !skipSetup && !showDiscoverWizard) {
+    return (
+      <SetupRequired
+        message={status.setupMessage}
+        onCreateServer={() => {
+          setSkipSetup(true);
+          setActiveTab('server-list');
+        }}
+        onDiscoverServer={() => setShowDiscoverWizard(true)}
+      />
+    );
+  }
+
   const renderAgentDetailPage = () => {
     if (activeTab === 'plugin-detail' && openPluginName) {
       return (
@@ -406,7 +420,7 @@ export default function App() {
       case 'logs':
         return <AgentLogsPage />;
       case 'settings':
-        return <AgentSettingsPage />;
+        return <AgentSettingsPage agentLabel={managingAgent?.label} onUninstalled={navigateToAgentList} />;
       case 'dashboard':
       default:
         return <AgentDashboardPage />;
@@ -428,6 +442,9 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-zinc-950">
+      {showDiscoverWizard && (
+        <DiscoverServerWizard onClose={() => setShowDiscoverWizard(false)} />
+      )}
       {/* Sidebar */}
       <div className="w-48 bg-zinc-900 border-r border-zinc-800 flex flex-col">
         <div className="p-4 border-b border-zinc-800">

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { HardDrive, Plus, Trash2, Link2, Unlink, AlertCircle, Loader2, X } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 import { relativeTime } from '../lib/formatters.js';
 
 function RegisterServerModal({ onClose }) {
@@ -28,7 +29,7 @@ function RegisterServerModal({ onClose }) {
       addToast('Storage server registered');
       onClose();
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -180,7 +181,7 @@ function BindPluginModal({ servers, onClose }) {
       addToast('Plugin bound to storage');
       onClose();
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const plugins = pluginsQuery.data?.plugins || [];
@@ -289,7 +290,7 @@ export default function Storage() {
       setDeleteTarget(null);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
       setDeleteTarget(null);
     },
   });
@@ -302,7 +303,7 @@ export default function Storage() {
       setUnbindTarget(null);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
       setUnbindTarget(null);
     },
   });

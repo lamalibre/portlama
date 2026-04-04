@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAgentClient } from '../context/AgentClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 
 // Curated plugin list — same as local plugins, filtered to agent-capable
 const KNOWN_PLUGINS = [
@@ -247,7 +248,7 @@ function AgentPluginPanel({ pluginName, client, onBack, subPath, onPagesDiscover
 
         setLoading(false);
       } catch (err) {
-        setError(`[mount] ${err.message || String(err)}`);
+        setError(`[mount] ${errorMessage(err)}`);
         setLoading(false);
       }
     }
@@ -282,7 +283,7 @@ function AgentPluginPanel({ pluginName, client, onBack, subPath, onPagesDiscover
         evalFn();
       } catch (err) {
         if (!cancelled) {
-          setError(`[eval] ${err.message || String(err)}`);
+          setError(`[eval] ${errorMessage(err)}`);
           setLoading(false);
         }
         return;
@@ -340,7 +341,7 @@ function AgentPluginPanel({ pluginName, client, onBack, subPath, onPagesDiscover
       }
       lastMountedSubPathRef.current = subPath || '';
     } catch (err) {
-      setError(`[mount] ${err.message || String(err)}`);
+      setError(`[mount] ${errorMessage(err)}`);
     }
   }, [subPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -606,7 +607,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       queryClient.invalidateQueries({ queryKey: ['agent-plugins'] });
       addToast('Plugin server started');
     },
-    onError: (err) => addToast(err.message || 'Failed to start plugin server', 'error'),
+    onError: (err) => addToast(errorMessage(err) || 'Failed to start plugin server', 'error'),
   });
 
   const stopPanelMutation = useMutation({
@@ -615,7 +616,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       queryClient.invalidateQueries({ queryKey: ['agent-plugins'] });
       addToast('Plugin server stopped');
     },
-    onError: (err) => addToast(err.message || 'Failed to stop plugin server', 'error'),
+    onError: (err) => addToast(errorMessage(err) || 'Failed to stop plugin server', 'error'),
   });
 
   // Check for updates on all installed plugins
@@ -648,7 +649,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       queryClient.invalidateQueries({ queryKey: ['agent-plugins'] });
       addToast(`Plugin "${data.plugin?.name || 'unknown'}" installed`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const enableMutation = useMutation({
@@ -657,7 +658,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       queryClient.invalidateQueries({ queryKey: ['agent-plugins'] });
       addToast(`Plugin "${data.name}" enabled — panel server is restarting...`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const disableMutation = useMutation({
@@ -666,7 +667,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       queryClient.invalidateQueries({ queryKey: ['agent-plugins'] });
       addToast(`Plugin "${data.name}" disabled — panel server is restarting...`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const uninstallMutation = useMutation({
@@ -675,7 +676,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       queryClient.invalidateQueries({ queryKey: ['agent-plugins'] });
       addToast(`Plugin "${data.name}" uninstalled`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const updateMutation = useMutation({
@@ -686,7 +687,7 @@ export default function AgentPluginsPage({ onOpenPlugin }) {
       const p = data.plugin || data;
       addToast(`Plugin "${p.name || 'unknown'}" updated to v${p.version || '?'}`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const isActing =

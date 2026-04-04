@@ -61,7 +61,10 @@ export function createDesktopAgentClient(label) {
       label
         ? invoke('toggle_panel_expose', { label, enabled })
         : Promise.reject(new Error('Multi-agent label required')),
-    uninstallAgent: () => invoke('uninstall_agent'),
+    uninstallAgent: () =>
+      label
+        ? invoke('uninstall_agent', { label })
+        : Promise.reject(new Error('Multi-agent label required')),
     // Agent panel service
     startAgentPanel: () =>
       label

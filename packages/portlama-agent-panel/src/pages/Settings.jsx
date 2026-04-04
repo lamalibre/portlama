@@ -9,15 +9,21 @@ import {
   Download,
   RefreshCw,
   Globe,
+  Check,
+  SkipForward,
+  X,
 } from 'lucide-react';
 import { useAgentClient } from '../context/AgentClientContext.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 
-export default function SettingsPage() {
+export default function SettingsPage({ agentLabel, onUninstalled }) {
   const client = useAgentClient();
   const toast = useToast();
   const queryClient = useQueryClient();
   const [uninstallConfirm, setUninstallConfirm] = useState(false);
+  const [uninstallNameInput, setUninstallNameInput] = useState('');
+  const [uninstallSteps, setUninstallSteps] = useState(null);
 
   const configQuery = useQuery({
     queryKey: ['agent', 'config'],
@@ -40,9 +46,12 @@ export default function SettingsPage() {
 
   const uninstallMutation = useMutation({
     mutationFn: () => client.uninstallAgent(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agent', 'status'] });
-      queryClient.invalidateQueries({ queryKey: ['agent', 'config'] });
+    onSuccess: (data) => {
+      queryClient.removeQueries({ queryKey: ['agent'] });
+      setUninstallSteps(data?.steps || []);
+    },
+    onError: (err) => {
+      toast(errorMessage(err) || 'Uninstall failed', 'error');
     },
   });
 
@@ -269,10 +278,48 @@ export default function SettingsPage() {
           <AlertTriangle size={14} />
           Danger Zone
         </h2>
-        {!uninstallConfirm ? (
+        {uninstallSteps ? (
+          /* Post-uninstall: show step results */
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-300 font-medium">
+              Agent {agentLabel ? <span className="font-mono text-cyan-400">{agentLabel}</span> : ''} uninstalled
+            </p>
+            <div className="space-y-1.5">
+              {uninstallSteps.map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  {s.status === 'complete' && <Check size={13} className="text-green-400 mt-0.5 flex-shrink-0" />}
+                  {s.status === 'skipped' && <SkipForward size={13} className="text-zinc-500 mt-0.5 flex-shrink-0" />}
+                  {s.status === 'warning' && <AlertTriangle size={13} className="text-amber-400 mt-0.5 flex-shrink-0" />}
+                  {s.status === 'failed' && <X size={13} className="text-red-400 mt-0.5 flex-shrink-0" />}
+                  <div>
+                    <span className={
+                      s.status === 'complete' ? 'text-zinc-300' :
+                      s.status === 'skipped' ? 'text-zinc-500' :
+                      s.status === 'warning' ? 'text-amber-400' :
+                      'text-red-400'
+                    }>
+                      {s.step}
+                    </span>
+                    <span className="text-zinc-600 ml-1.5">{s.detail}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {onUninstalled ? (
+              <button
+                onClick={onUninstalled}
+                className="mt-2 rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              >
+                Done
+              </button>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-500">Agent has been uninstalled. You can close this page.</p>
+            )}
+          </div>
+        ) : !uninstallConfirm ? (
           <>
             <button
-              onClick={() => setUninstallConfirm(true)}
+              onClick={() => { setUninstallConfirm(true); setUninstallNameInput(''); }}
               className="flex items-center gap-2 rounded bg-red-600/20 border border-red-500/30 px-4 py-2 text-sm text-red-400 hover:bg-red-600/30"
             >
               Uninstall Agent
@@ -287,18 +334,34 @@ export default function SettingsPage() {
               This will remove all Portlama agent files including the chisel binary, configuration,
               and logs. This cannot be undone.
             </p>
+            {agentLabel && (
+              <div className="mb-3">
+                <label className="text-xs text-zinc-400 block mb-1">
+                  Type <span className="font-mono text-red-400">{agentLabel}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={uninstallNameInput}
+                  onChange={(e) => setUninstallNameInput(e.target.value)}
+                  placeholder={agentLabel}
+                  className="w-full rounded bg-zinc-950 border border-zinc-700 px-3 py-1.5 text-sm text-zinc-200 font-mono placeholder:text-zinc-600 focus:outline-none focus:border-red-500/50"
+                  autoFocus
+                />
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={() => uninstallMutation.mutate()}
-                disabled={uninstallMutation.isPending}
-                className="flex items-center gap-2 rounded bg-red-600 hover:bg-red-500 px-4 py-2 text-sm text-white disabled:opacity-50"
+                disabled={uninstallMutation.isPending || (agentLabel && uninstallNameInput !== agentLabel)}
+                className="flex items-center gap-2 rounded bg-red-600 hover:bg-red-500 px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {uninstallMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                 Uninstall
               </button>
               <button
                 onClick={() => setUninstallConfirm(false)}
-                className="rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+                disabled={uninstallMutation.isPending}
+                className="rounded bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-50"
               >
                 Cancel
               </button>

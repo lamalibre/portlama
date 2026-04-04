@@ -198,8 +198,9 @@ function ServerUpdateDialog({ server, updateInfo, onClose, onUpdate, isUpdating,
 
 export default function ServerCard({ server, onSetActive, onManage }) {
   const queryClient = useQueryClient();
-  const [confirmDestroy, setConfirmDestroy] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // null | 'remove' | 'destroy'
   const [showDestroyModal, setShowDestroyModal] = useState(false);
+  const [destroyAction, setDestroyAction] = useState('remove'); // 'remove' | 'destroy'
   const [confirmInput, setConfirmInput] = useState('');
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [updateStep, setUpdateStep] = useState(null);
@@ -362,30 +363,41 @@ export default function ServerCard({ server, onSetActive, onManage }) {
           Panel
         </button>
 
-        {confirmDestroy ? (
+        {confirmAction ? (
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-red-400">Are you sure?</span>
             <button
-              onClick={() => { setConfirmDestroy(false); setShowDestroyModal(true); setConfirmInput(''); }}
+              onClick={() => { setDestroyAction(confirmAction); setConfirmAction(null); setShowDestroyModal(true); setConfirmInput(''); }}
               className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30"
             >
               Yes
             </button>
             <button
-              onClick={() => setConfirmDestroy(false)}
+              onClick={() => setConfirmAction(null)}
               className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400 hover:text-white"
             >
               No
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => setConfirmDestroy(true)}
-            className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 ml-auto flex items-center gap-1"
-          >
-            <Trash2 size={10} />
-            {hasCloudControls ? 'Destroy' : 'Remove'}
-          </button>
+          <div className="flex items-center gap-1.5 ml-auto">
+            {hasCloudControls && (
+              <button
+                onClick={() => setConfirmAction('remove')}
+                className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 flex items-center gap-1"
+              >
+                <X size={10} />
+                Remove
+              </button>
+            )}
+            <button
+              onClick={() => setConfirmAction(hasCloudControls ? 'destroy' : 'remove')}
+              className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 flex items-center gap-1"
+            >
+              <Trash2 size={10} />
+              {hasCloudControls ? 'Destroy' : 'Remove'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -400,9 +412,9 @@ export default function ServerCard({ server, onSetActive, onManage }) {
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-sm">
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
-                <AlertTriangle size={14} className="text-red-400" />
+                <AlertTriangle size={14} className={destroyAction === 'destroy' ? 'text-red-400' : 'text-amber-400'} />
                 <h3 className="text-sm font-bold text-white">
-                  {hasCloudControls ? 'Destroy Server' : 'Remove Server'}
+                  {destroyAction === 'destroy' ? 'Destroy Server' : 'Remove Server'}
                 </h3>
               </div>
               <button
@@ -414,7 +426,7 @@ export default function ServerCard({ server, onSetActive, onManage }) {
               </button>
             </div>
             <div className="px-4 py-4 space-y-3">
-              {hasCloudControls ? (
+              {destroyAction === 'destroy' ? (
                 <p className="text-xs text-zinc-400 leading-relaxed">
                   This will <strong className="text-red-400">permanently destroy</strong> the
                   droplet on DigitalOcean and remove it from the local registry.
@@ -455,7 +467,7 @@ export default function ServerCard({ server, onSetActive, onManage }) {
               </button>
               <button
                 onClick={() =>
-                  hasCloudControls
+                  destroyAction === 'destroy'
                     ? destroyMutation.mutate()
                     : removeMutation.mutate()
                 }
@@ -464,14 +476,18 @@ export default function ServerCard({ server, onSetActive, onManage }) {
                   destroyMutation.isPending ||
                   removeMutation.isPending
                 }
-                className="text-xs px-3 py-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-30 flex items-center gap-1"
+                className={`text-xs px-3 py-1.5 rounded disabled:opacity-30 flex items-center gap-1 ${
+                  destroyAction === 'destroy'
+                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                    : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                }`}
               >
                 {destroyMutation.isPending || removeMutation.isPending ? (
                   <Loader2 size={12} className="animate-spin" />
                 ) : (
                   <Trash2 size={10} />
                 )}
-                {hasCloudControls ? 'Destroy' : 'Remove'}
+                {destroyAction === 'destroy' ? 'Destroy' : 'Remove'}
               </button>
             </div>
           </div>

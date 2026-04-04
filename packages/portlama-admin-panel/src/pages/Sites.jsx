@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { errorMessage } from '../lib/errorMessage.js';
 import {
   Plus,
   Trash2,
@@ -108,7 +109,7 @@ function AddSiteForm({ domain, onClose }) {
       onClose();
     },
     onError: (err) => {
-      setApiError(err.message);
+      setApiError(errorMessage(err));
     },
   });
 
@@ -315,7 +316,7 @@ function DnsVerificationModal({ site, onClose }) {
       }
     },
     onError: (err) => {
-      setResult({ ok: false, message: err.message });
+      setResult({ ok: false, message: errorMessage(err) });
     },
   });
 
@@ -456,7 +457,7 @@ function SiteSettingsModal({ site, onClose }) {
       onClose();
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
     },
   });
 
@@ -812,7 +813,7 @@ export default function Sites({ domain }) {
       setDeleteTarget(null);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
       setDeleteTarget(null);
     },
   });

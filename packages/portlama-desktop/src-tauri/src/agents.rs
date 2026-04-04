@@ -435,6 +435,151 @@ pub async fn stop_agent(label: String) -> Result<String, String> {
     .map_err(|e| format!("Task failed: {}", e))?
 }
 
+/// Uninstall a single agent: stop its services, remove from registry, clean up data dir and credentials.
+/// Does NOT touch servers.json or other agents.
+/// Returns a JSON array of step results: `[{ step, status, detail }]`.
+#[tauri::command]
+pub async fn uninstall_agent(label: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        validate_agent_label(&label)?;
+
+        let mut steps: Vec<serde_json::Value> = Vec::new();
+        let mut add = |step: &str, status: &str, detail: &str| {
+            steps.push(serde_json::json!({
+                "step": step,
+                "status": status,
+                "detail": detail,
+            }));
+        };
+
+        // 1. Stop the chisel tunnel service
+        #[cfg(target_os = "macos")]
+        {
+            let plist = plist_path_for(&label);
+            if plist.exists() {
+                let result = Command::new("launchctl")
+                    .args(["unload", &plist.to_string_lossy()])
+                    .output();
+                match result {
+                    Ok(out) if out.status.success() => {
+                        let _ = std::fs::remove_file(&plist);
+                        add("Stop tunnel service", "complete", "Service stopped and plist removed");
+                    }
+                    Ok(_) => {
+                        let _ = std::fs::remove_file(&plist);
+                        add("Stop tunnel service", "complete", "Service unloaded, plist removed");
+                    }
+                    Err(e) => {
+                        add("Stop tunnel service", "warning", &format!("Failed to unload: {}", e));
+                    }
+                }
+            } else {
+                add("Stop tunnel service", "skipped", "No tunnel plist found");
+            }
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let unit = systemd_unit_name(&label);
+            let stop_ok = Command::new("systemctl")
+                .args(["--user", "stop", &unit])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+            let _ = Command::new("systemctl")
+                .args(["--user", "disable", &unit])
+                .output();
+            let mut unit_removed = false;
+            if let Some(home) = dirs::home_dir() {
+                let unit_path = home
+                    .join(".config/systemd/user")
+                    .join(format!("{}.service", unit));
+                if unit_path.exists() {
+                    unit_removed = std::fs::remove_file(&unit_path).is_ok();
+                    let _ = Command::new("systemctl")
+                        .args(["--user", "daemon-reload"])
+                        .output();
+                } else {
+                    unit_removed = true; // nothing to remove
+                }
+            }
+            if stop_ok && unit_removed {
+                add("Stop tunnel service", "complete", "Service stopped and unit removed");
+            } else if unit_removed {
+                add("Stop tunnel service", "complete", "Unit removed (service was not running)");
+            } else {
+                add("Stop tunnel service", "warning", "Service stop or unit removal had issues");
+            }
+        }
+
+        // 2. Stop the panel service if running
+        let panel_result = Command::new("portlama-agent")
+            .args(["panel", "--disable", "--local-only", "--label", &label])
+            .output();
+        match panel_result {
+            Ok(out) if out.status.success() => {
+                add("Stop panel service", "complete", "Panel service stopped");
+            }
+            Ok(_) => {
+                add("Stop panel service", "skipped", "Panel service was not running");
+            }
+            Err(_) => {
+                add("Stop panel service", "skipped", "portlama-agent CLI not available");
+            }
+        }
+
+        // 3. Remove from agents registry
+        match load_agents_registry() {
+            Ok(Some(mut registry)) => {
+                registry.agents.retain(|a| a.label != label);
+                if registry.current_label.as_deref() == Some(&label) {
+                    registry.current_label = registry.agents.first().map(|a| a.label.clone());
+                }
+                match save_agents_registry(&registry) {
+                    Ok(()) => add("Remove from registry", "complete", "Removed from agents.json"),
+                    Err(e) => add("Remove from registry", "failed", &format!("Failed to save: {}", e)),
+                }
+            }
+            Ok(None) => add("Remove from registry", "skipped", "No agents registry found"),
+            Err(e) => add("Remove from registry", "failed", &format!("Failed to read: {}", e)),
+        }
+
+        // 4. Remove per-agent data directory (~/.portlama/agents/<label>/)
+        let data_dir = agent_data_dir(&label);
+        if data_dir.exists() {
+            // Symlink attack protection: verify canonical path is under ~/.portlama/agents/
+            if let Ok(canonical) = data_dir.canonicalize() {
+                let expected_parent = config::agent_dir().join("agents");
+                if let Ok(canonical_parent) = expected_parent.canonicalize() {
+                    if canonical.starts_with(&canonical_parent) {
+                        match std::fs::remove_dir_all(&canonical) {
+                            Ok(()) => add("Remove data directory", "complete", &format!("Removed {}", canonical.display())),
+                            Err(e) => add("Remove data directory", "failed", &format!("Failed: {}", e)),
+                        }
+                    } else {
+                        add("Remove data directory", "failed", "Path failed symlink safety check");
+                    }
+                } else {
+                    add("Remove data directory", "failed", "Cannot resolve parent directory");
+                }
+            } else {
+                add("Remove data directory", "failed", "Cannot resolve path");
+            }
+        } else {
+            add("Remove data directory", "skipped", "No data directory found");
+        }
+
+        // 5. Remove agent credentials from OS keychain
+        match crate::credentials::delete_agent_credential(&label) {
+            Ok(()) => add("Remove credentials", "complete", "Removed from keychain"),
+            Err(e) => add("Remove credentials", "warning", &format!("{}", e)),
+        }
+
+        Ok(serde_json::json!({ "label": label, "steps": steps }))
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
+}
+
 #[tauri::command]
 pub async fn restart_agent(label: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {

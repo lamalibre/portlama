@@ -1,18 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
-import { Cloud, Plus, Server, ChevronDown, HardDrive, Database } from 'lucide-react';
+import { Cloud, Plus, Server, ChevronDown, HardDrive, Database, Search } from 'lucide-react';
 import ServerCard from '../components/ServerCard.jsx';
 import CreateServerWizard from '../components/CreateServerWizard.jsx';
 import CreateStorageWizard from '../components/CreateStorageWizard.jsx';
 import StorageServerCard from '../components/StorageServerCard.jsx';
 import AddManagedServer from '../components/AddManagedServer.jsx';
+import DiscoverServerWizard from '../components/DiscoverServerWizard.jsx';
 import LocalInstallWizard from '../components/LocalInstallWizard.jsx';
 
 export default function Servers({ onManage }) {
   const queryClient = useQueryClient();
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [showAddManaged, setShowAddManaged] = useState(false);
+  const [showDiscoverWizard, setShowDiscoverWizard] = useState(false);
   const [showLocalInstall, setShowLocalInstall] = useState(false);
   const [showCreateStorageWizard, setShowCreateStorageWizard] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -96,6 +98,16 @@ export default function Servers({ onManage }) {
               >
                 <Server size={12} />
                 Add Existing Server
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddMenu(false);
+                  setShowDiscoverWizard(true);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 flex items-center gap-2"
+              >
+                <Search size={12} />
+                Discover from DigitalOcean
               </button>
               <button
                 onClick={() => {
@@ -195,6 +207,9 @@ export default function Servers({ onManage }) {
       )}
       {showAddManaged && (
         <AddManagedServer onClose={() => setShowAddManaged(false)} />
+      )}
+      {showDiscoverWizard && (
+        <DiscoverServerWizard onClose={() => setShowDiscoverWizard(false)} />
       )}
       {showLocalInstall && (
         <LocalInstallWizard

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ticket, Server, Link, Clock, Trash2, XCircle } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 
 // --- Status badges ---
 
@@ -70,7 +71,7 @@ function ScopesTab() {
       queryClient.invalidateQueries({ queryKey: ['ticket-scopes'] });
       addToast('Scope unregistered');
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -165,7 +166,7 @@ function InstancesTab() {
       addToast('Instance deregistered');
       setConfirmDeregister(null);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   if (isLoading) return <div className="animate-pulse h-32 rounded-lg bg-zinc-900 border border-zinc-800" />;
@@ -275,7 +276,7 @@ function AssignmentsTab() {
       setAgentLabel('');
       setInstanceScope('');
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const removeMutation = useMutation({
@@ -285,7 +286,7 @@ function AssignmentsTab() {
       addToast('Assignment removed');
       setConfirmRemove(null);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   if (isLoading) return <div className="animate-pulse h-32 rounded-lg bg-zinc-900 border border-zinc-800" />;
@@ -431,7 +432,7 @@ function TicketsTab() {
       addToast('Ticket revoked');
       setConfirmRevoke(null);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   if (isLoading) return <div className="animate-pulse h-32 rounded-lg bg-zinc-900 border border-zinc-800" />;
@@ -527,7 +528,7 @@ function SessionsTab() {
       addToast('Session terminated');
       setConfirmKill(null);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   if (isLoading) return <div className="animate-pulse h-32 rounded-lg bg-zinc-900 border border-zinc-800" />;

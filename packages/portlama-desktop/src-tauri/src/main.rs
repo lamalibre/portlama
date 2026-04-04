@@ -17,6 +17,7 @@ mod mode;
 mod services;
 mod plugins;
 mod tray;
+mod upgrade_admin;
 mod user_access;
 
 /// Simple percent-decoding for URL query parameter values.
@@ -99,7 +100,6 @@ fn main() {
             commands::start_chisel,
             commands::restart_chisel,
             commands::update_agent,
-            commands::uninstall_agent,
             commands::rotate_certificate,
             commands::download_certificate,
             commands::get_panel_url,
@@ -118,6 +118,7 @@ fn main() {
             agents::get_agent_status,
             agents::start_agent,
             agents::stop_agent,
+            agents::uninstall_agent,
             agents::restart_agent,
             agents::get_agent_tunnels,
             agents::get_agent_logs,
@@ -150,7 +151,14 @@ fn main() {
             cloud::get_servers,
             cloud::set_active_server,
             cloud::add_managed_server,
+            cloud::discover_servers,
+            cloud::register_discovered_server,
             cloud::remove_server,
+            // SSH recovery
+            cloud::generate_recovery_ssh_key,
+            cloud::test_recovery_ssh,
+            cloud::recover_admin_via_ssh,
+            cloud::cleanup_recovery_ssh_key,
             cloud::check_server_health,
             cloud::check_panel_update,
             cloud::update_panel_server,
@@ -191,6 +199,8 @@ fn main() {
             local_plugins::local_stop_host,
             local_plugins::local_get_host_logs,
             local_plugins::migrate_local_plugin_to_agent,
+            // Admin certificate upgrade
+            upgrade_admin::upgrade_admin_to_hardware_bound,
             // Mode switching
             mode::set_server_mode,
             mode::get_server_mode,

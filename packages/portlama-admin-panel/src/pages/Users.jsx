@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
+import { errorMessage } from '../lib/errorMessage.js';
 import {
   UserPlus,
   Pencil,
@@ -197,7 +198,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
         onSuccess(result.user.username);
       }
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     }
   }
 
@@ -350,7 +351,7 @@ function InviteUserModal({ onClose, onSuccess }) {
       toast('Invitation created');
       onSuccess(result);
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     }
   }
 
@@ -533,7 +534,7 @@ export default function Users() {
       setDeleteTarget(null);
     },
     onError: (err) => {
-      toast(err.message, 'error');
+      toast(errorMessage(err), 'error');
       setDeleteTarget(null);
     },
   });
@@ -545,7 +546,7 @@ export default function Users() {
       setTotpUri(data.totpUri);
     },
     onError: (err) => {
-      toast(err.message, 'error');
+      toast(errorMessage(err), 'error');
       setConfirmTotpReset(null);
     },
   });
@@ -563,7 +564,7 @@ export default function Users() {
       setRevokeTarget(null);
     },
     onError: (err) => {
-      toast(err.message, 'error');
+      toast(errorMessage(err), 'error');
       setRevokeTarget(null);
     },
   });

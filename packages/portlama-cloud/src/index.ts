@@ -66,6 +66,19 @@ export { probeRegionLatencies } from './digitalocean/latency.js';
 export { listDomains, createDomain, listDomainRecords, deleteDomainRecord, updateARecord, setupDnsRecords } from './digitalocean/dns.js';
 export { DigitalOceanSpacesProvider } from './digitalocean/spaces.js';
 
+// Discovery
+export type { DiscoveredServer } from './types.js';
+export { discover } from './discover.js';
+
+// SSH recovery
+export type { RecoveryKeyPair, RecoveryResult } from './recover.js';
+export {
+  generateRecoveryKeyPair,
+  testRecoverySSH,
+  recoverAdmin,
+  cleanupRecovery,
+} from './recover.js';
+
 // Provisioners
 export { provision } from './provisioner.js';
 export { provisionStorage } from './storage-provisioner.js';

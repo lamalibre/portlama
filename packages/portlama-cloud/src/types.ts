@@ -92,6 +92,21 @@ export interface Server {
   readonly tags: readonly string[];
 }
 
+// ---------------------------------------------------------------------------
+// Discovery
+// ---------------------------------------------------------------------------
+
+export interface DiscoveredServer {
+  readonly dropletId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly ip: string | null;
+  readonly region: string;
+  readonly createdAt: string;
+  readonly domains: readonly string[];
+  readonly panelUrl: string | null;
+}
+
 export interface CreateServerOptions {
   readonly region: string;
   readonly sshKeyId: string;

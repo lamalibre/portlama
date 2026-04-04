@@ -971,7 +971,7 @@ export default function CreateServerWizard({ onClose }) {
     setProvisionSuccess(false);
 
     try {
-      await invoke('provision_server', {
+      const entry = await invoke('provision_server', {
         provider: 'digitalocean',
         region: selectedRegion,
         label: label || `portlama-${selectedRegion}`,
@@ -982,6 +982,16 @@ export default function CreateServerWizard({ onClose }) {
         doSubdomain: doSubdomain || null,
         overrideDns: overrideDns || null,
       });
+
+      // Upgrade to hardware-bound certificate (macOS only, non-fatal)
+      if (entry?.id) {
+        try {
+          await invoke('upgrade_admin_to_hardware_bound', { serverId: entry.id });
+        } catch (upgradeErr) {
+          console.warn('Hardware-bound upgrade skipped:', upgradeErr);
+        }
+      }
+
       setProvisionSuccess(true);
       setProvisioning('cleanup');
       queryClient.invalidateQueries({ queryKey: ['servers'] });

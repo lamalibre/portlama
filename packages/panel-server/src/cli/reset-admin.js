@@ -9,8 +9,9 @@
  * 1. Generate new admin keypair + CSR + sign + P12
  * 2. Revoke old hardware-bound admin cert
  * 3. Set adminAuthMode: 'p12' in panel.json
- * 4. Reload nginx
- * 5. Print new P12 password
+ * 4. Restart panel-server (picks up config change)
+ * 5. Reload nginx
+ * 6. Print new P12 password
  */
 
 import crypto from 'node:crypto';
@@ -218,7 +219,17 @@ async function main() {
   await rename(configTmp, CONFIG_PATH);
   await execa('chown', ['portlama:portlama', CONFIG_PATH]);
 
-  // 17. Reload nginx
+  // 17. Restart panel-server (picks up updated adminAuthMode from panel.json)
+  console.log('  Restarting panel server...');
+  try {
+    await execa('systemctl', ['restart', 'portlama-panel']);
+    console.log('  Panel server restarted successfully.');
+  } catch (err) {
+    console.error(`  Warning: panel server restart failed: ${err.stderr || err.message}`);
+    console.error('  You may need to restart it manually: systemctl restart portlama-panel');
+  }
+
+  // 18. Reload nginx
   console.log('  Reloading nginx...');
   try {
     await execa('nginx', ['-t']);
@@ -229,18 +240,44 @@ async function main() {
     console.error('  You may need to restart nginx manually: systemctl restart nginx');
   }
 
-  // 18. Print result
+  // 19. Determine IP for scp command
+  let serverIp = '';
+  try {
+    const { stdout } = await execa('hostname', ['-I']);
+    const first = stdout.trim().split(/\s+/)[0];
+    if (first) serverIp = first;
+  } catch {
+    serverIp = '<server-ip>';
+  }
+
+  // 20. Print result
   console.log('');
   console.log('  ============================================');
   console.log('  Admin certificate has been reset to P12.');
   console.log('  Panel 2FA has been disabled (if it was on).');
   console.log('  IP:9292 access has been restored.');
   console.log('');
-  console.log(`  P12 Password: (saved in ${PKI_DIR}/.p12-password)`);
-  console.log(`  P12 File:     ${PKI_DIR}/client.p12`);
+  console.log('  1. Download your client certificate:');
   console.log('');
-  console.log('  Download the P12 from the panel or copy it');
-  console.log('  manually from the server.');
+  console.log(`     scp root@${serverIp}:${PKI_DIR}/client.p12 .`);
+  console.log('');
+  console.log('  2. Import client.p12 into your browser:');
+  console.log('');
+  console.log('     macOS:   Double-click the file \u2192 Keychain Access');
+  console.log('              \u2192 select "System" keychain \u2192 enter the password below');
+  console.log('              \u2192 find cert \u2192 double-click \u2192 Trust \u2192 Always Trust');
+  console.log('     Linux:   Chrome \u2192 Settings \u2192 Privacy & Security');
+  console.log('              \u2192 Security \u2192 Manage certificates \u2192 Import');
+  console.log('     Windows: Double-click the file \u2192 Certificate Import Wizard');
+  console.log('');
+  console.log('  3. Certificate password:');
+  console.log('');
+  console.log(`     ${p12Password}`);
+  console.log('');
+  console.log('  4. Open the Portlama panel:');
+  console.log('');
+  console.log(`     https://${serverIp}:9292`);
+  console.log('');
   console.log('  ============================================');
   console.log('');
 }

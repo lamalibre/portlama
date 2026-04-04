@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { errorMessage } from '../lib/errorMessage.js';
 import {
   Plus,
   Trash2,
@@ -77,7 +78,7 @@ function AddTunnelForm({ domain, onClose }) {
       onClose();
     },
     onError: (err) => {
-      setApiError(err.message);
+      setApiError(errorMessage(err));
     },
   });
 
@@ -546,7 +547,7 @@ export default function Tunnels() {
       setDeleteTarget(null);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
       setDeleteTarget(null);
     },
   });
@@ -559,7 +560,7 @@ export default function Tunnels() {
       addToast(`Tunnel ${t.fqdn} ${t.enabled ? 'enabled' : 'disabled'}`);
     },
     onError: (err) => {
-      addToast(err.message, 'error');
+      addToast(errorMessage(err), 'error');
     },
   });
 

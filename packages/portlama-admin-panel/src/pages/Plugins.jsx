@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, Power, PowerOff, Trash2, Download, AlertCircle, Shield, Pencil, X, Loader2 } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 import { useAdminClient } from '../context/AdminClientContext.jsx';
+import { errorMessage } from '../lib/errorMessage.js';
 
 function StatusBadge({ status }) {
   const styles =
@@ -188,7 +189,7 @@ function PolicyEditModal({ policy, onClose }) {
       addToast('Policy updated');
       onClose();
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const handleSubmit = (e) => {
@@ -333,7 +334,7 @@ function PushInstallPolicies() {
       queryClient.invalidateQueries({ queryKey: ['push-install-policies'] });
       addToast('Policy deleted');
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const policies = policiesQuery.data?.policies || [];
@@ -423,7 +424,7 @@ export default function Plugins() {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       addToast(`Plugin "${data.plugin?.name || 'unknown'}" installed`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const enableMutation = useMutation({
@@ -432,7 +433,7 @@ export default function Plugins() {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       addToast(`Plugin "${data.name}" enabled (restart panel to mount routes)`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const disableMutation = useMutation({
@@ -441,7 +442,7 @@ export default function Plugins() {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       addToast(`Plugin "${data.name}" disabled`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const uninstallMutation = useMutation({
@@ -450,7 +451,7 @@ export default function Plugins() {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       addToast(`Plugin "${data.name}" uninstalled`);
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) => addToast(errorMessage(err), 'error'),
   });
 
   const isActing =
