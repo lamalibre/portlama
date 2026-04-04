@@ -206,7 +206,7 @@ Assign an agent to an instance scope, granting it permission to receive tickets 
 
 | Field           | Type   | Required | Description                                        |
 | --------------- | ------ | -------- | -------------------------------------------------- |
-| `agentLabel`    | string | Yes      | Agent certificate label (1-100 chars)              |
+| `agentLabel`    | string | Yes      | Agent or plugin-agent certificate label (1-150 chars, allows colons for `plugin-agent:` prefix) |
 | `instanceScope` | string | Yes     | Format: `scope:action:instanceid` (1-200 chars)   |
 
 **Validation:**
@@ -290,7 +290,7 @@ Request a ticket to authorize communication with a target agent.
 | ------------ | ------ | -------- | ------------------------------------ |
 | `scope`      | string | Yes      | Capability name                      |
 | `instanceId` | string | Yes      | Hex instance ID (1-64 chars)         |
-| `target`     | string | Yes      | Target agent label (1-100 chars)     |
+| `target`     | string | Yes      | Target agent or plugin-agent label (1-150 chars) |
 
 **Multi-stage validation:**
 1. Source agent has base scope capability

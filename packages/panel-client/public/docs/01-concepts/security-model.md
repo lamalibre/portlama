@@ -67,12 +67,13 @@ The admin panel requires a client certificate at the TLS layer. Without the cert
 
 **Hardware-bound certificates:** Agents can enroll using a one-time token and a locally generated CSR, binding the private key to the macOS Keychain so it is non-extractable. The public `POST /api/enroll` endpoint uses the token as its sole authentication gate — no mTLS is required for enrollment itself, since the agent does not yet have a certificate. After enrollment, the agent authenticates with the Keychain-backed identity just like any other mTLS client. Admins can optionally upgrade their own authentication to hardware-bound mode (set `adminAuthMode` to `"hardware-bound"` in `panel.json`), which disables P12 download and certificate rotation through the panel UI. If the admin Keychain identity is lost, recovery is possible by running `portlama-reset-admin` on the server, which reverts to standard P12 authentication.
 
-Portlama supports two types of certificates with different access levels:
+Portlama supports three types of certificates with different access levels:
 
-- **Admin certificate** — full access to all panel endpoints (for browser-based management)
-- **Agent certificate** — capability-based access (for tunnel agents on macOS and Linux)
+- **Admin certificate** (`CN=admin`) — full access to all panel endpoints (for browser-based management)
+- **Agent certificate** (`CN=agent:<label>`) — capability-based access (for tunnel agents on macOS and Linux)
+- **Plugin-agent certificate** (`CN=plugin-agent:<delegator>:<name>`) — minimal identity for plugin agents participating in the ticket system, created via delegated enrollment
 
-Agent certificates are generated from the panel UI and should be used instead of the admin certificate when connecting agents. Each agent is assigned granular capabilities that control what it can access:
+Agent certificates are generated from the panel UI and should be used instead of the admin certificate when connecting agents. Plugin-agent certificates are created when an existing agent delegates enrollment for a plugin's agents (e.g., a Sync server vouching for its Sync agents). Each agent is assigned granular capabilities that control what it can access:
 
 | Capability       | Grants                                     |
 | ---------------- | ------------------------------------------ |
@@ -87,11 +88,13 @@ Agent certificates are generated from the panel UI and should be used instead of
 | `identity:read`  | Parse Authelia identity headers on plugin routes |
 | `identity:query` | Query panel for Authelia user metadata           |
 
-Capabilities are stored server-side and can be updated without reissuing the certificate. Plugins can declare additional capabilities in their manifest (flat array or nested `{ agent: [...] }` format); these are merged with base capabilities dynamically and available for assignment to agent certificates. Ticket scopes also contribute capabilities dynamically: when a scope like `shell` declares `scopes: [{ name: 'shell:connect' }]`, the capability `shell:connect` becomes available for assignment alongside base and plugin capabilities. Users, certificates, agent management, and logs always remain admin-only. Site creation and deletion are also admin-only operations.
+Capabilities are stored server-side and can be updated without reissuing the certificate. Regular agents default to `["tunnels:read"]`, while plugin-agents start with no capabilities at all — the admin must explicitly grant capabilities. Plugins can declare additional capabilities in their manifest (flat array or nested `{ agent: [...] }` format); these are merged with base capabilities dynamically and available for assignment to agent certificates. Ticket scopes also contribute capabilities dynamically: when a scope like `shell` declares `scopes: [{ name: 'shell:connect' }]`, the capability `shell:connect` becomes available for assignment alongside base and plugin capabilities. Users, certificates, agent management, and logs always remain admin-only. Site creation and deletion are also admin-only operations.
 
-In addition to capabilities, agent certificates support **per-site scoping** via `allowedSites`. Each agent has a list of site names it is permitted to access. When an agent calls `GET /api/sites`, it only sees sites in its `allowedSites` list. File operations (upload, list, delete) require both the relevant capability and the site name in the agent's `allowedSites`. The admin manages site assignments from **Panel** > **Certificates** > edit agent > **Site Access**, or via the `PATCH /api/certs/agent/:label/allowed-sites` endpoint.
+In addition to capabilities, regular agent certificates support **per-site scoping** via `allowedSites`. Each agent has a list of site names it is permitted to access. When an agent calls `GET /api/sites`, it only sees sites in its `allowedSites` list. File operations (upload, list, delete) require both the relevant capability and the site name in the agent's `allowedSites`. The admin manages site assignments from **Panel** > **Certificates** > edit agent > **Site Access**, or via the `PATCH /api/certs/agent/:label/allowed-sites` endpoint. Plugin-agents never have site access.
 
-This two-level model (capabilities + site scoping) means that even if a machine is compromised, the attacker is limited to whichever capabilities and sites were assigned to that agent — and the admin can revoke or reduce them immediately.
+**Cascade revocation:** When a regular agent is revoked, all plugin-agents it delegated are automatically cascade-revoked in the same atomic operation. This ensures that revoking a compromised agent immediately terminates all downstream identities.
+
+This three-level model (certificate type + capabilities + site scoping) means that even if a machine is compromised, the attacker is limited to whichever capabilities and sites were assigned to that agent — and the admin can revoke or reduce them immediately.
 
 #### 5b. Tickets for agent-to-agent authorization
 

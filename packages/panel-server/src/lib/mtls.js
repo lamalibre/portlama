@@ -253,10 +253,16 @@ export function getP12Path() {
 const AGENTS_DIR = `${PKI_DIR}/agents`;
 
 /**
+ * CN prefix for plugin-agent certificates.
+ * Full CN format: plugin-agent:<delegatingLabel>:<pluginAgentLabel>
+ */
+export const PLUGIN_AGENT_CN_PREFIX = 'plugin-agent:';
+
+/**
  * Base capabilities that can be assigned to agent certificates.
  * - tunnels:read is always-on (mandatory baseline for all agents)
  */
-const BASE_CAPABILITIES = [
+export const BASE_CAPABILITIES = [
   'tunnels:read',
   'tunnels:write',
   'services:read',
@@ -554,17 +560,25 @@ export async function listAgentCerts() {
       );
       expiringSoon = daysUntilExpiry <= 30;
     }
-    return {
+    const isPluginAgent = agent.label.startsWith(PLUGIN_AGENT_CN_PREFIX);
+    const entry = {
       ...agent,
-      capabilities: agent.capabilities || ['tunnels:read'],
+      capabilities: agent.capabilities || (isPluginAgent ? [] : ['tunnels:read']),
       enrollmentMethod: agent.enrollmentMethod || 'p12',
       expiringSoon,
     };
+    if (isPluginAgent) {
+      entry.certType = 'plugin-agent';
+    }
+    return entry;
   });
 }
 
 /**
- * Get capabilities for a specific agent by label.
+ * Get capabilities for a specific agent or plugin-agent by label.
+ *
+ * For plugin-agents, the label in the registry is the full
+ * `plugin-agent:<delegatingLabel>:<pluginAgentLabel>` string.
  *
  * @param {string} label
  * @returns {Promise<string[]>}
@@ -572,8 +586,11 @@ export async function listAgentCerts() {
 export async function getAgentCapabilities(label) {
   const registry = await loadAgentRegistry();
   const agent = registry.agents.find((a) => a.label === label && !a.revoked);
-  if (!agent) return ['tunnels:read'];
-  const stored = agent.capabilities || ['tunnels:read'];
+  // Plugin-agents have no default capabilities — return empty if not found
+  if (!agent) {
+    return label.startsWith(PLUGIN_AGENT_CN_PREFIX) ? [] : ['tunnels:read'];
+  }
+  const stored = agent.capabilities || (label.startsWith(PLUGIN_AGENT_CN_PREFIX) ? [] : ['tunnels:read']);
   // Filter against currently valid capabilities so disabled-plugin caps are excluded
   const valid = getValidCapabilities();
   return stored.filter((c) => valid.includes(c));
@@ -603,8 +620,9 @@ export async function updateAgentCapabilities(label, capabilities) {
       }
     }
 
-    // Ensure tunnels:read is always present
-    if (!capabilities.includes('tunnels:read')) {
+    // Ensure tunnels:read is always present for regular agents
+    // Plugin-agents only get explicitly assigned capabilities
+    if (!label.startsWith('plugin-agent:') && !capabilities.includes('tunnels:read')) {
       capabilities.unshift('tunnels:read');
     }
 
@@ -616,7 +634,9 @@ export async function updateAgentCapabilities(label, capabilities) {
 }
 
 /**
- * Get allowed sites for a specific agent by label.
+ * Get allowed sites for a specific agent or plugin-agent by label.
+ *
+ * Plugin-agents never have allowed sites — they only participate in tickets.
  *
  * @param {string} label
  * @returns {Promise<string[]>}
@@ -671,12 +691,41 @@ export async function revokeAgentCert(label, logger) {
     logger.info({ label, serial: agent.serial }, 'Revoking agent certificate');
     await addToRevocationList(agent.serial, `agent:${label}`);
 
-    // 2. Mark revoked in registry and save atomically
+    // 2. Mark revoked in registry
     agent.revoked = true;
     agent.revokedAt = new Date().toISOString();
+
+    // 3. Cascade revocation to plugin-agents delegated by this agent
+    const pluginAgents = registry.agents.filter(
+      (a) => !a.revoked && a.delegatedBy === label,
+    );
+
+    for (const pa of pluginAgents) {
+      logger.info(
+        { label: pa.label, serial: pa.serial, delegatedBy: label },
+        'Cascade-revoking plugin-agent certificate',
+      );
+      await addToRevocationList(pa.serial, `agent:${pa.label}`);
+      pa.revoked = true;
+      pa.revokedAt = new Date().toISOString();
+
+      // Remove plugin-agent's key/cert/p12 files
+      await execa('rm', ['-rf', `${AGENTS_DIR}/${pa.label}/`]).catch((err) => {
+        logger.warn({ err, label: pa.label }, 'Failed to remove plugin-agent certificate files');
+      });
+    }
+
+    if (pluginAgents.length > 0) {
+      logger.info(
+        { label, cascadeCount: pluginAgents.length },
+        'Cascade-revoked plugin-agent certificates',
+      );
+    }
+
+    // 4. Save registry atomically (includes both the agent and cascade-revoked plugin-agents)
     await saveAgentRegistry(registry);
 
-    // 3. Remove agent's key/cert/p12 files (portlama owns the agents directory)
+    // 5. Remove agent's key/cert/p12 files (portlama owns the agents directory)
     await execa('rm', ['-rf', `${AGENTS_DIR}/${label}/`]).catch((err) => {
       logger.warn({ err, label }, 'Failed to remove agent certificate files');
     });

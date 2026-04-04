@@ -93,6 +93,11 @@
           "title": "Disaster Recovery",
           "slug": "disaster-recovery",
           "file": "02-guides/disaster-recovery.md"
+        },
+        {
+          "title": "Standalone Plugin with Tickets",
+          "slug": "standalone-plugin-with-tickets",
+          "file": "02-guides/standalone-plugin-with-tickets.md"
         }
       ]
     },

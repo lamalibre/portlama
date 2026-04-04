@@ -32,7 +32,9 @@ import {
 // Param validation schemas
 const HexIdSchema = z.string().min(1).max(128).regex(/^[a-f0-9]+$/);
 const SessionIdSchema = z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/);
-const AgentLabelSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/);
+// Accepts regular agent labels (e.g., "macbook-pro") and plugin-agent labels
+// (e.g., "plugin-agent:macbook-pro:raspi-sync")
+const AgentLabelSchema = z.string().min(1).max(150).regex(/^[a-zA-Z0-9_:-]+$/);
 const InstanceScopeSchema = z.string().min(1).max(200).regex(/^[a-z0-9-]+:[a-z0-9-]+:[a-f0-9]+$/);
 
 export default async function ticketRoutes(fastify, _opts) {

@@ -299,17 +299,29 @@ export async function rotateAgentCSR(csrPem, label, logger) {
  * signs it with the CA (2-year validity), reads serial and expiry,
  * and adds the agent to the registry with `enrollmentMethod: 'hardware-bound'`.
  *
+ * For delegated enrollments, uses the `plugin-agent:<delegatingLabel>:<pluginAgentLabel>`
+ * CN format and stores the registry entry with `enrollmentType: 'delegated'` and
+ * `delegatedBy` field.
+ *
  * @param {string} csrPem - PEM-encoded CSR
  * @param {string} label - Agent label (must match CSR subject)
  * @param {string[]} capabilities - Capability list
  * @param {string[]} allowedSites - Allowed site labels
  * @param {import('pino').Logger} logger
+ * @param {{ type?: 'delegated', delegatedBy?: string }} [opts] - Optional enrollment metadata
  * @returns {Promise<{ certPem: string, caCertPem: string, serial: string, expiresAt: string, label: string }>}
  */
-export async function signCSR(csrPem, label, capabilities, allowedSites, logger) {
+export async function signCSR(csrPem, label, capabilities, allowedSites, logger, opts) {
+  const isDelegated = opts?.type === 'delegated';
+
   // Defense-in-depth: re-validate label for DN safety even though routes validate via Zod.
-  // Prevents regression if new callers are added without route-level validation.
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(label) || label.length > 50) {
+  // For delegated enrollments, the label is "plugin-agent:<delegating>:<plugin>" — validate each segment.
+  if (isDelegated) {
+    const match = label.match(/^plugin-agent:([a-z0-9][a-z0-9-]*):([a-z0-9][a-z0-9-]*)$/);
+    if (!match || label.length > 150) {
+      throw Object.assign(new Error('Invalid plugin-agent label'), { statusCode: 400 });
+    }
+  } else if (!/^[a-z0-9][a-z0-9-]*$/.test(label) || label.length > 50) {
     throw Object.assign(new Error('Invalid agent label'), { statusCode: 400 });
   }
 
@@ -367,7 +379,10 @@ export async function signCSR(csrPem, label, capabilities, allowedSites, logger)
       // The CSR subject may use a placeholder (the agent doesn't know the label
       // until after enrollment). OpenSSL 3.x (Ubuntu 24.04) supports -subj with
       // x509 -req to override the subject in the signed certificate.
-      logger.info({ label }, 'Signing enrollment CSR with CA');
+      const cnSubject = isDelegated
+        ? `/CN=${label}/O=Portlama`
+        : `/CN=agent:${label}/O=Portlama`;
+      logger.info({ label, isDelegated }, 'Signing enrollment CSR with CA');
       await execa('sudo', [
         'openssl',
         'x509',
@@ -385,7 +400,7 @@ export async function signCSR(csrPem, label, capabilities, allowedSites, logger)
         '730',
         '-sha256',
         '-subj',
-        `/CN=agent:${label}/O=Portlama`,
+        cnSubject,
       ]);
 
       // Make cert readable (match signAdminCSR pattern)
@@ -420,22 +435,26 @@ export async function signCSR(csrPem, label, capabilities, allowedSites, logger)
         caCertPem = stdout;
       }
 
-      // Add to registry with hardware-bound enrollment method.
+      // Add to registry. For delegated enrollments, store the delegation metadata.
       // We reuse the registry loaded at the top of withRegistryLock — the mutex
       // guarantees no concurrent modifications.
-      registry.agents.push({
+      const registryEntry = {
         label,
         serial,
-        capabilities: capabilities || ['tunnels:read'],
-        allowedSites: allowedSites || [],
-        enrollmentMethod: 'hardware-bound',
+        capabilities: isDelegated ? (capabilities || []) : (capabilities || ['tunnels:read']),
+        allowedSites: isDelegated ? [] : (allowedSites || []),
+        enrollmentMethod: isDelegated ? 'delegated' : 'hardware-bound',
         createdAt: new Date().toISOString(),
         expiresAt,
         revoked: false,
-      });
+      };
+      if (isDelegated && opts?.delegatedBy) {
+        registryEntry.delegatedBy = opts.delegatedBy;
+      }
+      registry.agents.push(registryEntry);
       await saveAgentRegistry(registry);
 
-      logger.info({ label, serial }, 'Enrollment CSR signed and agent registered');
+      logger.info({ label, serial, isDelegated }, 'Enrollment CSR signed and agent registered');
 
       return { certPem, caCertPem, serial, expiresAt, label };
     } finally {

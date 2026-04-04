@@ -36,12 +36,18 @@ export default async function enrollmentRoutes(fastify, _opts) {
     }
 
     try {
+      // Build opts for delegated enrollments
+      const signOpts = tokenData.type === 'delegated'
+        ? { type: /** @type {const} */ ('delegated'), delegatedBy: tokenData.delegatedBy }
+        : undefined;
+
       const result = await signCSR(
         body.csr,
         tokenData.label,
         tokenData.capabilities,
         tokenData.allowedSites,
         request.log,
+        signOpts,
       );
 
       return {

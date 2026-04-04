@@ -14,10 +14,11 @@ import {
   updateAgentAllowedSites,
   getValidCapabilities,
 } from '../../lib/mtls.js';
-import { createEnrollmentToken, revokeEnrollmentToken } from '../../lib/enrollment.js';
+import { createEnrollmentToken, createDelegatedEnrollmentToken, revokeEnrollmentToken } from '../../lib/enrollment.js';
 import { signAdminCSR, rotateAgentCSR } from '../../lib/csr-signing.js';
 import { getConfig, updateConfig } from '../../lib/config.js';
 import { addToRevocationList } from '../../lib/revocation.js';
+import { agentOwnsInstanceForScope } from '../../lib/tickets.js';
 import * as nginx from '../../lib/nginx.js';
 
 const DomainParamSchema = z.object({
@@ -68,9 +69,6 @@ const AgentGenerateBodySchema = z.object({
 const UpdateCapabilitiesSchema = z.object({
   capabilities: z
     .array(z.string())
-    .refine((caps) => caps.includes('tunnels:read'), {
-      message: 'tunnels:read is mandatory and cannot be removed',
-    })
     .superRefine((caps, ctx) => {
       const validCaps = getValidCapabilities();
       for (const c of caps) {
@@ -113,11 +111,26 @@ const AgentUpgradeSchema = z.object({
 });
 
 const AgentLabelParamSchema = z.object({
-  label: z
+  label: z.string().min(1).max(150).regex(/^[a-z0-9][a-z0-9:-]*$/, 'Invalid agent label'),
+});
+
+const DelegatedEnrollBodySchema = z.object({
+  pluginAgentLabel: z
     .string()
     .min(1)
     .max(50)
-    .regex(/^[a-z0-9-]+$/, 'Invalid agent label'),
+    .regex(
+      /^[a-z0-9][a-z0-9-]*$/,
+      'Label must start with a letter or number and contain only lowercase letters, numbers, and hyphens',
+    ),
+  scope: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(
+      /^[a-z0-9-]+:[a-z0-9-]+$/,
+      'Scope must follow scope:action format (e.g., sync:connect)',
+    ),
 });
 
 /**
@@ -507,6 +520,59 @@ export default async function certsRoutes(fastify, _opts) {
       const params = AgentLabelParamSchema.parse(request.params);
       const result = await revokeEnrollmentToken(params.label, request.log);
       return { ok: true, ...result };
+    },
+  );
+
+  // ------------------------------------------------------------------
+  // POST /certs/agent/enroll-delegated — pre-announce a delegated enrollment
+  // token for a plugin agent. Requires agent role — only agents that own
+  // a ticket instance for the given scope can delegate enrollment.
+  // ------------------------------------------------------------------
+  fastify.post(
+    '/certs/agent/enroll-delegated',
+    {
+      preHandler: fastify.requireRole(['agent']),
+    },
+    async (request, reply) => {
+      // Plugin-agents cannot delegate enrollment — prevents recursive delegation chains
+      if (request.certRole === 'plugin-agent') {
+        return reply.code(403).send({ error: 'Plugin agents cannot delegate enrollment' });
+      }
+
+      const body = DelegatedEnrollBodySchema.parse(request.body);
+      const delegatingLabel = request.certLabel;
+
+      if (!delegatingLabel) {
+        return reply.code(403).send({ error: 'Agent label not found in certificate' });
+      }
+
+      // Validate the calling agent owns a ticket instance for the given scope
+      const ownsInstance = await agentOwnsInstanceForScope(delegatingLabel, body.scope);
+      if (!ownsInstance) {
+        return reply.code(403).send({
+          error: 'Insufficient delegation authority',
+        });
+      }
+
+      try {
+        const result = await createDelegatedEnrollmentToken(
+          delegatingLabel,
+          body.scope,
+          body.pluginAgentLabel,
+          request.log,
+        );
+        return {
+          ok: true,
+          enrollmentToken: result.token,
+          expiresAt: result.expiresAt,
+          pluginAgentLabel: result.pluginAgentLabel,
+        };
+      } catch (err) {
+        const statusCode = err.statusCode || 500;
+        return reply.code(statusCode).send({
+          error: err.message || 'Delegated enrollment token generation failed',
+        });
+      }
     },
   );
 

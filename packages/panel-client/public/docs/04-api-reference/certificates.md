@@ -262,7 +262,12 @@ The response body is the raw binary PKCS#12 file.
 
 ## Agent Certificate Endpoints
 
-Agent certificates provide scoped access for Mac tunnel clients. Only admins can manage agent certificates.
+Agent certificates provide scoped access for tunnel clients. There are two types:
+
+- **Regular agents** (`CN=agent:<label>`) — created by the admin, default `tunnels:read` capability
+- **Plugin-agents** (`CN=plugin-agent:<delegatingLabel>:<pluginAgentLabel>`) — created via delegated enrollment, no default capabilities
+
+Only admins can manage agent certificates directly. Agents can create delegated enrollment tokens for plugin-agents via `POST /api/certs/agent/enroll-delegated`.
 
 ### `POST /api/certs/agent`
 
@@ -375,7 +380,9 @@ curl -s --cert client.p12:password \
 | `serial`           | `string`   | Certificate serial number                                                           |
 | `capabilities`     | `string[]` | Granted capabilities                                                                |
 | `allowedSites`     | `string[]` | Site names this agent can access for file operations                                |
-| `enrollmentMethod` | `string`   | `"p12"` or `"hardware-bound"` — how the agent certificate was issued                |
+| `enrollmentMethod` | `string`   | `"p12"`, `"hardware-bound"`, or `"delegated"` — how the agent certificate was issued |
+| `delegatedBy`      | `string \| undefined` | For delegated certs: the label of the delegating agent                        |
+| `certType`         | `string \| undefined` | `"plugin-agent"` for delegated certs, absent for regular agents               |
 | `createdAt`        | `string`   | ISO 8601 creation timestamp                                                         |
 | `expiresAt`        | `string`   | ISO 8601 expiry timestamp                                                           |
 | `revoked`          | `boolean`  | Whether the certificate has been revoked                                            |
@@ -424,7 +431,7 @@ Updates the capabilities for an existing agent certificate. Capabilities are sto
 
 | Field          | Type       | Required | Description                                      |
 | -------------- | ---------- | -------- | ------------------------------------------------ |
-| `capabilities` | `string[]` | Yes      | New capability list. Must include `tunnels:read` |
+| `capabilities` | `string[]` | Yes      | New capability list. Must include `tunnels:read` for regular agents. Plugin-agents have no mandatory capabilities |
 
 ```bash
 curl -s --cert client.p12:password \
@@ -497,6 +504,8 @@ curl -s --cert client.p12:password \
 ### `DELETE /api/certs/agent/:label`
 
 Revokes an agent certificate. The certificate serial is added to the revocation list, the registry entry is marked as revoked, and the P12 files are deleted from disk. The agent loses access immediately.
+
+**Cascade revocation:** When a regular agent is revoked, all plugin-agents delegated by that agent are automatically cascade-revoked in the same operation. Their serials are added to `revoked.json` and their cert files cleaned up.
 
 **Request:**
 
@@ -583,6 +592,76 @@ curl -s --cert client.p12:password \
 | 409    | `{"error":"Agent certificate with label \"macbook-pro\" already exists"}` | Label already in use (non-revoked)                      |
 
 **Note:** If a pending (unused, unexpired) enrollment token already exists for the same label, it is silently replaced by the new token. This allows retried installations without requiring explicit token revocation first.
+
+---
+
+### `POST /api/certs/agent/enroll-delegated` — Delegated enrollment token (agent-only)
+
+Creates a single-use enrollment token for a **plugin-agent** certificate. The calling agent must own an active ticket instance for the given scope. Only regular agents can delegate — plugin-agents cannot (prevents recursive delegation chains).
+
+The returned token is passed out-of-band to the plugin agent, which submits it alongside a CSR to `POST /api/enroll`. The issued certificate has CN `plugin-agent:<delegatingLabel>:<pluginAgentLabel>` and starts with no base capabilities (only the delegated scope capability).
+
+**Authentication:** Agent-only (mTLS with agent certificate). Plugin-agents are rejected with 403.
+
+**Request:**
+
+```json
+{
+  "pluginAgentLabel": "rpi-sync",
+  "scope": "sync:connect"
+}
+```
+
+| Field              | Type     | Required | Description                                                                                                       |
+| ------------------ | -------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `pluginAgentLabel` | `string` | Yes      | 1-50 characters, must start with a letter or number, lowercase letters, numbers, and hyphens only                 |
+| `scope`            | `string` | Yes      | Ticket scope capability in `scope:action` format (e.g., `sync:connect`). Must be a registered ticket scope, not a base capability |
+
+```bash
+curl -s --cert agent.p12:password \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"pluginAgentLabel":"rpi-sync","scope":"sync:connect"}' \
+  https://203.0.113.42:9292/api/certs/agent/enroll-delegated | jq
+```
+
+**Response (200):**
+
+```json
+{
+  "ok": true,
+  "enrollmentToken": "a1b2c3d4e5f6...",
+  "expiresAt": "2026-04-04T10:10:00.000Z",
+  "pluginAgentLabel": "rpi-sync"
+}
+```
+
+| Field               | Type      | Description                                         |
+| ------------------- | --------- | --------------------------------------------------- |
+| `ok`                | `boolean` | `true` if the token was generated successfully      |
+| `enrollmentToken`   | `string`  | Single-use delegated enrollment token. Only shown once |
+| `expiresAt`         | `string`  | ISO 8601 timestamp when the token expires (10 min)  |
+| `pluginAgentLabel`  | `string`  | The plugin agent label                              |
+
+**Errors:**
+
+| Status | Body                                                                                          | When                                                           |
+| ------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 400    | `{"error":"Validation failed","details":{...}}`                                               | Invalid label or scope format                                  |
+| 403    | `{"error":"Plugin agents cannot delegate enrollment"}`                                        | Caller is a plugin-agent (recursive delegation blocked)        |
+| 403    | `{"error":"Agent label not found in certificate"}`                                            | Calling certificate has no agent label                         |
+| 403    | `{"error":"Insufficient delegation authority"}`                                               | Agent does not own an active ticket instance for the scope     |
+| 409    | `{"error":"Agent certificate with label \"plugin-agent:macbook-pro:rpi-sync\" already exists"}` | Plugin-agent label already has an active (non-revoked) cert |
+| 500    | `{"error":"Delegated enrollment token generation failed"}`                                    | Token generation error                                         |
+
+**How it works:**
+
+1. The panel verifies the calling agent is a regular agent (not a plugin-agent)
+2. Checks that the scope is a registered ticket scope (not a base capability like `tunnels:read`)
+3. Verifies the agent owns an active ticket instance for that scope
+4. Generates a delegated enrollment token with `type: 'delegated'`, `delegatedBy: <callingAgentLabel>`, and `scope`
+5. The plugin agent uses this token with `POST /api/enroll` to receive a `CN=plugin-agent:<delegatingLabel>:<pluginAgentLabel>` certificate
+
+**Note:** When an enrollment token already exists for the same plugin-agent label, it is silently replaced. When the delegating agent is later revoked, all plugin-agents it delegated are cascade-revoked automatically.
 
 ---
 
@@ -852,13 +931,24 @@ curl -s --cert agent.p12:password \
 ### Agent Certificates
 
 - **Issued by:** Portlama's self-signed CA
-- **Purpose:** Scoped access for Mac tunnel clients (`CN=agent:<label>`)
+- **Purpose:** Scoped access for tunnel clients (`CN=agent:<label>`)
 - **Validity:** 2 years
-- **Capabilities:** Server-side, updatable without reissuing the certificate
+- **Capabilities:** Server-side, updatable without reissuing the certificate. Defaults to `["tunnels:read"]`
 - **Site access:** Per-site scoping via `allowedSites` — agents can only see and modify files on sites explicitly assigned to them
 - **Path:** `/etc/portlama/pki/agents/<label>/client.p12`
-- **Issued via:** `POST /api/certs/agent` (admin only)
-- **Revocation:** Immediate via `/api/certs/agent/:label` (serial added to revocation list)
+- **Issued via:** `POST /api/certs/agent` (admin only) or `POST /api/certs/agent/enroll` (token-based)
+- **Revocation:** Immediate via `/api/certs/agent/:label` (serial added to revocation list). Cascade-revokes all plugin-agents delegated by this agent
+
+### Plugin-Agent Certificates
+
+- **Issued by:** Portlama's self-signed CA
+- **Purpose:** Minimal identity for plugin agents participating in the ticket system (`CN=plugin-agent:<delegatingLabel>:<pluginAgentLabel>`)
+- **Validity:** 2 years
+- **Capabilities:** No default capabilities — starts empty. Admin can add capabilities via the Certificates page
+- **Site access:** None (plugin-agents never have allowed sites)
+- **Path:** `/etc/portlama/pki/agents/plugin-agent:<delegatingLabel>:<pluginAgentLabel>/client.p12` (generated during CSR enrollment)
+- **Issued via:** Delegated enrollment — agent calls `POST /api/certs/agent/enroll-delegated`, passes token to plugin agent, plugin agent calls `POST /api/enroll` with CSR
+- **Revocation:** Immediate via `DELETE /api/certs/agent/<full-label>`, or automatically cascade-revoked when the delegating agent is revoked
 
 ## Quick Reference
 
@@ -876,6 +966,7 @@ curl -s --cert agent.p12:password \
 | PATCH  | `/api/certs/agent/:label/allowed-sites`        | Update agent site access               |
 | DELETE | `/api/certs/agent/:label`                      | Revoke agent certificate               |
 | POST   | `/api/certs/agent/enroll`                      | Generate enrollment token (admin-only) |
+| POST   | `/api/certs/agent/enroll-delegated`            | Delegated enrollment token (agent-only)|
 | DELETE | `/api/certs/agent/enroll/:label`               | Revoke unused enrollment token         |
 | POST   | `/api/certs/agent/upgrade-cert`                | Upgrade agent cert to hardware-bound   |
 | POST   | `/api/enroll`                                  | Enroll agent with token (public)       |
@@ -953,6 +1044,12 @@ curl -s --cert client.p12:password \
   -X POST -H 'Content-Type: application/json' \
   -d '{"label":"macbook-pro","capabilities":["tunnels:read","tunnels:write"]}' \
   https://203.0.113.42:9292/api/certs/agent/enroll | jq
+
+# Generate a delegated enrollment token (agent-only)
+curl -s --cert agent.p12:password \
+  -X POST -H 'Content-Type: application/json' \
+  -d '{"pluginAgentLabel":"rpi-sync","scope":"sync:connect"}' \
+  https://203.0.113.42:9292/api/certs/agent/enroll-delegated | jq
 
 # Revoke an unused enrollment token
 curl -s --cert client.p12:password \

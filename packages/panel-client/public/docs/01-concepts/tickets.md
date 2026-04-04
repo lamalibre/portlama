@@ -278,13 +278,98 @@ The SDK exports three main classes:
 
 The dispatcher factory (`createTicketDispatcher`) supports both PEM (cert + key + CA files) and P12 (single .p12 bundle) certificate configurations.
 
+### Plugin Agent Delegation
+
+When a standalone plugin (e.g., Sync) runs behind a Portlama tunnel, its agents need a Portlama identity to participate in the ticket system. Without one, the panel cannot verify capabilities, bind assignments, or issue tickets for those agents.
+
+Delegated enrollment solves this. The plugin server — which already has a Portlama agent certificate — vouches for its own agents by pre-announcing their enrollment to the panel.
+
+#### Delegation Flow
+
+```
+Sync Server                    Portlama Panel              Sync Agent (RPi)
+(CN=agent:macbook-pro)                                     (no Portlama cert yet)
+     │                              │                            │
+     │  POST /api/certs/agent/      │                            │
+     │    enroll-delegated          │                            │
+     │  {pluginAgentLabel, scope}  │                            │
+     │─────────────────────────────▶│                            │
+     │                              │ ── store delegated token   │
+     │  { enrollmentToken }         │                            │
+     │◀─────────────────────────────│                            │
+     │                              │                            │
+     │         (Sync enrollment — agent token exchange)          │
+     │◀─────────────────────────────────────────────────────────│
+     │                              │                            │
+     │    (pass delegated token     │                            │
+     │     to Sync agent)           │                            │
+     │─────────────────────────────────────────────────────────▶│
+     │                              │                            │
+     │                              │  POST /api/enroll          │
+     │                              │  {CSR, delegatedToken}     │
+     │                              │◀───────────────────────────│
+     │                              │ ── validate token          │
+     │                              │ ── issue minimal cert      │
+     │                              │  { cert }                  │
+     │                              │  CN=plugin-agent:          │
+     │                              │    macbook-pro:rpi-sync    │
+     │                              │───────────────────────────▶│
+     │                              │                            │
+     │                         (admin assigns capabilities       │
+     │                          and ticket assignments)          │
+     │                              │                            │
+     │                              │  POST /api/tickets         │
+     │                              │  {scope, instanceId,       │
+     │                              │   target}                  │
+     │                              │◀───────────────────────────│
+     │                              │ ── full ticket validation  │
+     │                              │  { ticket }                │
+     │                              │───────────────────────────▶│
+```
+
+#### Certificate Format
+
+Delegated certs use a three-part CN that encodes the delegation chain:
+
+```
+CN=plugin-agent:<delegatingLabel>:<pluginAgentLabel>
+```
+
+- `plugin-agent` — prefix distinguishing these from regular agents (`agent:`) and admin certs
+- `<delegatingLabel>` — the Portlama agent that vouched for this plugin agent (e.g., `macbook-pro`)
+- `<pluginAgentLabel>` — the plugin's own name for the agent (e.g., `rpi-sync`)
+
+#### Capabilities
+
+Plugin-agent certs start with **no base capabilities**. They cannot manage tunnels, services, or sites. They can only participate in the ticket system for the scope declared during delegation.
+
+The admin can upgrade capabilities via the Certificates page at any time. This is a deliberate opt-in — minimal privilege by default.
+
+#### Pre-announcement Endpoint
+
+```
+POST /api/certs/agent/enroll-delegated
+```
+
+- Authenticated via the delegating agent's mTLS cert
+- Request body includes the plugin agent name and the ticket scope
+- Returns a one-time, time-limited delegated enrollment token
+- The delegating agent passes this token to its plugin agent out-of-band
+- The plugin agent submits the token alongside its CSR to `POST /api/enroll`
+
+#### When Delegation Applies
+
+Delegation only occurs when the plugin server detects it is running as a Portlama agent (i.e., it has a Portlama agent certificate). When running standalone on a direct IP without Portlama, the plugin server mediates tickets on behalf of its agents using its own cert — no delegation needed.
+
+See [Standalone Plugin with Tickets](../02-guides/standalone-plugin-with-tickets.md) for a full walkthrough.
+
 ### Source Files
 
 | File                                                    | Purpose                                   |
 | ------------------------------------------------------- | ----------------------------------------- |
 | `packages/panel-server/src/lib/tickets.js`              | Business logic, validation, state management |
 | `packages/panel-server/src/routes/management/tickets.js` | HTTP route handlers                       |
-| `packages/panel-client/src/pages/management/Tickets.jsx` | Admin UI (5-tab interface)               |
+| `packages/portlama-admin-panel/src/pages/Tickets.jsx` | Admin UI (5-tab interface)               |
 | `packages/portlama-agent/src/lib/panel-api.js`          | Agent-side API functions                  |
 | `packages/portlama-tickets/src/client.ts`               | SDK: mTLS HTTP client for ticket API      |
 | `packages/portlama-tickets/src/instance-manager.ts`     | SDK: source-side instance lifecycle       |

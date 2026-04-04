@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin';
 import { isRevoked } from '../lib/revocation.js';
-import { getAgentCapabilities, getAgentAllowedSites } from '../lib/mtls.js';
+import { getAgentCapabilities, getAgentAllowedSites, PLUGIN_AGENT_CN_PREFIX } from '../lib/mtls.js';
 
 let devWarningLogged = false;
 
@@ -54,7 +54,34 @@ async function mtlsPlugin(fastify, _opts) {
     const cnMatch = dn.match(/CN=([^,]+)/);
     const cn = cnMatch ? cnMatch[1] : '';
 
-    if (cn.startsWith('agent:')) {
+    if (cn.startsWith(PLUGIN_AGENT_CN_PREFIX)) {
+      // Plugin-agent: CN = plugin-agent:<delegatingLabel>:<pluginAgentLabel>
+      // certLabel includes the full CN so it matches the registry label
+      request.certRole = 'plugin-agent';
+      request.certLabel = cn;
+      // Extract the delegating agent label
+      const afterPrefix = cn.slice(PLUGIN_AGENT_CN_PREFIX.length);
+      const colonIndex = afterPrefix.indexOf(':');
+      request.certDelegatedBy = colonIndex !== -1 ? afterPrefix.slice(0, colonIndex) : afterPrefix;
+      try {
+        request.certCapabilities = await getAgentCapabilities(cn);
+      } catch (err) {
+        request.log.warn(
+          { err, label: cn },
+          'Failed to load plugin-agent capabilities, using defaults',
+        );
+        request.certCapabilities = [];
+      }
+      try {
+        request.certAllowedSites = await getAgentAllowedSites(cn);
+      } catch (err) {
+        request.log.warn(
+          { err, label: cn },
+          'Failed to load plugin-agent allowed sites, using defaults',
+        );
+        request.certAllowedSites = [];
+      }
+    } else if (cn.startsWith('agent:')) {
       request.certRole = 'agent';
       request.certLabel = cn.slice('agent:'.length);
       try {

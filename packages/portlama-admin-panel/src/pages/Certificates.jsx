@@ -17,6 +17,7 @@ import {
   Key,
   Settings,
   Globe,
+  Link2,
 } from 'lucide-react';
 import { useToast } from '../components/Toast.jsx';
 
@@ -291,11 +292,51 @@ function EnrollmentMethodBadge({ method }) {
       </span>
     );
   }
+  if (method === 'delegated') {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded-full border text-violet-400 bg-violet-500/10 border-violet-500/20">
+        delegated
+      </span>
+    );
+  }
   return (
     <span className="text-xs px-2 py-0.5 rounded-full border text-zinc-500 bg-zinc-800 border-zinc-700">
       p12
     </span>
   );
+}
+
+/**
+ * Parse a plugin-agent label like "plugin-agent:macbook-pro:raspi-sync"
+ * into its display name and delegating agent label.
+ * Returns { displayName, viaAgent } or null for regular agent labels.
+ */
+function parsePluginAgentLabel(label) {
+  if (!label.startsWith('plugin-agent:')) return null;
+  const parts = label.split(':');
+  // plugin-agent:<agentLabel>:<pluginAgentName>
+  if (parts.length >= 3) {
+    return {
+      displayName: parts.slice(2).join(':'),
+      viaAgent: parts[1],
+    };
+  }
+  return null;
+}
+
+function AgentLabelCell({ label }) {
+  const parsed = parsePluginAgentLabel(label);
+  if (parsed) {
+    return (
+      <div>
+        <span className="text-zinc-200 font-semibold">{parsed.displayName}</span>
+        <span className="block text-xs text-zinc-500 mt-0.5" title={label}>
+          via {parsed.viaAgent}
+        </span>
+      </div>
+    );
+  }
+  return <span className="text-zinc-200 font-semibold">{label}</span>;
 }
 
 const CAPABILITY_OPTIONS = [
@@ -1103,6 +1144,7 @@ function AgentCertsSection() {
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [editCapsTarget, setEditCapsTarget] = useState(null);
   const [editSitesTarget, setEditSitesTarget] = useState(null);
+  const [filter, setFilter] = useState('all'); // 'all' | 'regular' | 'delegated'
 
   const agentQuery = useQuery({
     queryKey: ['agent-certs'],
@@ -1133,7 +1175,13 @@ function AgentCertsSection() {
     }
   }, [revokeTarget, revokeMutation]);
 
-  const certs = agentQuery.data?.agents || [];
+  const allCerts = agentQuery.data?.agents || [];
+  const hasDelegated = allCerts.some((c) => c.enrollmentMethod === 'delegated');
+  const certs = allCerts.filter((c) => {
+    if (filter === 'regular') return c.enrollmentMethod !== 'delegated';
+    if (filter === 'delegated') return c.enrollmentMethod === 'delegated';
+    return true;
+  });
 
   return (
     <div className="mt-8">
@@ -1164,6 +1212,26 @@ function AgentCertsSection() {
             </button>
           </div>
         </div>
+
+        {/* Filter toggles — only visible when delegated certs exist */}
+        {hasDelegated && (
+          <div className="flex items-center gap-1 mb-4">
+            {['all', 'regular', 'delegated'].map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                  filter === f
+                    ? 'bg-zinc-700 text-zinc-200'
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                {f === 'all' ? 'All' : f === 'regular' ? 'Regular' : 'Delegated'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {agentQuery.isLoading ? (
           <div className="space-y-3">
@@ -1206,6 +1274,9 @@ function AgentCertsSection() {
                     Capabilities
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
+                    Delegated By
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
                     Type
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-zinc-400">
@@ -1219,7 +1290,9 @@ function AgentCertsSection() {
               <tbody>
                 {certs.map((cert) => (
                   <tr key={cert.label} className="border-b border-zinc-700 bg-zinc-800">
-                    <td className="px-4 py-3 text-zinc-200 font-semibold">{cert.label}</td>
+                    <td className="px-4 py-3">
+                      <AgentLabelCell label={cert.label} />
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-zinc-600">
                       {cert.serial ? cert.serial.slice(0, 16) : 'N/A'}
                     </td>
@@ -1240,6 +1313,16 @@ function AgentCertsSection() {
                         <span className="text-xs text-zinc-500 mt-1 block">
                           Sites: {cert.allowedSites.join(', ')}
                         </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {cert.delegatedBy ? (
+                        <span className="flex items-center gap-1.5 text-xs text-violet-400 font-mono">
+                          <Link2 size={12} className="text-violet-400/70" />
+                          {cert.delegatedBy}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-zinc-600">&mdash;</span>
                       )}
                     </td>
                     <td className="px-4 py-3">

@@ -22,8 +22,13 @@ function roleGuard(fastify, _opts, done) {
       // Admin always passes — no capability check needed
       if (role === 'admin') return;
 
+      // plugin-agent is a subset of agent — accept it wherever agent is accepted
+      const effectiveRole = role === 'plugin-agent' && allowedRoles.includes('agent')
+        ? 'agent'
+        : role;
+
       // Check if the role is in the allowed list
-      if (!allowedRoles.includes(role)) {
+      if (!allowedRoles.includes(effectiveRole)) {
         return reply.code(403).send({
           error: 'Insufficient certificate scope',
           details: {
@@ -33,8 +38,8 @@ function roleGuard(fastify, _opts, done) {
         });
       }
 
-      // If a capability is required, check the agent has it
-      if (capability && role === 'agent') {
+      // If a capability is required, check the agent (or plugin-agent) has it
+      if (capability && (effectiveRole === 'agent' || role === 'plugin-agent')) {
         const caps = request.certCapabilities || [];
         if (!caps.includes(capability)) {
           return reply.code(403).send({

@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { readFile, writeFile, rename, open } from 'node:fs/promises';
 import path from 'node:path';
-import { loadAgentRegistry } from './mtls.js';
+import { loadAgentRegistry, PLUGIN_AGENT_CN_PREFIX, BASE_CAPABILITIES } from './mtls.js';
+import { isRegisteredTicketScope } from './tickets.js';
 
 const PKI_DIR = process.env.PORTLAMA_PKI_DIR || '/etc/portlama/pki';
 const TOKENS_PATH = path.join(PKI_DIR, 'enrollment-tokens.json');
@@ -31,9 +32,15 @@ function withTokenLock(fn) {
 }
 
 /**
- * Timing-safe token comparison.
- * Uses crypto.timingSafeEqual to prevent timing side-channel attacks
- * on the enrollment token (the sole auth gate for the public endpoint).
+ * Per-process random key for HMAC-based timing-safe comparison.
+ * HMAC produces fixed-length digests, eliminating length-leaking branches.
+ */
+const COMPARE_KEY = crypto.randomBytes(32);
+
+/**
+ * Timing-safe token comparison via HMAC-SHA256.
+ * Both inputs are hashed to fixed-length digests before comparison,
+ * preventing timing side-channel attacks that leak token length.
  *
  * @param {string} a
  * @param {string} b
@@ -41,8 +48,9 @@ function withTokenLock(fn) {
  */
 function safeTokenCompare(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const ha = crypto.createHmac('sha256', COMPARE_KEY).update(a).digest();
+  const hb = crypto.createHmac('sha256', COMPARE_KEY).update(b).digest();
+  return crypto.timingSafeEqual(ha, hb);
 }
 
 /**
@@ -184,17 +192,134 @@ export async function validateAndConsumeToken(token) {
       throw Object.assign(new Error('Enrollment token has expired'), { statusCode: 401 });
     }
 
+    // For delegated tokens, re-check that the delegating agent is still valid.
+    // The agent may have been revoked between token creation and consumption.
+    if (entry.type === 'delegated' && entry.delegatedBy) {
+      const registry = await loadAgentRegistry();
+      const delegator = registry.agents.find((a) => a.label === entry.delegatedBy && !a.revoked);
+      if (!delegator) {
+        throw Object.assign(new Error('Invalid enrollment token'), { statusCode: 401 });
+      }
+    }
+
     // Mark as used
     entry.used = true;
     entry.usedAt = new Date().toISOString();
 
     await saveTokens(tokens);
 
-    return {
+    /** @type {{ label: string, capabilities: string[], allowedSites: string[], type?: string, delegatedBy?: string, scope?: string }} */
+    const result = {
       label: entry.label,
       capabilities: entry.capabilities,
       allowedSites: entry.allowedSites,
     };
+
+    if (entry.type) {
+      result.type = entry.type;
+    }
+    if (entry.delegatedBy) {
+      result.delegatedBy = entry.delegatedBy;
+    }
+    if (entry.scope) {
+      result.scope = entry.scope;
+    }
+
+    return result;
+  });
+}
+
+/**
+ * Create a one-time delegated enrollment token for plugin agent certificate enrollment.
+ *
+ * A delegated enrollment allows a Portlama agent (hosting a standalone plugin server)
+ * to vouch for a plugin agent (e.g., a Sync agent on a Raspberry Pi) that needs a
+ * minimal Portlama certificate for ticket system participation.
+ *
+ * @param {string} delegatingLabel - Label of the agent that is vouching (must be registered, non-revoked)
+ * @param {string} scope - Ticket scope this delegation is for (e.g., "sync:connect")
+ * @param {string} pluginAgentLabel - Label for the new plugin agent
+ * @param {import('pino').Logger} logger
+ * @returns {Promise<{ token: string, pluginAgentLabel: string, expiresAt: string }>}
+ */
+export async function createDelegatedEnrollmentToken(delegatingLabel, scope, pluginAgentLabel, logger) {
+  // Validate that the scope is a registered ticket scope, not a base capability.
+  // Base capabilities (tunnels:read, services:write, etc.) must never be delegated
+  // through enrollment — they are admin-assigned per-agent.
+  // These checks run outside the token lock because scope validation is independent
+  // of token file operations and avoids nesting the ticket lock inside the token lock.
+  if (BASE_CAPABILITIES.includes(scope)) {
+    throw Object.assign(
+      new Error('Scope conflicts with a base capability'),
+      { statusCode: 400 },
+    );
+  }
+
+  const isTicketScope = await isRegisteredTicketScope(scope);
+  if (!isTicketScope) {
+    throw Object.assign(
+      new Error(`Scope "${scope}" is not a registered ticket scope`),
+      { statusCode: 400 },
+    );
+  }
+
+  return withTokenLock(async () => {
+    // Validate that the delegating agent is registered and non-revoked
+    const registry = await loadAgentRegistry();
+    const delegatingAgent = registry.agents.find((a) => a.label === delegatingLabel && !a.revoked);
+    if (!delegatingAgent) {
+      throw Object.assign(new Error(`Delegating agent "${delegatingLabel}" not found or revoked`), {
+        statusCode: 404,
+      });
+    }
+
+    // Build the full plugin-agent label for registry uniqueness check
+    const fullLabel = `${PLUGIN_AGENT_CN_PREFIX}${delegatingLabel}:${pluginAgentLabel}`;
+
+    // Check registry for duplicate (non-revoked) plugin-agent label
+    const existing = registry.agents.find((a) => a.label === fullLabel && !a.revoked);
+    if (existing) {
+      throw Object.assign(
+        new Error(`Plugin agent certificate with label "${pluginAgentLabel}" for delegator "${delegatingLabel}" already exists`),
+        { statusCode: 409 },
+      );
+    }
+
+    let tokens = await loadTokens();
+
+    // Clean expired tokens lazily
+    tokens = cleanExpiredTokens(tokens);
+
+    // Replace any active (unused, unexpired) token for the same full label
+    const now = Date.now();
+    tokens = tokens.filter(
+      (t) => !(t.label === fullLabel && !t.used && new Date(t.expiresAt).getTime() > now),
+    );
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const createdAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS).toISOString();
+
+    tokens.push({
+      token,
+      label: fullLabel,
+      capabilities: [scope],
+      allowedSites: [],
+      type: 'delegated',
+      delegatedBy: delegatingLabel,
+      scope,
+      createdAt,
+      expiresAt,
+      used: false,
+    });
+
+    await saveTokens(tokens);
+    logger.info(
+      { delegatingLabel, pluginAgentLabel, scope, expiresAt },
+      'Created delegated enrollment token',
+    );
+
+    return { token, pluginAgentLabel, expiresAt };
   });
 }
 

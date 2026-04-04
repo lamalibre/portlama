@@ -124,7 +124,8 @@ export const RegisterInstanceSchema = z.object({
 export const RequestTicketSchema = z.object({
   scope: CapabilityStringSchema,
   instanceId: z.string().min(1).max(64).regex(/^[a-f0-9]+$/),
-  target: z.string().min(1).max(100),
+  // max 150 to accommodate plugin-agent:<delegating>:<plugin> labels
+  target: z.string().min(1).max(150),
 });
 
 export const ValidateTicketSchema = z.object({
@@ -292,6 +293,50 @@ async function refreshTicketScopeCapabilities() {
 
 export async function loadTicketScopeCapabilities() {
   await refreshTicketScopeCapabilities();
+}
+
+/**
+ * Check whether a given capability name is a registered ticket scope capability.
+ *
+ * Iterates the scope registry and checks if any registered scope has a
+ * sub-scope whose name matches the provided capability.
+ *
+ * @param {string} capability - Capability string to check (e.g., "sync:connect")
+ * @returns {Promise<boolean>}
+ */
+export function isRegisteredTicketScope(capability) {
+  return withTicketLock(async () => {
+    const registry = await loadScopeRegistry();
+    for (const scope of registry.scopes) {
+      for (const s of scope.scopes) {
+        if (s.name === capability) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
+}
+
+// --- Instance ownership check ---
+
+/**
+ * Check whether an agent owns at least one active instance for the given scope.
+ *
+ * Used by delegated enrollment to verify the delegating agent has a live
+ * ticket instance for the scope it is delegating.
+ *
+ * @param {string} agentLabel - Agent label to check
+ * @param {string} scope - Ticket scope (e.g., "sync:connect")
+ * @returns {Promise<boolean>}
+ */
+export function agentOwnsInstanceForScope(agentLabel, scope) {
+  return withTicketLock(async () => {
+    const registry = await loadScopeRegistry();
+    return registry.instances.some(
+      (inst) => inst.agentLabel === agentLabel && inst.scope === scope && inst.status !== 'dead',
+    );
+  });
 }
 
 // --- Scope management ---
