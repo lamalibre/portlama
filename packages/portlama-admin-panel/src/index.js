@@ -21,6 +21,13 @@ export { default as SettingsPage } from './pages/Settings.jsx';
 export { default as StoragePage } from './pages/Storage.jsx';
 export { default as UserPluginAccessPage } from './pages/UserPluginAccess.jsx';
 
+// Gatekeeper Pages
+export { default as GatekeeperDashboardPage } from './pages/GatekeeperDashboard.jsx';
+export { default as GatekeeperGroupsPage } from './pages/GatekeeperGroups.jsx';
+export { default as GatekeeperGrantsPage } from './pages/GatekeeperGrants.jsx';
+export { default as GatekeeperAccessRequestsPage } from './pages/GatekeeperAccessRequests.jsx';
+export { default as GatekeeperSettingsPage } from './pages/GatekeeperSettings.jsx';
+
 // Utilities
 export { formatBytes, formatUptime, relativeTime } from './lib/formatters.js';
 export { cn } from './lib/cn.js';

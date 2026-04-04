@@ -171,5 +171,48 @@ portlama ALL=(root) NOPASSWD: /usr/bin/test -r /etc/portlama/pki/*
 # Each argument is pinned except the script ID suffix (16-char hex from randomBytes).
 # The sudoers wildcard only matches within a single argument — no trailing args accepted.
 portlama ALL=(root) NOPASSWD: /usr/bin/systemd-run --unit portlama-update-* --no-block /usr/bin/bash /etc/portlama/portlama-update-*.sh
+
+# --- Gatekeeper service management ---
+portlama ALL=(root) NOPASSWD: /usr/bin/systemctl start portlama-gatekeeper
+portlama ALL=(root) NOPASSWD: /usr/bin/systemctl stop portlama-gatekeeper
+portlama ALL=(root) NOPASSWD: /usr/bin/systemctl restart portlama-gatekeeper
+portlama ALL=(root) NOPASSWD: /usr/bin/systemctl enable portlama-gatekeeper
+portlama ALL=(root) NOPASSWD: /usr/bin/chmod 644 /etc/systemd/system/portlama-gatekeeper.service
+`;
+}
+
+/**
+ * Generate the portlama-gatekeeper systemd service unit content.
+ *
+ * @param {{ installDir: string, configDir: string }} ctx
+ * @returns {string}
+ */
+export function generateGatekeeperServiceUnit(ctx) {
+  return `[Unit]
+Description=Portlama Gatekeeper — tunnel authorization service
+After=network.target authelia.service
+
+[Service]
+Type=simple
+User=portlama
+Group=portlama
+WorkingDirectory=${ctx.installDir}/gatekeeper
+ExecStart=/usr/bin/node dist/server/index.js
+Environment=NODE_ENV=production
+Environment=PORTLAMA_DATA_DIR=${ctx.configDir}
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=portlama-gatekeeper
+
+# Security hardening
+ProtectHome=true
+ReadWritePaths=${ctx.configDir}
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
 `;
 }

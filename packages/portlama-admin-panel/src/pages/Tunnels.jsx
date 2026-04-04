@@ -67,6 +67,7 @@ function AddTunnelForm({ domain, onClose }) {
   const [subdomain, setSubdomain] = useState('');
   const [port, setPort] = useState('');
   const [description, setDescription] = useState('');
+  const [accessMode, setAccessMode] = useState('restricted');
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState(null);
 
@@ -103,9 +104,10 @@ function AddTunnelForm({ domain, onClose }) {
         subdomain,
         port: Number(port),
         description: description || undefined,
+        accessMode,
       });
     },
-    [subdomain, port, description, mutation],
+    [subdomain, port, description, accessMode, mutation],
   );
 
   return (
@@ -171,6 +173,34 @@ function AddTunnelForm({ domain, onClose }) {
             maxLength={200}
             className="w-full rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-cyan-400 disabled:opacity-50"
           />
+        </div>
+
+        {/* Access Mode */}
+        <div>
+          <label className="block text-xs text-zinc-400 mb-2">Access</label>
+          <div className="space-y-2">
+            {[
+              { value: 'restricted', label: 'Restricted', desc: 'Only granted users and groups' },
+              { value: 'authenticated', label: 'All Authelia Users', desc: 'Any authenticated user can access' },
+              { value: 'public', label: 'Public', desc: 'No authentication required' },
+            ].map((opt) => (
+              <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="accessMode"
+                  value={opt.value}
+                  checked={accessMode === opt.value}
+                  onChange={(e) => setAccessMode(e.target.value)}
+                  disabled={mutation.isPending}
+                  className="mt-1 text-cyan-500 focus:ring-cyan-500 bg-zinc-800 border-zinc-700"
+                />
+                <div>
+                  <span className="text-sm text-zinc-200">{opt.label}</span>
+                  <p className="text-xs text-zinc-500">{opt.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* API Error */}
@@ -276,6 +306,9 @@ function TunnelTable({ tunnels, onDelete, onToggle }) {
               Port
             </th>
             <th className="text-left text-zinc-400 text-xs uppercase font-semibold py-3 px-4">
+              Access
+            </th>
+            <th className="text-left text-zinc-400 text-xs uppercase font-semibold py-3 px-4">
               Description
             </th>
             <th className="text-left text-zinc-400 text-xs uppercase font-semibold py-3 px-4">
@@ -318,6 +351,19 @@ function TunnelTable({ tunnels, onDelete, onToggle }) {
                   </a>
                 </td>
                 <td className="py-3 px-4 text-sm text-zinc-200 font-mono">{tunnel.port}</td>
+                <td className="py-3 px-4 text-sm">
+                  {tunnel.type !== 'panel' && (
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs ${
+                      tunnel.accessMode === 'public' ? 'bg-green-500/10 text-green-400' :
+                      tunnel.accessMode === 'authenticated' ? 'bg-blue-500/10 text-blue-400' :
+                      'bg-orange-500/10 text-orange-400'
+                    }`}>
+                      {tunnel.accessMode === 'public' ? 'Public' :
+                       tunnel.accessMode === 'authenticated' ? 'All Users' :
+                       'Restricted'}
+                    </span>
+                  )}
+                </td>
                 <td className="py-3 px-4 text-sm text-zinc-400">
                   {tunnel.description || '\u2014'}
                 </td>

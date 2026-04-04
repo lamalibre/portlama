@@ -14,7 +14,6 @@ import {
 import { createEnrollmentToken } from '../lib/enrollment.js';
 import { readPlugins } from '../lib/plugins.js';
 import { readTunnels } from '../lib/state.js';
-import { syncAllAccessControl } from '../lib/access-control-sync.js';
 
 // --- Zod schemas ---
 
@@ -94,18 +93,6 @@ export async function userAccessAdminRoutes(fastify, _opts) {
           target: body.target,
         });
 
-        // Sync Authelia rules when granting agent-side access
-        if (body.target.startsWith('agent:')) {
-          try {
-            await syncAllAccessControl(request.log);
-          } catch (syncErr) {
-            request.log.error(syncErr, 'Failed to sync Authelia access control after grant creation');
-            return reply.code(500).send({
-              error: 'Grant created but Authelia access control sync failed — user may not have access yet',
-            });
-          }
-        }
-
         return { ok: true, grant };
       } catch (err) {
         request.log.error(err, 'Failed to create user access grant');
@@ -130,19 +117,7 @@ export async function userAccessAdminRoutes(fastify, _opts) {
       }
 
       try {
-        const { grant } = await revokeGrant(params.grantId, request.log);
-
-        // Sync Authelia rules when revoking agent-side access
-        if ((grant.target || 'local').startsWith('agent:')) {
-          try {
-            await syncAllAccessControl(request.log);
-          } catch (syncErr) {
-            request.log.error(syncErr, 'Failed to sync Authelia access control after grant revocation');
-            return reply.code(500).send({
-              error: 'Grant revoked but Authelia access control sync failed — user may still have access',
-            });
-          }
-        }
+        await revokeGrant(params.grantId, request.log);
 
         return { ok: true };
       } catch (err) {

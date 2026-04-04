@@ -80,6 +80,7 @@ These three pieces interact through a clear lifecycle: the installer creates the
 | **Chisel Server** | `/usr/local/bin/chisel`          | WebSocket tunnel server accepting reverse connections from clients                         |
 | **Chisel Client** | `/usr/local/bin/chisel` (on Mac) | Connects outbound to VPS, exposes local ports via reverse tunneling                        |
 | **Authelia**      | `/usr/local/bin/authelia`        | TOTP two-factor authentication for tunneled apps via nginx forward auth                    |
+| **Gatekeeper**    | `node src/index.js` (Fastify 5)  | Tunnel authorization service — nginx auth_request target for grant-based access control    |
 | **certbot**       | `certbot` (system package)       | Issues and auto-renews Let's Encrypt TLS certificates                                      |
 | **fail2ban**      | `fail2ban` (system package)      | Rate-limits brute-force attempts on SSH and nginx                                          |
 
@@ -93,6 +94,7 @@ These three pieces interact through a clear lifecycle: the installer creates the
 | `3100` | Panel Server  | TCP      | Loopback only | Fastify API + static file serving        |
 | `9090` | Chisel Server | TCP      | Loopback only | WebSocket tunnel endpoint                |
 | `9091` | Authelia      | TCP      | Loopback only | Authentication portal + forward auth API |
+| `9294` | Gatekeeper    | TCP      | Loopback only | Tunnel authorization (auth_request target) |
 
 All backend services (Panel Server, Chisel, Authelia) bind exclusively to `127.0.0.1`. nginx is the only process listening on public interfaces.
 
@@ -166,6 +168,47 @@ Authelia is configured with bcrypt (cost factor 12) instead of argon2id. argon2i
    └─ Chisel Client forwards to 127.0.0.1:<port> on the Mac
    └─ Response travels back through the same path
 ```
+
+## Gatekeeper (Tunnel Authorization)
+
+The Gatekeeper is a dedicated Fastify service on `127.0.0.1:9294` that acts as an nginx `auth_request` target for tunnel authorization. It decouples access control decisions from both the Panel Server and Authelia, providing a generic grant-based authorization layer for tunnel traffic.
+
+**Architecture:**
+
+```
+End User → nginx :443 → auth_request → 127.0.0.1:9294/authz/check
+                                              │
+                                    ┌─────────┴──────────┐
+                                    │     Gatekeeper      │
+                                    │  (Fastify, :9294)   │
+                                    │                     │
+                                    │  In-memory session  │
+                                    │  cache (Map)        │
+                                    │                     │
+                                    │  State files:       │
+                                    │  - groups.json      │
+                                    │  - access-grants.json│
+                                    │  - gatekeeper.json  │
+                                    └─────────────────────┘
+```
+
+**Grant model:** The Gatekeeper uses a generic principal-to-resource grant model. A principal is an Authelia user or a Portlama group. A resource is a tunnel subdomain or other protected endpoint. Grants are stored in `/etc/portlama/access-grants.json`.
+
+**Portlama groups:** Separate from Authelia groups. Stored in `/etc/portlama/groups.json`. Portlama groups allow the admin to organize users for access control without modifying Authelia's `users.yml`.
+
+**Two-layer caching:**
+
+1. **nginx `proxy_cache`** — the `portlama_authz` cache zone (1m keys, 10m storage) caches authorization responses. Cache key is `$cookie_authelia_session$http_host`. Positive responses (200) are cached for 30 seconds, negative responses (401/403) for 10 seconds. This eliminates redundant auth_request subrequests for rapid page loads.
+2. **In-memory session cache** — the Gatekeeper maintains a `Map` of recent authorization decisions keyed by session + host. This avoids re-reading state files on every check within the cache TTL.
+
+**State files:** All stored in `/etc/portlama/` with 0600 permissions, `portlama:portlama` ownership, and atomic writes (tmp, fsync, rename):
+
+- `groups.json` — Portlama group definitions and membership
+- `access-grants.json` — Principal-to-resource access grants
+- `gatekeeper.json` — Settings (admin contact info, cache TTL, logging configuration)
+- `access-request-log.json` — Optional log of denied access attempts (for admin review)
+
+**Service:** Runs as `portlama-gatekeeper.service` (systemd), binding `127.0.0.1:9294`. nginx is the sole entry point — the Gatekeeper is never directly accessible from the internet.
 
 ## Data Flow: Onboarding Provisioning
 
@@ -477,6 +520,9 @@ Phase 4: Recovery (if needed)
 | `/etc/systemd/system/authelia.service`       | Authelia systemd unit                                |
 | `/etc/portlama/plugins.json`                 | Plugin registry (installed plugins and status)       |
 | `/etc/portlama/plugins/`                     | Per-plugin data directories                          |
+| `/etc/portlama/groups.json`                  | Portlama group definitions and membership            |
+| `/etc/portlama/access-grants.json`           | Generic access grants (principal → resource)         |
+| `/etc/portlama/gatekeeper.json`              | Gatekeeper settings (cache TTL, admin contact, logging) |
 | `/etc/portlama/push-install-config.json`     | Push install configuration and policies              |
 | `/etc/portlama/push-install-sessions.json`   | Push install session audit log                       |
 | `/etc/sudoers.d/portlama`                    | Scoped sudo rules for portlama user                  |

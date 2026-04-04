@@ -512,6 +512,223 @@ export async function writeAppVhost(subdomain, domain, port, certPath, { pathPre
 }
 
 /**
+ * Write a public vhost — no authentication, direct proxy.
+ * Used for tunnels with accessMode='public'.
+ */
+export async function writePublicVhost(subdomain, domain, port, certPath, { pathPrefix } = {}) {
+  if (pathPrefix && !/^[a-z0-9][a-z0-9._-]*$/.test(pathPrefix)) {
+    throw new Error(`Invalid pathPrefix for nginx vhost: ${pathPrefix}`);
+  }
+
+  const fqdn = `${subdomain}.${domain}`;
+  const certDir = certPath || `/etc/letsencrypt/live/${fqdn}`;
+  let certDirClean = certDir;
+  while (certDirClean.endsWith('/')) certDirClean = certDirClean.slice(0, -1);
+
+  const config = `server {
+    listen 443 ssl;
+    server_name ${fqdn};
+
+    ssl_certificate ${certDirClean}/fullchain.pem;
+    ssl_certificate_key ${certDirClean}/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    location / {
+        ${pathPrefix ? `rewrite ^/?(.*)$ /${pathPrefix}/$1 break;\n        ` : ''}proxy_pass http://127.0.0.1:${port};
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+`;
+
+  const name = `portlama-app-${subdomain}`;
+  return safeWriteVhost(name, config, fqdn);
+}
+
+/**
+ * Write an authenticated vhost — Authelia via Gatekeeper, all authenticated users allowed.
+ * Used for tunnels with accessMode='authenticated'.
+ * Gatekeeper handles Authelia cookie validation and forwards identity headers.
+ */
+export async function writeAuthenticatedVhost(subdomain, domain, port, certPath, { pathPrefix } = {}) {
+  if (pathPrefix && !/^[a-z0-9][a-z0-9._-]*$/.test(pathPrefix)) {
+    throw new Error(`Invalid pathPrefix for nginx vhost: ${pathPrefix}`);
+  }
+
+  const fqdn = `${subdomain}.${domain}`;
+  const certDir = certPath || `/etc/letsencrypt/live/${fqdn}`;
+  let certDirClean = certDir;
+  while (certDirClean.endsWith('/')) certDirClean = certDirClean.slice(0, -1);
+
+  const config = buildGatekeeperVhost(fqdn, certDirClean, port, domain, { pathPrefix, restricted: false });
+
+  const name = `portlama-app-${subdomain}`;
+  return safeWriteVhost(name, config, fqdn);
+}
+
+/**
+ * Write a restricted vhost — Authelia via Gatekeeper, only granted users/groups allowed.
+ * Used for tunnels with accessMode='restricted'.
+ * On 403, Gatekeeper returns the inline access-request HTML page.
+ */
+export async function writeRestrictedVhost(subdomain, domain, port, certPath, { pathPrefix } = {}) {
+  if (pathPrefix && !/^[a-z0-9][a-z0-9._-]*$/.test(pathPrefix)) {
+    throw new Error(`Invalid pathPrefix for nginx vhost: ${pathPrefix}`);
+  }
+
+  const fqdn = `${subdomain}.${domain}`;
+  const certDir = certPath || `/etc/letsencrypt/live/${fqdn}`;
+  let certDirClean = certDir;
+  while (certDirClean.endsWith('/')) certDirClean = certDirClean.slice(0, -1);
+
+  const config = buildGatekeeperVhost(fqdn, certDirClean, port, domain, { pathPrefix, restricted: true });
+
+  const name = `portlama-app-${subdomain}`;
+  return safeWriteVhost(name, config, fqdn);
+}
+
+/**
+ * Build a Gatekeeper-backed nginx vhost config string.
+ * Both 'authenticated' and 'restricted' modes use this — the difference
+ * is handled server-side by Gatekeeper based on the tunnel's accessMode.
+ * For restricted mode, the 403 body from Gatekeeper is served inline.
+ */
+function buildGatekeeperVhost(fqdn, certDirClean, port, domain, { pathPrefix, restricted } = {}) {
+  return `server {
+    listen 443 ssl;
+    server_name ${fqdn};
+
+    ssl_certificate ${certDirClean}/fullchain.pem;
+    ssl_certificate_key ${certDirClean}/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Gatekeeper authorization subrequest (handles Authelia validation + grant check)
+    location /internal/portlama/authz {
+        internal;
+
+        proxy_pass http://127.0.0.1:9294/authz/check;
+        proxy_pass_request_body off;
+
+        proxy_set_header Content-Length "";
+        proxy_set_header Connection "";
+        proxy_set_header X-Original-Method $request_method;
+        proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Host $http_host;
+        proxy_set_header Cookie $http_cookie;
+
+        proxy_http_version 1.1;
+        proxy_buffers 4 32k;
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    }
+
+    location / {
+        # Clear client-supplied identity headers
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        auth_request /internal/portlama/authz;
+        auth_request_set $user $upstream_http_remote_user;
+        auth_request_set $groups $upstream_http_remote_groups;
+        auth_request_set $name $upstream_http_remote_name;
+        auth_request_set $email $upstream_http_remote_email;
+
+        proxy_set_header Remote-User $user;
+        proxy_set_header Remote-Groups $groups;
+        proxy_set_header Remote-Name $name;
+        proxy_set_header Remote-Email $email;
+
+        ${pathPrefix ? `rewrite ^/?(.*)$ /${pathPrefix}/$1 break;\n        ` : ''}proxy_pass http://127.0.0.1:${port};
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+
+        # Authentication failure -> redirect to Authelia login
+        error_page 401 =302 https://auth.${domain}/?rd=$scheme://$http_host$request_uri;
+
+        ${restricted ? `# Authorization failure -> Gatekeeper serves inline access-request page
+        error_page 403 = /internal/portlama/authz;` : ''}
+    }
+}
+`;
+}
+
+/**
+ * Shared safe-write logic: backup -> write -> test -> reload with rollback.
+ */
+async function safeWriteVhost(name, config, fqdn) {
+  const availablePath = path.join(SITES_AVAILABLE, name);
+  const bakPath = `${availablePath}.bak`;
+
+  const existed = await fileExistsSudo(availablePath);
+  if (existed) {
+    await execa('sudo', ['cp', availablePath, bakPath]);
+  }
+
+  try {
+    await writeVhostFile(name, config);
+    await enableSite(name);
+
+    const result = await testConfig();
+    if (!result.valid) {
+      if (existed) {
+        await execa('sudo', ['mv', bakPath, availablePath]);
+      } else {
+        await execa('sudo', ['rm', '-f', availablePath]);
+        await execa('sudo', ['rm', '-f', path.join(SITES_ENABLED, name)]);
+      }
+      throw new Error(`Nginx config test failed after writing vhost for ${fqdn}: ${result.error}`);
+    }
+
+    await reload();
+
+    if (existed) {
+      await execa('sudo', ['rm', '-f', bakPath]).catch(() => {});
+    }
+
+    return availablePath;
+  } catch (err) {
+    if (err.message.includes('Nginx config test failed')) {
+      throw err;
+    }
+    if (existed) {
+      await execa('sudo', ['mv', bakPath, availablePath]).catch(() => {});
+    } else {
+      await execa('sudo', ['rm', '-f', availablePath]).catch(() => {});
+      await execa('sudo', ['rm', '-f', path.join(SITES_ENABLED, name)]).catch(() => {});
+    }
+    throw err;
+  }
+}
+
+/**
  * Write a static site vhost with optional Authelia forward auth.
  *
  * Performs a safe write-with-rollback sequence (same as writeAppVhost):

@@ -129,11 +129,36 @@ const AdminClientContext = createContext(null);
  *
  * Tunnels:
  * @property {() => Promise<{tunnels: Array}>} getTunnels
- * @property {(data: {subdomain, port, description?, type?, pluginName?, agentLabel?}) => Promise<{ok, tunnel}>} createTunnel
+ * @property {(data: {subdomain, port, description?, type?, pluginName?, agentLabel?, accessMode?}) => Promise<{ok, tunnel}>} createTunnel
  * @property {(id: string, data: {enabled}) => Promise<{ok, tunnel}>} toggleTunnel
  * @property {(id: string) => Promise<{ok}>} deleteTunnel
  * @property {() => Promise<Object>} getTunnelAgentConfig
  * @property {(format?: string) => Promise<any>} getMacPlist
+ *
+ * Gatekeeper Groups:
+ * @property {() => Promise<{groups: Array}>} getGatekeeperGroups
+ * @property {(data: {name, description?, createdBy?}) => Promise<{ok, group}>} createGatekeeperGroup
+ * @property {(name: string, data: {name?, description?}) => Promise<{ok, group}>} updateGatekeeperGroup
+ * @property {(name: string) => Promise<{ok, deletedGrants}>} deleteGatekeeperGroup
+ * @property {(name: string, data: {usernames: string[]}) => Promise<{ok, group}>} addGatekeeperGroupMembers
+ * @property {(name: string, username: string) => Promise<{ok, group}>} removeGatekeeperGroupMember
+ *
+ * Gatekeeper Grants:
+ * @property {(filter?) => Promise<{grants: Array}>} getGatekeeperGrants
+ * @property {(data: {principalType, principalId, resourceType, resourceId, context?}) => Promise<{ok, grant}>} createGatekeeperGrant
+ * @property {(grantId: string) => Promise<{ok, grant}>} revokeGatekeeperGrant
+ *
+ * Gatekeeper Diagnostics:
+ * @property {(username: string, resourceType: string, resourceId: string) => Promise<Object>} checkGatekeeperAccess
+ * @property {() => Promise<void>} bustGatekeeperCache
+ *
+ * Gatekeeper Settings:
+ * @property {() => Promise<{settings: Object}>} getGatekeeperSettings
+ * @property {(data: Object) => Promise<{ok, settings}>} updateGatekeeperSettings
+ *
+ * Gatekeeper Access Log:
+ * @property {(limit?, offset?) => Promise<{entries: Array, total: number}>} getAccessRequestLog
+ * @property {() => Promise<{ok}>} clearAccessRequestLog
  */
 export function useAdminClient() {
   const ctx = useContext(AdminClientContext);

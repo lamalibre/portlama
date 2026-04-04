@@ -309,6 +309,24 @@ fn main() {
             admin_commands::admin_get_user_access_grants,
             admin_commands::admin_create_user_access_grant,
             admin_commands::admin_revoke_user_access_grant,
+            // Admin: Gatekeeper Groups
+            admin_commands::admin_get_gatekeeper_groups,
+            admin_commands::admin_create_gatekeeper_group,
+            admin_commands::admin_update_gatekeeper_group,
+            admin_commands::admin_delete_gatekeeper_group,
+            admin_commands::admin_add_gatekeeper_group_members,
+            admin_commands::admin_remove_gatekeeper_group_member,
+            // Admin: Gatekeeper Grants
+            admin_commands::admin_get_gatekeeper_grants,
+            admin_commands::admin_create_gatekeeper_grant,
+            admin_commands::admin_revoke_gatekeeper_grant,
+            // Admin: Gatekeeper Diagnostics + Settings
+            admin_commands::admin_check_gatekeeper_access,
+            admin_commands::admin_bust_gatekeeper_cache,
+            admin_commands::admin_get_gatekeeper_settings,
+            admin_commands::admin_update_gatekeeper_settings,
+            admin_commands::admin_get_access_request_log,
+            admin_commands::admin_clear_access_request_log,
             // User access (Authelia login)
             user_access::user_access_start_login,
             user_access::user_access_exchange_token,

@@ -12,6 +12,7 @@
 | 3100 | `127.0.0.1` | portlama-panel | TCP      | Panel server (Fastify API + static files)               |
 | 9090 | `127.0.0.1` | chisel         | TCP      | Chisel tunnel server (WebSocket)                        |
 | 9091 | `127.0.0.1` | authelia       | TCP      | Authelia authentication server                          |
+| 9294 | `127.0.0.1` | portlama-gatekeeper | TCP | Tunnel authorization (auth_request target)              |
 
 **Key points:**
 
@@ -27,6 +28,7 @@
 | `portlama-panel.service` | simple | portlama | Panel server (Fastify Node.js API)          |
 | `chisel.service`         | simple | nobody   | Chisel tunnel server (reverse mode)         |
 | `authelia.service`       | simple | root     | Authelia authentication server              |
+| `portlama-gatekeeper.service` | simple | portlama | Gatekeeper tunnel authorization service |
 | `nginx.service`          | —      | root     | nginx reverse proxy (system package)        |
 | `fail2ban.service`       | —      | root     | Intrusion prevention (system package)       |
 | `certbot.timer`          | timer  | root     | Automatic Let's Encrypt certificate renewal |
@@ -50,6 +52,7 @@
 | `portlama-panel` | `/etc/systemd/system/portlama-panel.service`            |
 | `chisel`         | `/etc/systemd/system/chisel.service`                    |
 | `authelia`       | `/etc/systemd/system/authelia.service`                  |
+| `portlama-gatekeeper` | `/etc/systemd/system/portlama-gatekeeper.service` |
 | `nginx`          | `/lib/systemd/system/nginx.service` (system package)    |
 | `fail2ban`       | `/lib/systemd/system/fail2ban.service` (system package) |
 | `certbot.timer`  | `/lib/systemd/system/certbot.timer` (system package)    |
@@ -60,6 +63,7 @@
 network.target
     ├── nginx.service
     ├── portlama-panel.service
+    ├── portlama-gatekeeper.service
     ├── chisel.service
     ├── authelia.service
     └── fail2ban.service
@@ -78,10 +82,15 @@ All services start after `network.target` and are independent of each other. If 
 | `/etc/portlama/sites.json`               | Static site definitions                     |
 | `/etc/portlama/ticket-scopes.json`       | Ticket scope registry (scopes, instances, assignments) |
 | `/etc/portlama/tickets.json`             | Ticket and session store                    |
+| `/etc/portlama/groups.json`              | Portlama group definitions and membership   |
+| `/etc/portlama/access-grants.json`       | Generic access grants (principal → resource) |
+| `/etc/portlama/gatekeeper.json`          | Gatekeeper settings (cache TTL, logging)    |
+| `/etc/portlama/access-request-log.json`  | Optional denied access log                  |
 | `/etc/authelia/configuration.yml`        | Authelia server configuration               |
 | `/etc/authelia/users.yml`                | Authelia user database                      |
 | `/etc/authelia/.secrets.json`            | Authelia secrets (JWT, session, encryption) |
 | `/etc/nginx/snippets/portlama-mtls.conf` | mTLS configuration snippet                  |
+| `/etc/nginx/snippets/portlama-authz-cache.conf` | Gatekeeper proxy_cache zone definition |
 | `/etc/sudoers.d/portlama`                | Sudo rules for portlama user                |
 | `/etc/fail2ban/jail.d/portlama.conf`     | fail2ban jail configuration                 |
 | `/etc/sysctl.d/99-portlama.conf`         | Kernel parameter (swappiness)               |
@@ -136,6 +145,7 @@ All services start after `network.target` and are independent of each other. If 
 | Service        | Log Method      | View Command                                                 |
 | -------------- | --------------- | ------------------------------------------------------------ |
 | portlama-panel | journald        | `journalctl -u portlama-panel`                               |
+| portlama-gatekeeper | journald   | `journalctl -u portlama-gatekeeper`                          |
 | chisel         | journald        | `journalctl -u chisel`                                       |
 | authelia       | journald + file | `journalctl -u authelia` or `/var/log/authelia/authelia.log` |
 | nginx          | file            | `/var/log/nginx/access.log` and `/var/log/nginx/error.log`   |
@@ -170,13 +180,13 @@ All services start after `network.target` and are independent of each other. If 
 **Check all service statuses at once:**
 
 ```bash
-sudo systemctl status nginx chisel authelia portlama-panel --no-pager
+sudo systemctl status nginx chisel authelia portlama-panel portlama-gatekeeper --no-pager
 ```
 
 **Check which ports are listening:**
 
 ```bash
-sudo ss -tlnp | grep -E ':(22|443|3100|9090|9091|9292)\s'
+sudo ss -tlnp | grep -E ':(22|443|3100|9090|9091|9292|9294)\s'
 ```
 
 **Check disk usage of Portlama directories:**

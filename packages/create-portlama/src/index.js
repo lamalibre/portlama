@@ -11,6 +11,7 @@ import { nodeTasks } from './tasks/node.js';
 import { mtlsTasks } from './tasks/mtls.js';
 import { nginxTasks } from './tasks/nginx.js';
 import { panelTasks } from './tasks/panel.js';
+import { gatekeeperTasks } from './tasks/gatekeeper.js';
 import { redeployTasks } from './tasks/redeploy.js';
 
 /**
@@ -544,6 +545,7 @@ export async function main() {
         { key: 'generate_certs', title: 'Generating mTLS certificates', fn: mtlsTasks },
         { key: 'configure_nginx', title: 'Configuring nginx', fn: nginxTasks },
         { key: 'deploy_panel', title: 'Deploying Portlama panel', fn: panelTasks },
+        { key: 'deploy_gatekeeper', title: 'Deploying Gatekeeper', fn: gatekeeperTasks },
       ];
       for (const step of installSteps) {
         await runJsonStep(ctx, step);
@@ -571,6 +573,10 @@ export async function main() {
           {
             title: 'Deploying Portlama panel',
             task: (_ctx, task) => panelTasks(ctx, task),
+          },
+          {
+            title: 'Deploying Gatekeeper',
+            task: (_ctx, task) => gatekeeperTasks(ctx, task),
           },
           {
             title: 'Installation complete',

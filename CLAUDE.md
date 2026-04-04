@@ -15,6 +15,7 @@ portlama/
 │   ├── portlama-agent-panel/  @lamalibre/portlama-agent-panel — shared React agent UI (pages, context, components) used by portlama-desktop and future web agent panel
 │   ├── portlama-desktop/      @lamalibre/portlama-desktop — Tauri v2 desktop app (dual-mode: agent management + server admin panel)
 │   ├── portlama-identity/      @lamalibre/portlama-identity — SDK for Authelia identity header parsing and user metadata queries
+│   ├── portlama-gatekeeper/   @lamalibre/portlama-gatekeeper — tunnel authorization service (groups, grants, nginx auth_request on 127.0.0.1:9294)
 │   ├── install-portlama-desktop/ @lamalibre/install-portlama-desktop — npx installer for the desktop app
 │   ├── install-portlama-admin/ @lamalibre/install-portlama-admin — npx admin cert upgrade to hardware-bound (interactive + --json NDJSON mode for desktop)
 │   ├── install-portlama-agent/ @lamalibre/install-portlama-agent — npx installer for agent cert upgrade to hardware-bound
@@ -361,6 +362,27 @@ feria setup / teardown / status                # manage .npmrc without starting 
 - nginx security: `proxy_set_header Remote-* ""` clears client-injected headers before `auth_request`; Authelia re-injects on success
 - Identity headers trusted ONLY on Authelia-protected vhosts — stripped on mTLS and agent panel vhosts
 
+**Gatekeeper (tunnel authorization):**
+
+- Standalone Fastify service on `127.0.0.1:9294` — nginx `auth_request` target for tunnel authorization
+- Systemd service: `portlama-gatekeeper`, runs as `portlama` user, after `authelia.service`
+- Package: `@lamalibre/portlama-gatekeeper` (TypeScript, strict ESM)
+- Dual group system: Authelia groups (identity tier: admins/internal/external in `users.yml`) vs Portlama groups (access control: custom groups in `groups.json`). Authelia groups = WHO you are; Portlama groups = WHAT you can access
+- Generic grant model: `{ principalType: 'user'|'group', principalId, resourceType, resourceId, context? }` — resource-agnostic, extensible to any resource type (tunnel, plugin, custom)
+- Three tunnel access modes: `public` (no auth, direct proxy), `authenticated` (Authelia login, all users pass), `restricted` (Authelia + grant check, 403 → access-request page)
+- nginx vhost writers: `writePublicVhost()`, `writeAuthenticatedVhost()`, `writeRestrictedVhost()` in `panel-server/src/lib/nginx.js`
+- Auth check flow: nginx → `GET /authz/check` on 9294 (forwards cookie + `X-Original-URL`) → validates via Authelia verify endpoint → checks tunnel accessMode → checks grants for restricted tunnels → returns 200/401/403
+- Two-layer caching: nginx `proxy_cache` zone `portlama_authz` (30s for 200, 10s for 403, key: `$cookie_authelia_session$http_host`) + gatekeeper in-memory session cache (30s). Result: 1000 requests/page → 1 Authelia call (warm cache: 0)
+- Access-request page: inline HTML (no redirect) served on 403 via `error_page 403 = /internal/portlama/authz`. User-friendly page with admin contact info and pre-filled message templates (email, Slack, Teams, WhatsApp)
+- State files in `/etc/portlama/`: `groups.json` (max 200 groups), `access-grants.json` (max 1000 grants, 90-day consumed grant retention), `gatekeeper.json` (settings), `access-request-log.json` (optional denied access log). All 0o600 permissions, atomic writes
+- File watching: gatekeeper watches state files via `fs.watch` — no restart needed for group/grant/tunnel changes
+- Panel proxy: `panel-server` proxies `/api/gatekeeper/*` → `http://127.0.0.1:9294/api/*` (admin-only, mTLS required). Routes in `panel-server/src/routes/management/gatekeeper-proxy.js`
+- CLI: `portlama-gatekeeper group|grant|access` subcommands for local management
+- Migration: `migrateFromLegacy()` converts `user-plugin-access.json` grants to new generic format on first startup. Legacy file renamed to `.migrated`
+- Installer task: `create-portlama/src/tasks/gatekeeper.js` — deploys package, creates state files, writes nginx cache config (`/etc/nginx/snippets/portlama-authz-cache.conf`), installs systemd service, health-checks on startup
+- `gatekeeper` added to `RESERVED_API_PREFIXES` in `lib/constants.js`
+- Admin panel: 5 Gatekeeper pages (Dashboard, Groups, Grants, Access Requests, Settings) in `portlama-admin-panel`, 15 gatekeeper methods in `AdminClientContext`, 16 Tauri commands in `portlama-desktop/src-tauri/src/admin_commands.rs`
+
 **File operations:**
 
 - YAML writes: atomic (temp → rename) — Authelia reads `users.yml` live. Temp files use `portlama-authelia-` prefix (sudoers restricts `mv` to this prefix for `/etc/authelia/` targets)
@@ -379,6 +401,7 @@ feria setup / teardown / status                # manage .npmrc without starting 
 | `PORTLAMA_CLOUD_TOKEN`      | portlama-cloud | Cloud provider API token (never CLI args)                |
 | `PORTLAMA_SPACES_ACCESS_KEY`| portlama-cloud | Spaces access key for storage commands (never CLI args)  |
 | `PORTLAMA_SPACES_SECRET_KEY`| portlama-cloud | Spaces secret key for storage commands (never CLI args)  |
+| `PORTLAMA_DATA_DIR`         | portlama-gatekeeper | Data directory (default: `/etc/portlama`)          |
 
 ## License
 

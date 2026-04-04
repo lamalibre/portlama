@@ -3,7 +3,9 @@ import crypto from 'node:crypto';
 import { getConfig } from '../../lib/config.js';
 import { readTunnels, writeTunnels } from '../../lib/state.js';
 import {
-  writeAppVhost,
+  writePublicVhost,
+  writeAuthenticatedVhost,
+  writeRestrictedVhost,
   removeAppVhost,
   enableAppVhost,
   disableAppVhost,
@@ -16,7 +18,6 @@ import { updateChiselConfig } from '../../lib/chisel.js';
 import { issueTunnelCert } from '../../lib/certbot.js';
 import { generatePlist } from '../../lib/plist.js';
 import { buildChiselArgs } from '../../lib/chisel-args.js';
-import { syncAllAccessControl } from '../../lib/access-control-sync.js';
 
 // Note: the 'agent-' prefix is also reserved for panel tunnels (checked separately in the handler)
 const RESERVED_SUBDOMAINS = ['panel', 'auth', 'tunnel', 'www', 'mail', 'ftp', 'api'];
@@ -55,6 +56,10 @@ const CreateTunnelSchema = z
       .max(63)
       .regex(/^[a-z0-9][a-z0-9-]*$/, 'Invalid agent label format')
       .optional(),
+    accessMode: z
+      .enum(['public', 'authenticated', 'restricted'])
+      .optional()
+      .default('restricted'),
   })
   .refine(
     (d) => d.type !== 'plugin' || (d.pluginName && d.agentLabel),
@@ -177,7 +182,7 @@ export default async function tunnelRoutes(fastify, _opts) {
     },
     async (request, reply) => {
       const body = CreateTunnelSchema.parse(request.body);
-      const { subdomain, port, description, type, pluginName, agentLabel } = body;
+      const { subdomain, port, description, type, pluginName, agentLabel, accessMode } = body;
 
       // Reserved subdomain check
       if (RESERVED_SUBDOMAINS.includes(subdomain)) {
@@ -187,6 +192,12 @@ export default async function tunnelRoutes(fastify, _opts) {
       // Reserve agent- prefix for panel tunnels only
       if (subdomain.startsWith('agent-') && type !== 'panel') {
         return reply.code(400).send({ error: "Subdomain prefix 'agent-' is reserved for agent panel tunnels" });
+      }
+
+      // Non-restricted access modes are admin-only (public/authenticated expose the backend
+      // without grant checks — only admins should be allowed to relax tunnel security)
+      if (accessMode !== 'restricted' && request.certRole !== 'admin') {
+        return reply.code(403).send({ error: 'Only administrators can set tunnel access mode to public or authenticated' });
       }
 
       // Plugin tunnels are admin-only (they grant browser access to non-admin users)
@@ -247,21 +258,29 @@ export default async function tunnelRoutes(fastify, _opts) {
 
       try {
         // Step 2: Write nginx vhost
-        request.log.info({ fqdn, port, type }, 'Writing nginx vhost');
+        request.log.info({ fqdn, port, type, accessMode }, 'Writing nginx vhost');
         const certPath = certResult.certPath || undefined;
+        let pluginRoute;
         if (type === 'panel') {
           await writeAgentPanelVhost(subdomain, config.domain, port, certPath);
-        } else if (type === 'plugin') {
-          // Derive the plugin route prefix from the package name
-          const pluginRoute = pluginName.replace(/^@lamalibre\//, '').replace(/-server$/, '');
-          // Prevent routing collision with management API or reserved paths
-          const reservedRoutes = ['api', 'plugin-bundles', 'internal', 'install'];
-          if (reservedRoutes.includes(pluginRoute)) {
-            return reply.code(400).send({ error: `Plugin route prefix '${pluginRoute}' conflicts with reserved path` });
-          }
-          await writeAppVhost(subdomain, config.domain, port, certPath, { pathPrefix: pluginRoute });
         } else {
-          await writeAppVhost(subdomain, config.domain, port, certPath);
+          // Derive plugin route prefix if applicable
+          if (type === 'plugin') {
+            pluginRoute = pluginName.replace(/^@lamalibre\//, '').replace(/-server$/, '');
+            const reservedRoutes = ['api', 'plugin-bundles', 'internal', 'install'];
+            if (reservedRoutes.includes(pluginRoute)) {
+              return reply.code(400).send({ error: `Plugin route prefix '${pluginRoute}' conflicts with reserved path` });
+            }
+          }
+
+          const vhostOpts = pluginRoute ? { pathPrefix: pluginRoute } : {};
+          if (accessMode === 'public') {
+            await writePublicVhost(subdomain, config.domain, port, certPath, vhostOpts);
+          } else if (accessMode === 'authenticated') {
+            await writeAuthenticatedVhost(subdomain, config.domain, port, certPath, vhostOpts);
+          } else {
+            await writeRestrictedVhost(subdomain, config.domain, port, certPath, vhostOpts);
+          }
         }
         request.log.info({ fqdn }, 'Nginx vhost configured');
       } catch (err) {
@@ -304,6 +323,7 @@ export default async function tunnelRoutes(fastify, _opts) {
         port,
         description: description || null,
         type,
+        accessMode: type === 'panel' ? undefined : accessMode,
         enabled: true,
         createdAt: new Date().toISOString(),
       };
@@ -330,15 +350,6 @@ export default async function tunnelRoutes(fastify, _opts) {
           error: 'Failed to create tunnel',
           details: `State persistence failed: ${err.message}`,
         });
-      }
-
-      // Sync Authelia access control for plugin tunnels (applies any pre-existing grants)
-      if (type === 'plugin') {
-        try {
-          await syncAllAccessControl(request.log);
-        } catch (syncErr) {
-          request.log.error(syncErr, 'Failed to sync Authelia access control after plugin tunnel creation');
-        }
       }
 
       return reply.code(201).send({ ok: true, tunnel });
@@ -406,15 +417,6 @@ export default async function tunnelRoutes(fastify, _opts) {
         });
       }
 
-      // Sync Authelia access control when toggling plugin tunnels
-      if (tunnel.type === 'plugin') {
-        try {
-          await syncAllAccessControl(request.log);
-        } catch (syncErr) {
-          request.log.error(syncErr, 'Failed to sync Authelia access control after plugin tunnel toggle');
-        }
-      }
-
       return { ok: true, tunnel };
     },
   );
@@ -463,14 +465,6 @@ export default async function tunnelRoutes(fastify, _opts) {
         // Step 3: Remove from state
         await writeTunnels(remaining);
 
-        // Sync Authelia access control after plugin tunnel deletion
-        if (tunnel.type === 'plugin') {
-          try {
-            await syncAllAccessControl(request.log);
-          } catch (syncErr) {
-            request.log.error(syncErr, 'Failed to sync Authelia access control after plugin tunnel deletion');
-          }
-        }
       } catch (err) {
         request.log.error(err, 'Failed to delete tunnel');
         return reply.code(500).send({

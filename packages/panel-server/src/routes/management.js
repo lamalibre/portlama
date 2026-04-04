@@ -12,6 +12,7 @@ import settingsRoutes from './management/settings.js';
 import ticketRoutes from './management/tickets.js';
 import identityRoutes from './management/identity.js';
 import storageRoutes from './management/storage.js';
+import gatekeeperProxyRoutes from './management/gatekeeper-proxy.js';
 
 export default async function managementRoutes(fastify, _opts) {
   fastify.addHook('onRequest', managementOnly());
@@ -29,4 +30,5 @@ export default async function managementRoutes(fastify, _opts) {
   await fastify.register(ticketRoutes);
   await fastify.register(identityRoutes);
   await fastify.register(storageRoutes);
+  await fastify.register(gatekeeperProxyRoutes);
 }

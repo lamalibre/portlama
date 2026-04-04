@@ -151,4 +151,30 @@ export const desktopAdminClient = {
   getUserAccessGrants: () => invoke('admin_get_user_access_grants'),
   createUserAccessGrant: (data) => invoke('admin_create_user_access_grant', { data }),
   revokeUserAccessGrant: (grantId) => invoke('admin_revoke_user_access_grant', { grantId }),
+
+  // --- Gatekeeper Groups ---
+  getGatekeeperGroups: () => invoke('admin_get_gatekeeper_groups'),
+  createGatekeeperGroup: (data) => invoke('admin_create_gatekeeper_group', { data }),
+  updateGatekeeperGroup: (name, data) => invoke('admin_update_gatekeeper_group', { name, data }),
+  deleteGatekeeperGroup: (name) => invoke('admin_delete_gatekeeper_group', { name }),
+  addGatekeeperGroupMembers: (name, data) => invoke('admin_add_gatekeeper_group_members', { name, data }),
+  removeGatekeeperGroupMember: (name, username) => invoke('admin_remove_gatekeeper_group_member', { name, username }),
+
+  // --- Gatekeeper Grants ---
+  getGatekeeperGrants: (filter) => invoke('admin_get_gatekeeper_grants', { filter }),
+  createGatekeeperGrant: (data) => invoke('admin_create_gatekeeper_grant', { data }),
+  revokeGatekeeperGrant: (grantId) => invoke('admin_revoke_gatekeeper_grant', { grantId }),
+
+  // --- Gatekeeper Diagnostics ---
+  checkGatekeeperAccess: (username, resourceType, resourceId) =>
+    invoke('admin_check_gatekeeper_access', { username, resourceType, resourceId }),
+  bustGatekeeperCache: () => invoke('admin_bust_gatekeeper_cache'),
+
+  // --- Gatekeeper Settings ---
+  getGatekeeperSettings: () => invoke('admin_get_gatekeeper_settings'),
+  updateGatekeeperSettings: (data) => invoke('admin_update_gatekeeper_settings', { data }),
+
+  // --- Gatekeeper Access Log ---
+  getAccessRequestLog: (limit, offset) => invoke('admin_get_access_request_log', { limit, offset }),
+  clearAccessRequestLog: () => invoke('admin_clear_access_request_log'),
 };

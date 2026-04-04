@@ -29,6 +29,9 @@ import {
   Trash2,
   Folder,
   Search,
+  Shield,
+  Key,
+  MessageSquare,
 } from 'lucide-react';
 import {
   AdminClientProvider,
@@ -45,6 +48,11 @@ import {
   SettingsPage as AdminSettingsPage,
   StoragePage,
   UserPluginAccessPage,
+  GatekeeperDashboardPage,
+  GatekeeperGroupsPage,
+  GatekeeperGrantsPage,
+  GatekeeperAccessRequestsPage,
+  GatekeeperSettingsPage,
 } from '@lamalibre/portlama-admin-panel';
 import {
   AgentClientProvider,
@@ -87,6 +95,11 @@ const SERVER_ADMIN_TABS = [
   { id: 'server-plugins', label: 'Plugins', icon: Package },
   { id: 'server-storage', label: 'Storage', icon: HardDrive },
   { id: 'server-user-access', label: 'User Plugin Access', icon: UserCheck },
+  { id: 'server-gatekeeper', label: 'GK Dashboard', icon: Shield, section: 'Gatekeeper' },
+  { id: 'server-gatekeeper-groups', label: 'Groups', icon: Users, section: 'Gatekeeper' },
+  { id: 'server-gatekeeper-grants', label: 'Grants', icon: Key, section: 'Gatekeeper' },
+  { id: 'server-gatekeeper-requests', label: 'Access Requests', icon: MessageSquare, section: 'Gatekeeper' },
+  { id: 'server-gatekeeper-settings', label: 'GK Settings', icon: Settings, section: 'Gatekeeper' },
   { id: 'server-settings', label: 'Settings', icon: Settings },
 ];
 
@@ -354,6 +367,16 @@ export default function App() {
         return <StoragePage />;
       case 'server-user-access':
         return <UserPluginAccessPage />;
+      case 'server-gatekeeper':
+        return <GatekeeperDashboardPage />;
+      case 'server-gatekeeper-groups':
+        return <GatekeeperGroupsPage />;
+      case 'server-gatekeeper-grants':
+        return <GatekeeperGrantsPage />;
+      case 'server-gatekeeper-requests':
+        return <GatekeeperAccessRequestsPage />;
+      case 'server-gatekeeper-settings':
+        return <GatekeeperSettingsPage />;
       case 'server-settings':
         return <AdminSettingsPage hasDomain={managingHasDomain} />;
       default:

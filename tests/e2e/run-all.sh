@@ -75,6 +75,7 @@ TEST_SCRIPTS=(
   "22-agent-plugin-report.sh"
   "23-agent-plugin-crud.sh"
   "24-agent-user-plugin-access.sh"
+  "25-gatekeeper.sh"
 )
 
 PASSED=0

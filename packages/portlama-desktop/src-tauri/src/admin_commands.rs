@@ -964,3 +964,144 @@ pub async fn admin_revoke_user_access_grant(grant_id: String) -> Result<serde_js
     })
         .await.map_err(|e| format!("Task failed: {}", e))?
 }
+
+// --- Gatekeeper Groups ---
+
+#[tauri::command]
+pub async fn admin_get_gatekeeper_groups() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/gatekeeper/groups"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_create_gatekeeper_group(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_post("/api/gatekeeper/groups", Some(&data.to_string())))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_update_gatekeeper_group(name: String, data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/gatekeeper/groups/{}", url_encode(&name));
+        admin_patch(&path, &data.to_string())
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_delete_gatekeeper_group(name: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/gatekeeper/groups/{}", url_encode(&name));
+        admin_delete(&path, None)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_add_gatekeeper_group_members(name: String, data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/gatekeeper/groups/{}/members", url_encode(&name));
+        admin_post(&path, Some(&data.to_string()))
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_remove_gatekeeper_group_member(name: String, username: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/gatekeeper/groups/{}/members/{}", url_encode(&name), url_encode(&username));
+        admin_delete(&path, None)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// --- Gatekeeper Grants ---
+
+#[tauri::command]
+pub async fn admin_get_gatekeeper_grants(filter: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = if let Some(f) = filter {
+            let mut qs = String::from("/api/gatekeeper/grants?");
+            if let Some(obj) = f.as_object() {
+                for (k, v) in obj {
+                    if let Some(s) = v.as_str() {
+                        qs.push_str(&format!("{}={}&", url_encode(k), url_encode(s)));
+                    }
+                }
+            }
+            qs.trim_end_matches('&').to_string()
+        } else {
+            "/api/gatekeeper/grants".to_string()
+        };
+        admin_get(&path)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_create_gatekeeper_grant(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_post("/api/gatekeeper/grants", Some(&data.to_string())))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_revoke_gatekeeper_grant(grant_id: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!("/api/gatekeeper/grants/{}", url_encode(&grant_id));
+        admin_delete(&path, None)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// --- Gatekeeper Diagnostics ---
+
+#[tauri::command]
+pub async fn admin_check_gatekeeper_access(username: String, resource_type: String, resource_id: String) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let path = format!(
+            "/api/gatekeeper/access/check?username={}&resourceType={}&resourceId={}",
+            url_encode(&username), url_encode(&resource_type), url_encode(&resource_id)
+        );
+        admin_get(&path)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_bust_gatekeeper_cache() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_post("/api/gatekeeper/cache/bust", None))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// --- Gatekeeper Settings ---
+
+#[tauri::command]
+pub async fn admin_get_gatekeeper_settings() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_get("/api/gatekeeper/settings"))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_update_gatekeeper_settings(data: serde_json::Value) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || admin_patch("/api/gatekeeper/settings", &data.to_string()))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+// --- Gatekeeper Access Log ---
+
+#[tauri::command]
+pub async fn admin_get_access_request_log(limit: Option<u32>, offset: Option<u32>) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let l = limit.unwrap_or(100);
+        let o = offset.unwrap_or(0);
+        let path = format!("/api/gatekeeper/access-log?limit={}&offset={}", l, o);
+        admin_get(&path)
+    })
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}
+
+#[tauri::command]
+pub async fn admin_clear_access_request_log() -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(|| admin_delete("/api/gatekeeper/access-log", None))
+        .await.map_err(|e| format!("Task failed: {}", e))?
+}

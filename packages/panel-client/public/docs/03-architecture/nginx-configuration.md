@@ -48,7 +48,7 @@ Internet
 
 ## Vhost Types
 
-Portlama manages six categories of nginx vhosts. Each is generated programmatically by the Panel Server's `nginx.js` library or the installer's `nginx.js` task.
+Portlama manages nine categories of nginx vhosts. Each is generated programmatically by the Panel Server's `nginx.js` library or the installer's `nginx.js` task.
 
 ### 1. IP Panel Vhost (`portlama-panel-ip`)
 
@@ -291,7 +291,7 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
 
     # Authelia forward authentication (AuthRequest implementation for nginx)
-    location /internal/authelia/authz {
+    location /internal/portlama/authz {
         internal;
 
         proxy_pass http://127.0.0.1:9091/api/authz/auth-request;
@@ -309,7 +309,7 @@ server {
     }
 
     location / {
-        auth_request /internal/authelia/authz;
+        auth_request /internal/portlama/authz;
         auth_request_set $user $upstream_http_remote_user;
         auth_request_set $groups $upstream_http_remote_groups;
         auth_request_set $name $upstream_http_remote_name;
@@ -379,6 +379,206 @@ Two serving modes based on the `spaMode` flag:
 - **SPA**: `try_files $uri $uri/ /index.html` — falls back to `index.html` for client-side routing
 
 Optional Authelia protection is controlled by the `autheliaProtected` flag on the site object.
+
+### 7. Public Tunnel Vhost (`portlama-app-<name>`, access mode: public)
+
+Created when a tunnel is configured with public access. Direct proxy with no authentication.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name public-app.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/public-app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/public-app.example.com/privkey.pem;
+
+    # ... standard SSL settings and proxy headers
+
+    location / {
+        proxy_pass http://127.0.0.1:<port>;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+```
+
+No `auth_request`, no Authelia, no Gatekeeper. Traffic is proxied directly to the tunneled app. Use only for services that handle their own authentication or are intentionally public.
+
+### 8. Authenticated Tunnel Vhost (`portlama-app-<name>`, access mode: authenticated)
+
+Created when a tunnel requires Authelia login but no per-user grant checking. Any authenticated Authelia user can access the tunnel.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name app.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
+
+    # ... standard SSL settings and proxy headers
+
+    # Gatekeeper authorization subrequest (handles Authelia validation + grant check)
+    location /internal/portlama/authz {
+        internal;
+
+        proxy_pass http://127.0.0.1:9294/authz/check;
+        proxy_pass_request_body off;
+
+        proxy_set_header Content-Length "";
+        proxy_set_header Connection "";
+        proxy_set_header X-Original-Method $request_method;
+        proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Host $http_host;
+        proxy_set_header Cookie $http_cookie;
+
+        proxy_http_version 1.1;
+        proxy_buffers 4 32k;
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    }
+
+    location / {
+        # Clear client-supplied identity headers
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        auth_request /internal/portlama/authz;
+        auth_request_set $user $upstream_http_remote_user;
+        auth_request_set $groups $upstream_http_remote_groups;
+        auth_request_set $name $upstream_http_remote_name;
+        auth_request_set $email $upstream_http_remote_email;
+
+        proxy_set_header Remote-User $user;
+        proxy_set_header Remote-Groups $groups;
+        proxy_set_header Remote-Name $name;
+        proxy_set_header Remote-Email $email;
+
+        proxy_pass http://127.0.0.1:<port>;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+
+        # Authentication failure -> redirect to Authelia login
+        error_page 401 =302 https://auth.<domain>/?rd=$scheme://$http_host$request_uri;
+    }
+}
+```
+
+Key characteristics:
+
+- `auth_request` targets the Gatekeeper at `127.0.0.1:9294/authz/check` instead of Authelia directly
+- The Gatekeeper validates the Authelia session cookie and returns 200 (authenticated) or 401 (unauthenticated)
+- Client-supplied `Remote-*` headers are cleared before the auth subrequest to prevent spoofing
+- 401 redirects to the Authelia login portal
+
+> **Note:** The `portlama-authz-cache.conf` nginx snippet is installed by the Gatekeeper installer task, but the generated vhosts do not currently include `proxy_cache` directives. Authorization caching relies on the Gatekeeper's in-memory session cache (30-second TTL) rather than nginx-level proxy caching.
+
+### 9. Restricted Tunnel Vhost (`portlama-app-<name>`, access mode: restricted)
+
+Created when a tunnel requires both Authelia login and an explicit access grant. Only users with a matching grant in `access-grants.json` can access the tunnel.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name restricted-app.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/restricted-app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/restricted-app.example.com/privkey.pem;
+
+    # ... standard SSL settings and proxy headers
+
+    # Gatekeeper authorization subrequest (handles Authelia validation + grant check)
+    location /internal/portlama/authz {
+        internal;
+
+        proxy_pass http://127.0.0.1:9294/authz/check;
+        proxy_pass_request_body off;
+
+        proxy_set_header Content-Length "";
+        proxy_set_header Connection "";
+        proxy_set_header X-Original-Method $request_method;
+        proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Host $http_host;
+        proxy_set_header Cookie $http_cookie;
+
+        proxy_http_version 1.1;
+        proxy_buffers 4 32k;
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
+    }
+
+    location / {
+        # Clear client-supplied identity headers
+        proxy_set_header Remote-User "";
+        proxy_set_header Remote-Groups "";
+        proxy_set_header Remote-Name "";
+        proxy_set_header Remote-Email "";
+
+        auth_request /internal/portlama/authz;
+        auth_request_set $user $upstream_http_remote_user;
+        auth_request_set $groups $upstream_http_remote_groups;
+        auth_request_set $name $upstream_http_remote_name;
+        auth_request_set $email $upstream_http_remote_email;
+
+        proxy_set_header Remote-User $user;
+        proxy_set_header Remote-Groups $groups;
+        proxy_set_header Remote-Name $name;
+        proxy_set_header Remote-Email $email;
+
+        proxy_pass http://127.0.0.1:<port>;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+
+        # Authentication failure -> redirect to Authelia login
+        error_page 401 =302 https://auth.<domain>/?rd=$scheme://$http_host$request_uri;
+
+        # Authorization failure -> Gatekeeper serves inline access-request page
+        error_page 403 = /internal/portlama/authz;
+    }
+}
+```
+
+Key differences from the authenticated vhost:
+
+- The Gatekeeper checks both the Authelia session and the access grant. If the user is authenticated but has no grant for this resource, the Gatekeeper returns 403 instead of 200
+- `error_page 403 = /internal/portlama/authz` replays the request to the Gatekeeper internal location. The `=` prefix causes nginx to use the response body and status code from the Gatekeeper, which serves an inline HTML access-request page with pre-filled message templates
+- 401 (unauthenticated) still redirects to Authelia login as before
+
+## nginx Cache Zone (`portlama_authz`)
+
+The Gatekeeper authorization responses are cached by nginx to reduce subrequest overhead. The cache zone is defined in a shared snippet:
+
+**File:** `/etc/nginx/snippets/portlama-authz-cache.conf`
+
+```nginx
+proxy_cache_path /var/cache/nginx/authz levels=1:2 keys_zone=portlama_authz:1m max_size=10m inactive=5m;
+```
+
+| Parameter    | Value   | Purpose                                                   |
+| ------------ | ------- | --------------------------------------------------------- |
+| `keys_zone`  | `1m`    | 1 MB for cache keys (sufficient for thousands of entries) |
+| `max_size`   | `10m`   | 10 MB maximum disk storage for cached responses           |
+| `inactive`   | `5m`    | Evict entries not accessed within 5 minutes               |
+
+**Cache key:** `$cookie_authelia_session$http_host` — ensures each user session gets its own cache entry per host, preventing authorization decisions from leaking across users or subdomains.
+
+**Cache TTLs (when used):**
+
+- `200` (authorized): 30 seconds — reduces subrequests during rapid page loads
+- `401` / `403` (denied): 10 seconds — allows quick re-check after login or grant changes
+
+> **Note:** The cache zone is installed by the Gatekeeper installer task, but the generated vhosts (`buildGatekeeperVhost()`) do not currently include `proxy_cache` directives in the internal location block. Authorization caching currently relies on the Gatekeeper's in-memory session cache (30-second TTL). The nginx cache zone is available for future use if nginx-level caching is needed.
 
 ## mTLS Snippet Pattern
 
@@ -512,7 +712,7 @@ The Authelia forward auth integration uses nginx's `auth_request` module. Here i
 ```
 1. User requests https://myapp.example.com/page
    │
-2. nginx sends internal subrequest to /internal/authelia/authz
+2. nginx sends internal subrequest to /internal/portlama/authz
    │  ├── proxy_pass → http://127.0.0.1:9091/api/authz/auth-request
    │  ├── Sends X-Original-URL, X-Original-Method headers
    │  └── Strips request body (Content-Length: "")
@@ -576,7 +776,8 @@ The 24-hour timeout (`proxy_read_timeout 86400s`) is set on tunnel and app vhost
 │   ├── portlama-app-myapp → ../sites-available/portlama-app-myapp
 │   └── portlama-site-<uuid> → ../sites-available/portlama-site-<uuid>
 └── snippets/
-    └── portlama-mtls.conf             ← Shared mTLS client cert verification
+    ├── portlama-mtls.conf             ← Shared mTLS client cert verification
+    └── portlama-authz-cache.conf      ← Gatekeeper proxy_cache zone definition
 ```
 
 All Portlama-managed files are prefixed with `portlama-` to distinguish them from other nginx configurations on the system.
@@ -611,6 +812,7 @@ All Portlama-managed files are prefixed with `portlama-` to distinguish them fro
 | `packages/create-portlama/src/tasks/nginx.js` | Installer: self-signed cert, mTLS snippet, IP vhost                   |
 | `packages/panel-server/src/lib/nginx.js`      | Runtime: vhost generation, write-with-rollback, enable/disable/reload |
 | `/etc/nginx/snippets/portlama-mtls.conf`      | Shared mTLS snippet                                                   |
+| `/etc/nginx/snippets/portlama-authz-cache.conf` | Gatekeeper proxy_cache zone definition                              |
 | `/etc/nginx/sites-available/portlama-*`       | Vhost configuration files                                             |
 | `/etc/nginx/sites-enabled/portlama-*`         | Symlinks to enabled vhosts                                            |
 

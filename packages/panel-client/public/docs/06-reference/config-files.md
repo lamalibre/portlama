@@ -18,11 +18,17 @@
 | `/etc/portlama/plugins.json`             | JSON       | portlama:portlama | 0600 | Plugin registry                                                                 |
 | `/etc/portlama/storage-config.json`      | JSON       | portlama:portlama | 0600 | Storage server registry and plugin bindings (credentials AES-256-GCM encrypted) |
 | `/etc/portlama/storage-master.key`       | Binary     | portlama:portlama | 0600 | 32-byte master key for storage credential encryption |
+| `/etc/portlama/groups.json`              | JSON       | portlama:portlama | 0600 | Portlama group definitions and membership |
+| `/etc/portlama/access-grants.json`       | JSON       | portlama:portlama | 0600 | Generic access grants (principal → resource) |
+| `/etc/portlama/gatekeeper.json`          | JSON       | portlama:portlama | 0600 | Gatekeeper settings (cache TTL, admin contact, logging) |
+| `/etc/portlama/access-request-log.json`  | JSON       | portlama:portlama | 0600 | Optional denied access log |
 | `/etc/portlama/pki/enrollment-tokens.json` | JSON     | portlama:portlama | 0600 | One-time enrollment tokens for hardware-bound enrollment |
 | `/etc/portlama/pki/revoked.json`         | JSON       | portlama:portlama | 0600 | Revoked certificate serial numbers |
 | `/etc/portlama/pki/agents/registry.json` | JSON       | portlama:portlama | 0600 | Agent certificate metadata |
 | `/etc/nginx/sites-available/portlama-*`  | nginx conf | root:root         | 0644 | Vhost configurations          |
 | `/etc/nginx/snippets/portlama-mtls.conf` | nginx conf | root:root         | 0644 | mTLS snippet                  |
+| `/etc/nginx/snippets/portlama-authz-cache.conf` | nginx conf | root:root | 0644 | Gatekeeper proxy_cache zone   |
+| `/etc/systemd/system/portlama-gatekeeper.service` | systemd | root:root | 0644 | Gatekeeper systemd unit       |
 | `~/.portlama/servers.json`               | JSON       | user              | 0600 | Desktop app server registry   |
 | `~/.portlama/agents.json`               | JSON       | user              | 0600 | Multi-agent registry          |
 | `~/.portlama/agents/<label>/config.json` | JSON      | user              | 0600 | Per-agent configuration       |
@@ -147,6 +153,7 @@ Stores the array of configured tunnels. Created automatically when the first tun
 | `port`        | number         | Local port on the tunnel client machine   |
 | `description` | string \| null | Optional description (max 200 characters) |
 | `enabled`     | boolean        | Whether the tunnel is active              |
+| `accessMode`  | string \| undefined | `"public"`, `"authenticated"`, or `"restricted"`. Controls whether nginx skips auth, requires Authelia login only, or requires Authelia login plus a Gatekeeper grant. Absent for panel tunnels. |
 | `createdAt`   | string         | ISO 8601 timestamp                        |
 
 **Example:**
@@ -333,6 +340,160 @@ Stores active tickets and sessions for agent-to-agent authorization. Created aut
 **Write pattern:** Same as `ticket-scopes.json` — atomic with mutex.
 
 **Cleanup:** Tickets older than 1 hour are removed. Dead sessions older than 24 hours are removed.
+
+---
+
+## `/etc/portlama/groups.json`
+
+Stores Portlama group definitions and membership. Separate from Authelia groups — Portlama groups are used exclusively for Gatekeeper access control without modifying `users.yml`.
+
+**Schema:**
+
+| Field                  | Type     | Description                                  |
+| ---------------------- | -------- | -------------------------------------------- |
+| `groups`               | array    | Array of group objects                       |
+| `groups[].name`        | string   | Group name (unique, lowercase alphanumeric, 2-63 chars)  |
+| `groups[].description` | string   | Human-readable description                   |
+| `groups[].members`     | string[] | Array of Authelia usernames                  |
+| `groups[].createdAt`   | string   | ISO 8601 timestamp                           |
+| `groups[].createdBy`   | string   | Admin who created the group                  |
+
+**Example:**
+
+```json
+{
+  "groups": [
+    {
+      "name": "developers",
+      "description": "Backend and frontend developers",
+      "members": ["alice", "bob"],
+      "createdAt": "2026-04-01T10:00:00.000Z",
+      "createdBy": "admin"
+    }
+  ]
+}
+```
+
+**Write pattern:** Atomic — temp file, `fsync()`, `rename()`. Concurrency controlled by promise-chain mutex.
+
+---
+
+## `/etc/portlama/access-grants.json`
+
+Stores generic access grants mapping principals (users or groups) to resources (tunnel subdomains or other protected endpoints).
+
+**Schema:**
+
+| Field                    | Type           | Description                                              |
+| ------------------------ | -------------- | -------------------------------------------------------- |
+| `grants`                 | array          | Array of grant objects                                   |
+| `grants[].grantId`       | string         | Unique identifier (e.g., `g_abc123`)                    |
+| `grants[].principalType` | string         | `"user"` or `"group"`                                   |
+| `grants[].principalId`   | string         | Authelia username or Portlama group name                |
+| `grants[].resourceType`  | string         | `"tunnel"`, `"plugin"`, or custom resource type         |
+| `grants[].resourceId`    | string         | Resource identifier (e.g., tunnel subdomain)            |
+| `grants[].context`       | object         | Optional metadata (empty `{}` by default)               |
+| `grants[].used`          | boolean        | Whether the grant has been consumed                     |
+| `grants[].createdAt`     | string         | ISO 8601 timestamp                                      |
+| `grants[].usedAt`        | string \| null | ISO 8601 timestamp of consumption, or `null`            |
+
+**Example:**
+
+```json
+{
+  "grants": [
+    {
+      "grantId": "g_b2c3d4e5",
+      "principalType": "user",
+      "principalId": "alice",
+      "resourceType": "tunnel",
+      "resourceId": "myapp",
+      "context": {},
+      "used": false,
+      "createdAt": "2026-04-01T10:05:00.000Z",
+      "usedAt": null
+    },
+    {
+      "grantId": "g_c3d4e5f6",
+      "principalType": "group",
+      "principalId": "developers",
+      "resourceType": "tunnel",
+      "resourceId": "staging",
+      "context": {},
+      "used": false,
+      "createdAt": "2026-04-01T10:10:00.000Z",
+      "usedAt": null
+    }
+  ]
+}
+```
+
+**Write pattern:** Atomic — temp file, `fsync()`, `rename()`. Concurrency controlled by promise-chain mutex.
+
+---
+
+## `/etc/portlama/gatekeeper.json`
+
+Gatekeeper service settings. Controls cache behavior, admin contact information (displayed on the access-denied page), and logging configuration.
+
+**Schema:**
+
+| Field                     | Type             | Default | Description                                         |
+| ------------------------- | ---------------- | ------- | --------------------------------------------------- |
+| `adminEmail`              | string \| undefined | —    | Admin email shown on access-denied page             |
+| `adminName`               | string \| undefined | —    | Admin display name shown on access-denied page      |
+| `slackChannel`            | string \| undefined | —    | Slack channel for access request templates          |
+| `teamsChannel`            | string \| undefined | —    | Teams channel for access request templates          |
+| `sessionCacheTtlMs`       | number \| undefined | —    | In-memory session cache TTL in milliseconds (default 30000) |
+| `accessLoggingEnabled`    | boolean \| undefined | —   | Whether to log denied access attempts               |
+| `accessLogRetentionDays`  | number \| undefined | —    | How many days to retain access log entries           |
+
+**Example:**
+
+```json
+{
+  "adminEmail": "admin@example.com",
+  "adminName": "Admin",
+  "slackChannel": "#access-requests",
+  "sessionCacheTtlMs": 30000,
+  "accessLoggingEnabled": true,
+  "accessLogRetentionDays": 90
+}
+```
+
+**Write pattern:** Atomic — temp file, `fsync()`, `rename()`.
+
+---
+
+## `/etc/portlama/access-request-log.json`
+
+Optional log of denied access attempts. Written by the Gatekeeper when `accessLoggingEnabled` is true. Read by the Panel Server for the admin UI access request review page.
+
+**Schema:** Array of access request entries.
+
+| Field          | Type   | Description                                           |
+| -------------- | ------ | ----------------------------------------------------- |
+| `timestamp`    | string | ISO 8601 timestamp of the denied request              |
+| `username`     | string | Authelia username of the denied user                  |
+| `resourceType` | string | Resource type (e.g., `"tunnel"`, `"plugin"`)          |
+| `resourceId`   | string | Resource identifier (e.g., tunnel subdomain)          |
+| `resourceFqdn` | string | Full domain the user attempted to access              |
+
+**Example:**
+
+```json
+[
+  {
+    "timestamp": "2026-04-01T14:30:00.000Z",
+    "username": "charlie",
+    "resourceType": "tunnel",
+    "resourceId": "internal",
+    "resourceFqdn": "internal.example.com"
+  }
+]
+```
+
+**Write pattern:** Atomic — temp file, `fsync()`, `rename()`.
 
 ---
 
@@ -697,6 +858,43 @@ This enables client certificate verification at the TLS level. The `optional` se
 
 ---
 
+## `/etc/nginx/snippets/portlama-authz-cache.conf`
+
+Defines the nginx proxy_cache zone installed by the Gatekeeper installer task:
+
+```nginx
+proxy_cache_path /var/cache/nginx/authz levels=1:2 keys_zone=portlama_authz:1m max_size=10m inactive=5m;
+```
+
+This cache zone is available for nginx-level caching of Gatekeeper authorization responses. However, the generated vhosts (`buildGatekeeperVhost()`) do not currently include `proxy_cache` directives. Authorization caching relies on the Gatekeeper's in-memory session cache (30-second default TTL).
+
+---
+
+## `/etc/systemd/system/portlama-gatekeeper.service`
+
+Systemd unit for the Gatekeeper tunnel authorization service. Runs as the `portlama` user on `127.0.0.1:9294`.
+
+```ini
+[Unit]
+Description=Portlama Gatekeeper
+After=network.target
+
+[Service]
+Type=simple
+User=portlama
+Group=portlama
+WorkingDirectory=/opt/portlama/gatekeeper
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+---
+
 ## File Permissions Table
 
 | Path                                    | Owner             | Mode | Notes                |
@@ -720,6 +918,10 @@ This enables client certificate verification at the TLS level. The `optional` se
 | `/etc/portlama/plugins.json`           | portlama:portlama | 0600 | Plugin registry        |
 | `/etc/portlama/storage-config.json`    | portlama:portlama | 0600 | Storage registry       |
 | `/etc/portlama/storage-master.key`     | portlama:portlama | 0600 | Storage encryption key |
+| `/etc/portlama/groups.json`            | portlama:portlama | 0600 | Portlama groups        |
+| `/etc/portlama/access-grants.json`     | portlama:portlama | 0600 | Access grants          |
+| `/etc/portlama/gatekeeper.json`        | portlama:portlama | 0600 | Gatekeeper settings    |
+| `/etc/portlama/access-request-log.json` | portlama:portlama | 0600 | Denied access log     |
 | `/etc/portlama/pki/enrollment-tokens.json` | portlama:portlama | 0600 | Enrollment tokens  |
 | `/etc/portlama/pki/revoked.json`       | portlama:portlama | 0600 | Revocation list        |
 | `/etc/portlama/pki/agents/registry.json` | portlama:portlama | 0600 | Agent cert metadata  |
@@ -744,6 +946,10 @@ This enables client certificate verification at the TLS level. The `optional` se
 | `ticket-scopes.json` | panel-server | panel-server (atomic write + mutex) | No                                        |
 | `tickets.json`      | panel-server | panel-server (atomic write + mutex) | No                                         |
 | `storage-config.json` | panel-server | panel-server (atomic write + mutex) | No                                       |
+| `groups.json`        | gatekeeper   | panel-server (atomic write + mutex) | No (gatekeeper watches file)              |
+| `access-grants.json` | gatekeeper   | panel-server (atomic write + mutex) | No (gatekeeper watches file)              |
+| `gatekeeper.json`    | gatekeeper   | panel-server (atomic write)         | Yes (`systemctl restart portlama-gatekeeper`) |
+| `access-request-log.json` | panel-server | gatekeeper (atomic write)      | No                                        |
 | `configuration.yml` | authelia     | onboarding provisioning             | Yes (`systemctl restart authelia`)         |
 | `users.yml`         | authelia     | panel-server (via sudo)             | Yes (`systemctl restart authelia`)         |
 | `portlama-*` vhosts | nginx        | panel-server (via sudo)             | Yes (`nginx -t && systemctl reload nginx`) |

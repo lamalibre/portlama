@@ -4,7 +4,7 @@ import dns from 'node:dns/promises';
 import { getConfig } from '../../lib/config.js';
 import { readSites, writeSites, readTunnels } from '../../lib/state.js';
 import { writeStaticSiteVhost, removeStaticSiteVhost } from '../../lib/nginx.js';
-import { syncAllAccessControl } from '../../lib/access-control-sync.js';
+import { updateAccessControl } from '../../lib/authelia.js';
 import { issueTunnelCert, getCertPath } from '../../lib/certbot.js';
 import {
   createSiteDirectory,
@@ -390,7 +390,8 @@ export default async function sitesRoutes(fastify, _opts) {
       // Sync Authelia access_control if auth settings or user assignments changed
       if (autheliaChanged || usersChanged) {
         try {
-          await syncAllAccessControl(request.log);
+          const allSites = await readSites();
+          await updateAccessControl(allSites);
           request.log.info('Authelia access control updated');
         } catch (err) {
           request.log.error(err, 'Failed to update Authelia access control');

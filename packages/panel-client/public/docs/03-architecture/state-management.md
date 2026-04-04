@@ -29,6 +29,10 @@ This approach works because Portlama manages a small amount of state (one admin,
 ├── tickets.json            ← Ticket and session store
 ├── storage-config.json     ← Storage server registry and plugin bindings
 ├── storage-master.key      ← 32-byte master key for storage credential encryption
+├── groups.json             ← Portlama groups (separate from Authelia groups)
+├── access-grants.json      ← Generic access grants (principal → resource)
+├── gatekeeper.json         ← Gatekeeper settings (cache TTL, admin contact, logging)
+├── access-request-log.json ← Optional denied access log (for admin review)
 └── pki/
     ├── ca.key              ← CA private key
     ├── ca.crt              ← CA certificate
@@ -440,6 +444,10 @@ Environment variables allow overriding paths for development and testing without
 | `invitations.json`  | `0600` | `portlama:portlama` | Written by Panel Server                 |
 | `storage-config.json` | `0600` | `portlama:portlama` | Storage registry (credentials AES-256-GCM encrypted) |
 | `storage-master.key`  | `0600` | `portlama:portlama` | 32-byte master key for storage encryption |
+| `groups.json`         | `0600` | `portlama:portlama` | Portlama group definitions and membership |
+| `access-grants.json`  | `0600` | `portlama:portlama` | Generic access grants (principal → resource) |
+| `gatekeeper.json`     | `0600` | `portlama:portlama` | Gatekeeper settings (cache TTL, logging) |
+| `access-request-log.json` | `0600` | `portlama:portlama` | Optional denied access log |
 | `pki/ca.key`        | `0600` | `root:root`         | CA private key — most sensitive file    |
 | `pki/ca.crt`        | `0644` | `root:root`         | CA cert — needs to be readable by nginx |
 | `pki/client.key`    | `0600` | `root:root`         | Client private key                      |
@@ -486,6 +494,8 @@ This ensures that concurrent tunnel creation requests do not trigger multiple si
 | File                                          | Role                                           |
 | --------------------------------------------- | ---------------------------------------------- |
 | `packages/panel-server/src/lib/storage.js`    | Storage server registry, plugin bindings, AES-256-GCM encryption |
+| `packages/portlama-gatekeeper/src/lib/groups.ts` | Portlama group read/write with atomic writes |
+| `packages/portlama-gatekeeper/src/lib/grants.ts` | Access grant read/write with atomic writes |
 | `packages/panel-server/src/lib/config.js`     | Config loading, Zod validation, atomic updates |
 | `packages/panel-server/src/lib/state.js`      | tunnels.json + sites.json atomic read/write    |
 | `packages/panel-server/src/lib/authelia.js`   | users.yml read/write via sudo                  |

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add Gatekeeper authorization service — generic principal-to-resource grant model with Portlama groups, nginx auth_request integration, and inline access-request pages on 403 (`portlama-gatekeeper` 0.1.0)
+- Add three tunnel access modes: `public` (no auth), `authenticated` (Authelia login), `restricted` (Authelia + grant check) — configurable per tunnel at creation time (`panel-server`, `portlama-gatekeeper`)
+- Add Gatekeeper admin panel — Dashboard, Groups, Grants, Access Requests, and Settings pages with full CRUD (`portlama-admin-panel`, `portlama-desktop`)
+- Add Gatekeeper installer task — deploys package, creates state files, writes systemd service and nginx cache config (`create-portlama`)
+- Add Gatekeeper CLI for local group, grant, and access management (`portlama-gatekeeper`)
+- Add migration from legacy `user-plugin-access.json` grants to Gatekeeper's generic grant model (`portlama-gatekeeper`)
+- Add Gatekeeper concept and API reference documentation (`panel-client`)
 - Add server discovery — find existing Portlama-managed DigitalOcean droplets with DNS domain resolution and panel URL detection (`portlama-cloud`, `portlama-desktop`)
 - Add SSH-based admin recovery — recover admin access when P12 certificate is lost via ephemeral SSH key pair and `portlama-reset-admin` (`portlama-cloud`, `portlama-desktop`)
 - Add Discover Server wizard — desktop UI for discovering existing servers, registering them, and recovering admin certificates via SSH (`portlama-desktop`)
@@ -31,8 +38,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix agent uninstall not navigating back to agent list after completion (`portlama-agent-panel`, `portlama-desktop`)
 - Fix domain detection only matching 2-part TLDs — use DigitalOcean zone names for base domain identification (`portlama-cloud`)
 
+### Removed
+
+- Remove `access-control-sync.js` — Authelia access control rule sync replaced by Gatekeeper authorization (`panel-server`)
+
 ### Security
 
+- Add shared API secret for Gatekeeper localhost management routes — prevents unsandboxed plugins from manipulating grants directly (`portlama-gatekeeper`, `panel-server`)
+- Add fail-closed authorization — Gatekeeper denies access when tunnel is not found or `X-Original-URL` is missing, preventing bypass on empty cache (`portlama-gatekeeper`)
+- Add admin-only enforcement for non-restricted tunnel access modes — agents cannot create `public` or `authenticated` tunnels (`panel-server`)
+- Add session cache hard cap (10k entries) and Authelia-cookie-only cache key to prevent memory exhaustion and cache pollution on 512MB droplets (`portlama-gatekeeper`)
+- Add group member cap (1000 per group) to prevent disk/memory exhaustion via unbounded membership (`portlama-gatekeeper`)
+- Add admin role guard to all Gatekeeper proxy routes (`panel-server`)
 - Add symlink attack protection to server directory cleanup on server removal (`portlama-desktop`)
 - Add path traversal protection to SSH recovery cleanup — canonicalize paths before validation and use canonical path for operations (`portlama-cloud`, `portlama-desktop`)
 - Fix TOCTOU in recovery cleanup — pass canonicalized directory path to Node.js CLI instead of original user input (`portlama-desktop`)
