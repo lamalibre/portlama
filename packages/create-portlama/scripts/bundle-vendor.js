@@ -47,6 +47,19 @@ async function main() {
 
   console.log('Bundled vendor/panel-client (dist/)');
 
+  // --- gatekeeper: package.json + dist/ (compiled TypeScript) ---
+  const gatekeeperSrc = join(monorepoRoot, 'packages', 'portlama-gatekeeper');
+  const gatekeeperDist = join(gatekeeperSrc, 'dist');
+  if (existsSync(gatekeeperDist)) {
+    const gatekeeperDest = join(vendorDir, 'gatekeeper');
+    await mkdir(gatekeeperDest, { recursive: true });
+    await cp(join(gatekeeperSrc, 'package.json'), join(gatekeeperDest, 'package.json'));
+    await cp(gatekeeperDist, join(gatekeeperDest, 'dist'), { recursive: true });
+    console.log('Bundled vendor/gatekeeper (package.json + dist/)');
+  } else {
+    console.log('Skipped vendor/gatekeeper (dist/ not found — run "npm run build" first)');
+  }
+
   console.log('Vendor bundling complete.');
 }
 
